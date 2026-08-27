@@ -1,0 +1,6 @@
+# Vite build output
+dist/
+dist-ssr/
+
+# Local env (root .gitignore covers .env patterns)
+*.local
