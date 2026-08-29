@@ -1,5 +1,5 @@
-import { Routes, Route, Outlet } from 'react-router'
-import Home from './components/Home.jsx'
+import { Routes, Route } from 'react-router'
+import Home from './pages/Home.jsx'
 
 
 function App() {
