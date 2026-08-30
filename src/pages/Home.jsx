@@ -1,5 +1,14 @@
 import { Show } from '@clerk/react-router'
 import { Link } from 'react-router'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 
 import logo from '../assets/icons/logo.png'
 import link_icon from '../assets/icons/link_icon.svg'
@@ -13,6 +22,10 @@ import Food3 from '../assets/landing/Food3.png'
 import info from '../assets/icons/info.svg'
 import document_check from '../assets/icons/document_check.svg'
 import precision from '../assets/icons/precision.svg'
+import balance_macro from '../assets/landing/balance_macro.png'
+import low_carb from '../assets/landing/low_carb.png'
+import high_protein from '../assets/landing/high_protein.png'
+
 
 const Header = () => {
   return (
@@ -119,6 +132,29 @@ const Nutrition = () => {
       <p className="mt-2 w-[46%] text-center text-lg font-semibold text-slate-700">
         Discover whats perfect for you
       </p>
+      <div className="w-[70%] grid grid-cols-3 mt-18 gap-6">
+        <div
+          className="relative overflow-hidden rounded-xl min-h-100 bg-cover bg-center"
+          style={{ backgroundImage: `url(${balance_macro})` }}
+        >
+          <div className="absolute inset-0 bg-linear-to-b from-black/80 via-black/20 to-transparent" />
+          <h3 className="relative z-10 pt-6 pl-6 text-3xl font-semibold text-zinc-200">Balance Macro</h3>
+        </div>
+        <div
+          className="relative overflow-hidden rounded-xl min-h-100 bg-cover bg-center"
+          style={{ backgroundImage: `url(${low_carb})` }}
+        >
+          <div className="absolute inset-0 bg-linear-to-b from-black/80 via-black/20 to-transparent" />
+          <h3 className="relative z-10 pt-6 pl-6 text-3xl font-semibold text-zinc-200">Low Carb</h3>
+        </div>
+        <div
+          className="relative overflow-hidden rounded-xl min-h-100 bg-cover bg-center"
+          style={{ backgroundImage: `url(${high_protein})` }}
+        >
+          <div className="absolute inset-0 bg-linear-to-b from-black/80 via-black/20 to-transparent" />
+          <h3 className="relative z-10 pt-6 pl-6 text-3xl font-semibold text-zinc-200">High Protein</h3>
+        </div>
+      </div>
     </section>
   )
 }
@@ -200,7 +236,7 @@ const PrepAI = () => {
                 without breaking macros.
               </p>
             </div>
-                <img src={Food1} alt="Braised Beef Flank" className="size-20 rounded-full border-2 border-white/20" />
+            <img src={Food1} alt="Braised Beef Flank" className="size-20 rounded-full border-2 border-white/20" />
           </div>
         </div>
       </div>
@@ -211,14 +247,98 @@ const PrepAI = () => {
 const FAQ = () => {
   return (
     <section className="px-6 flex flex-col items-center" id="faq">
+      <h1 className="text-6xl font-bold">FAQ</h1>
+      <Accordion className="w-full max-w-2xl mt-12">
+        <AccordionItem value="credits">
+          <AccordionTrigger className="text-lg font-semibold">How do meal credits work?</AccordionTrigger>
+          <AccordionContent className="text-sm leading-relaxed">
+            Your monthly subscription deposits credits into your account (e.g., 20
+            credits/month). Most meals cost 1 credit. You redeem them at
+            checkout instead of paying per dish.
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="prepai">
+          <AccordionTrigger className="text-lg font-semibold">What is PrepAI?</AccordionTrigger>
+          <AccordionContent className="text-sm leading-relaxed">
+            PrepAI is our built-in nutrition planner. It looks at your daily
+            calorie and macro goals (protein, carbs, fats) and instantly builds a
+            7-day meal plan using available dishes in our kitchen.
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="custom">
+          <AccordionTrigger className="text-lg font-semibold">Can I build custom meals?</AccordionTrigger>
+          <AccordionContent className="text-sm leading-relaxed">
+            Yes. You can save up to 3 custom recipes with your preferred
+            ingredients and macros, then schedule and order them just like any
+            catalog meal.
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="delivery">
+          <AccordionTrigger className="text-lg font-semibold">How do I track my delivery?</AccordionTrigger>
+          <AccordionContent className="text-sm leading-relaxed">
+            When your order is out for delivery, head to your portal for live GPS
+            tracking to watch your rider's route on an interactive map.
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="damaged">
+          <AccordionTrigger className="text-lg font-semibold">What if my meals arrive damaged or defrosted?</AccordionTrigger>
+          <AccordionContent className="text-sm leading-relaxed">
+            Go to Order History, tap Report Issue, and upload a quick photo. Once
+            verified, we will instantly refund the meal credits back to your
+            balance.
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </section>
   )
 }
 
 const Footer = () => {
   return (
-    <footer className="border-t border-slate-200 px-6 py-8 text-sm text-slate-600">
-      <div className="mx-auto max-w-5xl">Ready to build healthier routines.</div>
+    <footer className="bg-zinc-900 px-56 pt-16 pb-8">
+      <div className="flex justify-between">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <img src={logo} alt="NutriPrep Logo" className="w-10 h-10 invert" />
+            <p className="text-[36px] font-bold uppercase text-white">NutriPrep</p>
+          </div>
+          <p className="w-[46%] text-md font-medium text-zinc-300">
+            Subscribe to our newsletter for healthy living tips
+            and exclusive meal plan offers.
+          </p>
+
+          <Field orientation="horizontal" className="mt-6">
+            <Input type="email" placeholder="Your email address" className="bg-white w-70" />
+            <Button>Subscribe</Button>
+          </Field>
+        </div>
+        <div className="flex justify-between gap-30">
+          <div>
+            <h3 className="text-white font-semibold text-lg">Company</h3>
+            <ul className="mt-4 text-zinc-400 text-sm">
+              <li className="mb-2">About Us</li>
+              <li className="mb-2">Careers</li>
+              <li className="mb-2">Contact</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-lg">Support</h3>
+            <ul className="mt-4 text-zinc-400 text-sm">
+              <li className="mb-2">Email Support</li>
+              <li className="mb-2">Issues</li>
+            </ul>
+          </div>
+          <div></div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-14">
+        <quote className="text-zinc-400 text-sm">
+          Nutrition Made Simple. Powered by AI. Designed for You.
+        </quote>
+        <quote className="text-zinc-400 text-sm">
+          &copy; 2026 NutriPrep Meals. All rights reserved.
+        </quote>
+      </div>
     </footer>
   )
 }
@@ -227,7 +347,7 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main className="flex flex-col gap-32.5">
+      <main className="flex flex-col gap-32.5 pb-32.5">
         <Hero />
         <How />
         <Nutrition />
