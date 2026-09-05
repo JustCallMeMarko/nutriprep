@@ -1,5 +1,7 @@
-import { Show } from '@clerk/react-router'
-import { Link } from 'react-router'
+import { useState } from 'react'
+import { Show } from '@clerk/react'
+import { Link } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
 import {
   Accordion,
   AccordionContent,
@@ -28,53 +30,92 @@ import high_protein from '../assets/landing/high_protein.png'
 
 
 const Header = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  const closeMenu = () => setIsMenuOpen(false)
+
   return (
-    <header className="bg-white border-b-2 border-slate-800 px-56 py-2 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
-      <div className="flex items-center gap-2">
+    <header className="bg-white border-b-2 border-slate-800 px-4 md:px-[clamp(2rem,calc(29.4vw-194px),14.5rem)] py-2.5 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
+      <div className="flex shrink-0 items-center gap-2">
         <img src={logo} alt="NutriPrep Logo" className="w-10 h-10" />
-        <p className="text-[36px] font-bold uppercase">NutriPrep</p>
+        <p className="text-2xl md:text-2xl font-bold uppercase">NutriPrep</p>
       </div>
 
-      <nav className="flex items-center gap-6">
-        <a href="#home" className="hover:text-slate-600 transition-colors ease-in font-semibold">Home</a>
-        <a href="#how" className="hover:text-slate-600 transition-colors ease-in font-semibold">How</a>
-        <a href="#nutrition" className="hover:text-slate-600 transition-colors ease-in font-semibold">Nutrition</a>
-        <a href="#prepai" className="hover:text-slate-600 transition-colors ease-in font-semibold">PrepAI</a>
-        <a href="#faq" className="hover:text-slate-600 transition-colors ease-in font-semibold">FAQ</a>
+      <nav className="hidden min-w-0 flex-1 items-center justify-center gap-3 md:flex">
+        <a href="#home" className="whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold">Home</a>
+        <a href="#how" className="whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold">How</a>
+        <a href="#nutrition" className="whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold">Nutrition</a>
+        <a href="#prepai" className="whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold">PrepAI</a>
+        <a href="#faq" className="whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold">FAQ</a>
       </nav>
 
-      <div className="flex items-center gap-3">
-        <Show when="signed-out">
-          <Link to="/sign-in" className="bg-zinc-900 text-white font-medium text-sm pl-5 pr-4 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors ease-in cursor-pointer flex items-center gap-2">
-            Sign In
-            <img src={link_icon} alt="Link" className="size-5" />
-          </Link>
-        </Show>
-        <Show when="signed-in">
-          <Link to="/dashboard">
-            Go to Dashboard
-          </Link>
-        </Show>
+      <div className="flex shrink-0 items-center gap-2 md:gap-3">
+        <button
+          type="button"
+          aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen((open) => !open)}
+          className="flex size-10 items-center justify-center rounded-lg text-zinc-900 hover:bg-zinc-100 md:hidden"
+        >
+          {isMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+        </button>
+        <div className="hidden items-center gap-2 md:flex">
+          <Show when="signed-out">
+            <Link to="/sign-in" className="bg-zinc-900 text-white font-medium text-xs md:text-sm pl-3 md:pl-5 pr-3 md:pr-4 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors ease-in cursor-pointer flex items-center gap-2">
+              Sign In
+              <img src={link_icon} alt="Link" className="size-5" />
+            </Link>
+          </Show>
+          <Show when="signed-in">
+            <Link to="/dashboard" className="bg-zinc-900 text-white font-medium text-xs md:text-sm pl-3 md:pl-5 pr-3 md:pr-4 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors ease-in cursor-pointer flex items-center gap-2">
+              Dashboard
+              <img src={link_icon} alt="Link" className="size-5" />
+            </Link>
+          </Show>
+        </div>
       </div>
+
+      {isMenuOpen && (
+        <nav className="absolute top-full left-0 right-0 border-b-2 border-slate-800 bg-white px-4 py-4 shadow-lg md:hidden">
+          <div className="flex flex-col gap-1">
+            <a href="#home" onClick={closeMenu} className="px-3 py-2 font-semibold hover:bg-zinc-100">Home</a>
+            <a href="#how" onClick={closeMenu} className="px-3 py-2 font-semibold hover:bg-zinc-100">How</a>
+            <a href="#nutrition" onClick={closeMenu} className="px-3 py-2 font-semibold hover:bg-zinc-100">Nutrition</a>
+            <a href="#prepai" onClick={closeMenu} className="px-3 py-2 font-semibold hover:bg-zinc-100">PrepAI</a>
+            <a href="#faq" onClick={closeMenu} className="px-3 py-2 font-semibold hover:bg-zinc-100">FAQ</a>
+            <Show when="signed-out">
+              <Link to="/sign-in" onClick={closeMenu} className="mt-2 flex items-center justify-between rounded-lg bg-zinc-900 px-3 py-2.5 font-semibold text-white hover:bg-zinc-800">
+                Sign In
+                <img src={link_icon} alt="Link" className="size-5" />
+              </Link>
+            </Show>
+            <Show when="signed-in">
+              <Link to="/dashboard" onClick={closeMenu} className="mt-2 rounded-lg bg-zinc-900 px-3 py-2.5 font-semibold text-white hover:bg-zinc-800">
+                Go to Dashboard
+              </Link>
+            </Show>
+          </div>
+        </nav>
+      )}
     </header>
   )
 }
 
 const Hero = () => {
   return (
-    <section className="px-6 pt-24 flex flex-col items-center" id="home">
-      <h1 className="text-6xl font-bold">
+    <section className="px-4 md:px-6 pt-24 flex flex-col items-center" id="home">
+      <h1 className="text-4xl md:text-6xl w-full text-left md:text-center font-bold">
         What{' '}
         <span className="text-blue-600 underline">eating well</span>{' '}
         looks like
       </h1>
-      <p className="mt-2 w-[46%] text-center text-lg font-semibold text-slate-700">
+      <p className="mt-2 w-full md:w-[46%] text-left md:text-center text-base md:text-lg font-semibold text-slate-700">
         Our commitment to high nutritional quality means better-tasting meals that empower you to own every summer moment.
       </p>
-      <Link to="/sign-up" className="bg-blue-600 text-white font-semibold text-md px-8 py-2.5 rounded-lg hover:bg-blue-500 transition-colors ease-in-out cursor-pointer mt-4">
+      <Link to="/sign-up" className="bg-blue-600 text-white w-full md:w-fit text-center font-semibold text-md px-8 py-2.5 rounded-lg hover:bg-blue-500 transition-colors ease-in-out cursor-pointer mt-4">
         Prep your meal now
       </Link>
-      <img src={salad} alt="Salad" className="mt-8 w-[70%]" />
+      <img src={salad} alt="Salad" className="mt-8 w-full md:w-[clamp(70%,calc(37.8%+28rem),100%)]" />
     </section>
   )
 }
@@ -84,12 +125,12 @@ const StepCard = (props) => {
     <div>
       <div className="relative">
         <img src={props.image} alt={`Step ${props.index + 1}`} className="w-full" />
-        <p className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-stone-400 border-3 border-white text-white font-semibold text-lg size-12 flex items-center justify-center rounded-full">
+        <p className="absolute -bottom-4 left-0 md:left-1/2 md:transform md:-translate-x-1/2 bg-stone-400 border-3 border-white text-white font-semibold text-lg size-12 flex items-center justify-center rounded-full">
           {props.index + 1}
         </p>
       </div>
-      <h3 className="text-xl font-semibold mt-8 text-center">{props.title}</h3>
-      <p className="text-slate-700 mt-1 text-center">{props.description}</p>
+      <h3 className="text-xl font-semibold mt-8 text-left md:text-center">{props.title}</h3>
+      <p className="text-slate-700 mt-1 text-left md:text-center">{props.description}</p>
     </div>
   )
 }
@@ -113,9 +154,9 @@ const How = () => {
     }
   ]
   return (
-    <section className="px-6 flex flex-col items-center" id="how">
-      <h1 className="text-6xl font-bold mb-4">How NutriPrep works</h1>
-      <div className="w-[70%] grid grid-cols-3 mt-18 gap-8">
+    <section className="px-4 md:px-6 flex flex-col items-center" id="how">
+      <h1 className="w-full text-4xl md:text-6xl text-left md:text-center font-bold mb-4">How NutriPrep works</h1>
+      <div className="w-full md:w-[clamp(70%,calc(37.8%+28rem),100%)] grid grid-cols-1 md:grid-cols-3 mt-8 md:mt-18 gap-12 md:gap-8">
         {steps.map((step, index) => (
           <StepCard key={index} image={step.image} title={step.title} description={step.description} index={index} />
         ))}
@@ -127,12 +168,12 @@ const How = () => {
 const Nutrition = () => {
 
   return (
-    <section className="px-6 flex flex-col items-center" id="nutrition">
-      <h1 className="text-6xl font-bold">Nutritious Meals!</h1>
-      <p className="mt-2 w-[46%] text-center text-lg font-semibold text-slate-700">
+    <section className="px-4 md:px-6 flex flex-col items-center" id="nutrition">
+      <h1 className="w-full text-4xl md:text-6xl text-left md:text-center font-bold">Nutritious Meals!</h1>
+      <p className="mt-2 w-full md:w-[46%] text-left md:text-center text-base md:text-lg font-semibold text-slate-700">
         Discover whats perfect for you
       </p>
-      <div className="w-[70%] grid grid-cols-3 mt-18 gap-6">
+      <div className="w-full md:w-[clamp(70%,calc(37.8%+28rem),100%)] grid grid-cols-1 md:grid-cols-3 mt-8 md:mt-18 gap-6">
         <div
           className="relative overflow-hidden rounded-xl min-h-100 bg-cover bg-center"
           style={{ backgroundImage: `url(${balance_macro})` }}
@@ -171,19 +212,19 @@ const PrepAI = () => {
     { time: "Dinner", name: "Lemon Herb Salmon", image: Food3 }
   ]
   return (
-    <section className="px-6 flex flex-col items-center" id="prepai">
-      <h1 className="text-6xl font-bold">PrepAI</h1>
-      <p className="mt-2 w-[46%] text-center text-lg font-semibold text-slate-700">
+    <section className="px-4 md:px-6 flex flex-col items-center" id="prepai">
+      <h1 className="w-full text-4xl md:text-6xl text-left md:text-center font-bold">PrepAI</h1>
+      <p className="mt-2 w-full md:w-[46%] text-left md:text-center text-base md:text-lg font-semibold text-slate-700">
         Plan meals using AI that suit your daily lifestyle
       </p>
-      <div className="w-[60%] grid grid-cols-2 mt-18 gap-6">
-        <div className="bg-zinc-900 rounded-xl p-8">
+      <div className="w-full md:w-[clamp(70%,calc(37.8%+28rem),100%)] md:h-120 grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] mt-8 md:mt-18 gap-6">
+        <div className="min-w-0 bg-zinc-900 rounded-xl p-6 md:p-8">
           <h3 className="text-xl font-semibold text-white">Today</h3>
           <hr className="mt-3 border-slate-600" />
-          <div className="grid grid-cols-3 gap-4 py-8">
+          <div className="grid grid-cols-3 gap-2 md:gap-4 py-8">
             {macros.map((macro, index) => (
               <div key={index} className="h-24 rounded-xl flex flex-col items-center justify-center gap-1">
-                <p className="text-white font-semibold text-center">{macro.name}</p>
+                <p className="text-white font-semibold text-left md:text-center">{macro.name}</p>
                 <div
                   className="size-14 rounded-full flex items-center justify-center"
                   style={{ background: `conic-gradient(#60a5fa ${(parseInt(macro.value) / parseInt(macro.goal)) * 100}%, #52525b 0)` }}
@@ -198,35 +239,35 @@ const PrepAI = () => {
           </div>
           <div>
             {foods.map((food, index) => (
-              <div key={index} className="flex items-center gap-4 mb-4">
-                <img src={food.image} alt={food.name} className="w-12 h-12 rounded-full" />
-                <div>
+              <div key={index} className="flex min-w-0 items-center gap-3 md:gap-4 mb-4">
+                <img src={food.image} alt={food.name} className="w-12 h-12 shrink-0 rounded-full" />
+                <div className="min-w-0">
                   <p className="text-slate-400 text-xs font-medium">{food.time}</p>
-                  <p className="text-white font-medium">{food.name}</p>
+                  <p className="text-white font-medium wrap-break-word">{food.name}</p>
                 </div>
-                <img src={info} alt="Info" className="size-6 opacity-50 ml-auto" />
+                <img src={info} alt="Info" className="size-6 shrink-0 opacity-50 ml-auto" />
               </div>
             ))}
           </div>
         </div>
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="bg-zinc-900 rounded-xl h-64 p-8 flex flex-col items-center justify-center">
+        <div className="min-w-0 flex flex-col gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-zinc-900 rounded-xl h-48 md:h-64 p-8 flex flex-col items-center justify-center">
               <div className='bg-white/20 rounded-full p-3 border border-white/30 mb-4'>
                 <img src={document_check} alt="Document Check" className="size-5.5" />
               </div>
-              <h3 className="text-white font-semibold text-center text-xs">Inventory Synced</h3>
-              <p className="text-zinc-300 text-xs text-center">Real Time Availability</p>
+              <h3 className="text-white font-semibold text-left md:text-center text-xs">Inventory Synced</h3>
+              <p className="text-zinc-300 text-xs text-left md:text-center">Real Time Availability</p>
             </div>
-            <div className="bg-zinc-900 rounded-xl h-64 p-8 flex flex-col items-center justify-center">
+            <div className="bg-zinc-900 rounded-xl h-48 md:h-64 p-8 flex flex-col items-center justify-center">
               <div className='bg-white/20 rounded-full p-3 border border-white/30 mb-4'>
                 <img src={precision} alt="Document Check" className="size-5.5" />
               </div>
-              <h3 className="text-white font-semibold text-center text-xs">Strict Macro Match</h3>
-              <p className="text-zinc-300 text-xs text-center">Precision down to the gram</p>
+              <h3 className="text-white font-semibold text-left md:text-center text-xs">Strict Macro Match</h3>
+              <p className="text-zinc-300 text-xs text-left md:text-center">Precision down to the gram</p>
             </div>
           </div>
-          <div className="bg-zinc-900 rounded-xl flex-1 p-8 flex justify-between items-center">
+          <div className="bg-zinc-900 rounded-xl flex-1 p-6 md:p-8 flex justify-between items-center">
             <div>
               <h2 className="text-white font-semibold text-lg">
                 Instant Swaps
@@ -246,8 +287,8 @@ const PrepAI = () => {
 
 const FAQ = () => {
   return (
-    <section className="px-6 flex flex-col items-center" id="faq">
-      <h1 className="text-6xl font-bold">FAQ</h1>
+    <section className="px-4 md:px-6 flex flex-col items-center" id="faq">
+      <h1 className="w-full text-left md:text-center text-4xl md:text-6xl font-bold">FAQs</h1>
       <Accordion className="w-full max-w-2xl mt-12">
         <AccordionItem value="credits">
           <AccordionTrigger className="text-lg font-semibold">How do meal credits work?</AccordionTrigger>
@@ -295,24 +336,24 @@ const FAQ = () => {
 
 const Footer = () => {
   return (
-    <footer className="bg-zinc-900 px-56 pt-16 pb-8">
-      <div className="flex justify-between">
+    <footer className="bg-zinc-900 px-4 md:px-[clamp(2rem,calc(29.4vw-194px),14.5rem)] pt-12 md:pt-16 pb-8">
+      <div className="flex flex-col md:flex-row gap-12 md:gap-0 justify-between">
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <img src={logo} alt="NutriPrep Logo" className="w-10 h-10 invert" />
-            <p className="text-[36px] font-bold uppercase text-white">NutriPrep</p>
+            <p className="text-2xl md:text-[36px] font-bold uppercase text-white">NutriPrep</p>
           </div>
-          <p className="w-[46%] text-md font-medium text-zinc-300">
+          <p className="w-full md:w-[46%] text-md font-medium text-zinc-300">
             Subscribe to our newsletter for healthy living tips
             and exclusive meal plan offers.
           </p>
 
-          <Field orientation="horizontal" className="mt-6">
-            <Input type="email" placeholder="Your email address" className="bg-white w-70" />
-            <Button>Subscribe</Button>
+          <Field orientation="horizontal" className="mt-6 flex-col items-stretch md:flex-row md:items-center">
+            <Input type="email" placeholder="Your email address" className="bg-white w-full md:w-70" />
+            <Button className="w-full md:w-auto">Subscribe</Button>
           </Field>
         </div>
-        <div className="flex justify-between gap-30">
+        <div className="flex justify-between gap-12 md:gap-30">
           <div>
             <h3 className="text-white font-semibold text-lg">Company</h3>
             <ul className="mt-4 text-zinc-400 text-sm">
@@ -324,14 +365,14 @@ const Footer = () => {
           <div>
             <h3 className="text-white font-semibold text-lg">Support</h3>
             <ul className="mt-4 text-zinc-400 text-sm">
-              <li className="mb-2">Email Support</li>
+              <li className="mb-2">Help Center</li>
               <li className="mb-2">Issues</li>
             </ul>
           </div>
           <div></div>
         </div>
       </div>
-      <div className="flex items-center justify-between mt-14">
+      <div className="flex flex-col md:flex-row gap-3 md:gap-0 items-start md:items-center justify-between mt-14">
         <quote className="text-zinc-400 text-sm">
           Nutrition Made Simple. Powered by AI. Designed for You.
         </quote>
@@ -347,7 +388,7 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main className="flex flex-col gap-32.5 pb-32.5">
+      <main className="flex flex-col gap-24 md:gap-32.5 pb-24 md:pb-32.5">
         <Hero />
         <How />
         <Nutrition />
