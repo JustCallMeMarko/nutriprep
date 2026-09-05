@@ -67,7 +67,7 @@ const Header = () => {
             </Link>
           </Show>
           <Show when="signed-in">
-            <Link to="/dashboard" className="bg-zinc-900 text-white font-medium text-xs md:text-sm pl-3 md:pl-5 pr-3 md:pr-4 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors ease-in cursor-pointer flex items-center gap-2">
+            <Link to="/user" className="bg-zinc-900 text-white font-medium text-xs md:text-sm pl-3 md:pl-5 pr-3 md:pr-4 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors ease-in cursor-pointer flex items-center gap-2">
               Dashboard
               <img src={link_icon} alt="Link" className="size-5" />
             </Link>
