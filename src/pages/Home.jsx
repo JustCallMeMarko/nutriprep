@@ -373,12 +373,12 @@ const Footer = () => {
         </div>
       </div>
       <div className="flex flex-col md:flex-row gap-3 md:gap-0 items-start md:items-center justify-between mt-14">
-        <quote className="text-zinc-400 text-sm">
+        <q className="text-zinc-400 text-sm">
           Nutrition Made Simple. Powered by AI. Designed for You.
-        </quote>
-        <quote className="text-zinc-400 text-sm">
+        </q>
+        <q className="text-zinc-400 text-sm">
           &copy; 2026 NutriPrep Meals. All rights reserved.
-        </quote>
+        </q>
       </div>
     </footer>
   )
