@@ -1,15 +1,17 @@
-import { Routes, Route } from 'react-router'
+import { Routes, Route } from 'react-router-dom'
 import Home from './pages/Home.jsx'
-import SignInPage from './pages/SignIn.jsx'
-import SignUpPage from './pages/SignUp.jsx'
+import ClerkProviderWithRoutes from './features/auth/ClerkProviderWithRoutes.jsx'
+import AuthenticationPage from './features/auth/AuthenticationPage.jsx'
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/sign-in/*" element={<SignInPage />} />
-      <Route path="/sign-up/*" element={<SignUpPage />} />
-    </Routes>
+    <ClerkProviderWithRoutes>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/sign-in/*" element={<AuthenticationPage />} />
+        <Route path="/sign-up/*" element={<AuthenticationPage />} />
+      </Routes>
+    </ClerkProviderWithRoutes>
   )
 }
 
