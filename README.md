@@ -9,6 +9,11 @@ Monorepo for the NutriPrep application.
 
 ## Development
 
+### Pre Requisites
+1. NodeJS
+2. Python
+3. uv ( install by `pip install uv` or go to [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/))
+
 ### Frontend
 
 ```sh
