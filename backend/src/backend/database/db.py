@@ -11,3 +11,6 @@ def create_profile(db: Session, user_id: str, role: str = "member"):
     db.commit()
     db.refresh(db_profile)
     return db_profile
+
+def get_users(db: Session):
+    return db.query(models.Profile).all()

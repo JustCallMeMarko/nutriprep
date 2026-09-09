@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Show } from '@clerk/react'
+import { Show, useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
+import { homePathForRole, roleFromUser } from '../features/auth/roles.js'
 import { Menu, X } from 'lucide-react'
 import {
   Accordion,
@@ -31,6 +32,9 @@ import high_protein from '../assets/landing/high_protein.png'
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { isSignedIn, user } = useUser()
+  const role = roleFromUser(user)
+  const roleHome = role ? homePathForRole(role) : null
 
   const closeMenu = () => setIsMenuOpen(false)
 
@@ -66,12 +70,12 @@ const Header = () => {
               <img src={link_icon} alt="Link" className="size-5" />
             </Link>
           </Show>
-          <Show when="signed-in">
-            <Link to="/user" className="bg-zinc-900 text-white font-medium text-xs md:text-sm pl-3 md:pl-5 pr-3 md:pr-4 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors ease-in cursor-pointer flex items-center gap-2">
+          {isSignedIn && roleHome && (
+            <Link to={roleHome} className="bg-zinc-900 text-white font-medium text-xs md:text-sm pl-3 md:pl-5 pr-3 md:pr-4 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors ease-in cursor-pointer flex items-center gap-2">
               Dashboard
               <img src={link_icon} alt="Link" className="size-5" />
             </Link>
-          </Show>
+          )}
         </div>
       </div>
 
@@ -89,11 +93,11 @@ const Header = () => {
                 <img src={link_icon} alt="Link" className="size-5" />
               </Link>
             </Show>
-            <Show when="signed-in">
-              <Link to="/dashboard" onClick={closeMenu} className="mt-2 rounded-lg bg-zinc-900 px-3 py-2.5 font-semibold text-white hover:bg-zinc-800">
+            {isSignedIn && roleHome && (
+              <Link to={roleHome} onClick={closeMenu} className="mt-2 rounded-lg bg-zinc-900 px-3 py-2.5 font-semibold text-white hover:bg-zinc-800">
                 Go to Dashboard
               </Link>
-            </Show>
+            )}
           </div>
         </nav>
       )}
@@ -112,9 +116,14 @@ const Hero = () => {
       <p className="mt-2 w-full md:w-[46%] text-left md:text-center text-base md:text-lg font-semibold text-slate-700">
         Our commitment to high nutritional quality means better-tasting meals that empower you to own every summer moment.
       </p>
-      <Link to="/sign-up" className="bg-blue-600 text-white w-full md:w-fit text-center font-semibold text-md px-8 py-2.5 rounded-lg hover:bg-blue-500 transition-colors ease-in-out cursor-pointer mt-4">
-        Prep your meal now
-      </Link>
+      <div className="mt-4 flex w-full md:w-fit flex-col items-stretch justify-center gap-3 md:flex-row">
+        <Link to="/sign-up?role=member" className="bg-blue-600 text-white w-full md:w-fit text-center font-semibold text-md px-8 py-2.5 rounded-lg hover:bg-blue-500 transition-colors ease-in-out cursor-pointer">
+          Prep your meal now
+        </Link>
+        <Link to="/sign-up?role=rider" className="border-2 border-blue-600 text-blue-600 w-full md:w-fit text-center font-semibold text-md px-8 py-2.5 rounded-lg hover:bg-blue-50 transition-colors ease-in-out cursor-pointer">
+          Become a rider
+        </Link>
+      </div>
       <img src={salad} alt="Salad" className="mt-8 w-full md:w-[clamp(70%,calc(37.8%+28rem),100%)]" />
     </section>
   )
