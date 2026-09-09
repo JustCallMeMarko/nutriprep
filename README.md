@@ -13,6 +13,17 @@ Monorepo for the NutriPrep application.
 1. NodeJS
 2. Python
 3. uv ( install by `pip install uv` or go to [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/))
+4. ngrok
+
+### Environment Variables (Clerk Keys)
+Copy the respective `.env.example` files and fill in your Clerk credentials (from your [Clerk dashboard](https://dashboard.clerk.com)):
+
+- `frontend/.env`:
+  - `VITE_CLERK_PUBLISHABLE_KEY`
+- `backend/.env`:
+  - `CLERK_SECRET_KEY`
+  - `JWT_KEY`
+  - `CLERK_WEBHOOK_SECRET`
 
 ### Frontend
 
@@ -29,6 +40,8 @@ cd backend
 uv sync
 uv run dev
 ```
+
+> Note: Run `ngrok http 8000` to expose the backend publicly and add your url <your_url>/webhooks/clerk in clerk's webhook dashboard.
 
 ## Contributing Guidelines
 
