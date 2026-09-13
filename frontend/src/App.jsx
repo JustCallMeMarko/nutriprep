@@ -10,6 +10,7 @@ import ClerkProviderWithRoutes from './features/auth/ClerkProviderWithRoutes.jsx
 import AuthenticationPage from './features/auth/AuthenticationPage.jsx'
 import RequireRole from './features/auth/RequireRole.jsx'
 import { ROLES } from './features/auth/roles.js'
+import ActiveDelivery from "./pages/rider/ActiveDelivery.jsx"
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         </Route>
         <Route path="/rider" element={<RequireRole role={ROLES.RIDER}><RiderLayout /></RequireRole>} >
           <Route index element={<RiderHome />} />
+          <Route path="/active" element={<ActiveDelivery />} />
         </Route>
       </Routes>
     </ClerkProviderWithRoutes>
