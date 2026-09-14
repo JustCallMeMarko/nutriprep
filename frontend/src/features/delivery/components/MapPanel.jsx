@@ -1,4 +1,4 @@
-import map from '/.assets/mapexample.jpg'
+import map from "../../../assets/images/mapexample.jpg";
 
 function MapPanel() {
     return (
