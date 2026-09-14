@@ -1,6 +1,6 @@
-import DeliveryCard from "../features/delivery/components/DeliveryCard"
-import MapPanel from "../features/delivery/components/MapPanel"
-import FloatingInfoCard from "../features/delivery/components/FloatingInfoCard"
+import DeliveryCard from "../../features/delivery/components/DeliveryCard"
+import MapPanel from "../../features/delivery/components/MapPanel"
+import FloatingInfoCard from "../../features/delivery/components/FloatingInfoCard"
 
 function ActiveDelivery() {
   const handleMarkDelivered = () => {
