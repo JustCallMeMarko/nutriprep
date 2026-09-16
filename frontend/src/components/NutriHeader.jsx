@@ -41,6 +41,12 @@ export default function NutriHeader({
                 Plans
               </Link>
               <Link
+                to="/calendar"
+                className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                Calendar
+              </Link>
+              <Link
                 to="/cart"
                 className="relative text-sm font-bold text-slate-900 pb-1"
               >

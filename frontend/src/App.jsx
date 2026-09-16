@@ -23,7 +23,7 @@ import Home from './pages/Home.jsx'
 import AuthenticationPage from './features/auth/AuthenticationPage.jsx'
 
 
-import CartPage from './pages/client/CartPage.jsx'
+import FavoritePage from './pages/client/FavoritePage.jsx'
 import OrderDispatchPage from './pages/admin/OrderDispatchPage.jsx'
 import UserSubscriptionPage from './pages/admin/UserSubscriptionPage.jsx'
 
@@ -37,8 +37,7 @@ function App() {
 
         <Route path="/user" element={<RequireRole role={ROLES.MEMBER}><ClientLayout /></RequireRole>} >
           <Route index element={<ClientHome />} />
-          <Route path="onboarding" element={<Onboarding />} />
-          <Route path="cart" element={<CartPage />} />
+          <Route path="favs" element={<FavoritePage />} />
         </Route>
 
         <Route path="/admin" element={<RequireRole role={ROLES.ADMIN}><AdminLayout /></RequireRole>} >
@@ -46,7 +45,7 @@ function App() {
           <Route path="orders" element={<OrderDispatchPage />} />
           <Route path="subscriptions" element={<UserSubscriptionPage />} />
         </Route>
-        
+
         <Route path="/rider" element={<RequireRole role={ROLES.RIDER}><RiderLayout /></RequireRole>} >
           <Route index element={<RiderHome />} />
         </Route>

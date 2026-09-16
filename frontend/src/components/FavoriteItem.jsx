@@ -10,9 +10,7 @@ const MEAL_TIMES = ["Breakfast", "Lunch", "Dinner"]
  */
 export default function CartItem({
   item,
-  onQuantityChange,
   onRemove,
-  onScheduleChange,
   className,
 }) {
   const {
@@ -20,10 +18,7 @@ export default function CartItem({
     name,
     image,
     rating = 5,
-    quantity = 1,
     credits = 250,
-    day = "Monday",
-    mealTime = "Lunch",
   } = item
 
   return (
@@ -53,33 +48,6 @@ export default function CartItem({
               {name}
             </h3>
 
-            {/* Schedule / Day Badge */}
-            <div className="inline-flex items-center gap-1.5 bg-blue-50/80 border border-blue-200/60 text-blue-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
-              <Calendar className="size-3 text-blue-600" />
-              {onScheduleChange ? (
-                <select
-                  value={`${day}-${mealTime}`}
-                  onChange={(e) => {
-                    const [newDay, newTime] = e.target.value.split("-")
-                    onScheduleChange(id, { day: newDay, mealTime: newTime })
-                  }}
-                  className="bg-transparent text-blue-700 font-semibold text-xs border-none focus:outline-none cursor-pointer"
-                  aria-label="Select delivery day and meal time"
-                >
-                  {DAYS_OF_WEEK.flatMap((d) =>
-                    MEAL_TIMES.map((m) => (
-                      <option key={`${d}-${m}`} value={`${d}-${m}`}>
-                        {d} • {m}
-                      </option>
-                    ))
-                  )}
-                </select>
-              ) : (
-                <span>
-                  {day} • {mealTime}
-                </span>
-              )}
-            </div>
           </div>
 
           {/* Star Rating */}
@@ -109,32 +77,6 @@ export default function CartItem({
 
       {/* Right controls: Quantity Counter & Remove Button */}
       <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 pl-24 sm:pl-0">
-        {/* Counter */}
-        <div className="inline-flex items-center bg-white border border-slate-300 rounded-full px-2 py-1 shadow-xs">
-          <button
-            type="button"
-            onClick={() => onQuantityChange?.(id, Math.max(1, quantity - 1))}
-            disabled={quantity <= 1}
-            className="p-1 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-            aria-label="Decrease quantity"
-          >
-            <Minus className="size-3.5" />
-          </button>
-
-          <span className="w-8 text-center text-sm font-bold text-slate-900 select-none">
-            {quantity}
-          </span>
-
-          <button
-            type="button"
-            onClick={() => onQuantityChange?.(id, quantity + 1)}
-            className="p-1 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-            aria-label="Increase quantity"
-          >
-            <Plus className="size-3.5" />
-          </button>
-        </div>
-
         {/* Remove Button */}
         <button
           type="button"
