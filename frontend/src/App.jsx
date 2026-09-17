@@ -27,7 +27,7 @@ function App() {
         </Route>
         <Route path="/rider" element={<RequireRole role={ROLES.RIDER}><RiderLayout /></RequireRole>} >
           <Route index element={<RiderHome />} />
-          <Route path="/active" element={<ActiveDelivery />} />
+          <Route path="active" element={<ActiveDelivery />} />
         </Route>
       </Routes>
     </ClerkProviderWithRoutes>
