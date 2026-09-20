@@ -1,7 +1,7 @@
 import { MealCard } from "@/components/MealCard";
 import { MEAL_TIME_SECTIONS } from "@/lib/dummyMeals";
 
-export function MealSection({ meals }) {
+export function MealSection({ meals, onAddFavorite }) {
   if (!meals.length) {
     return (
       <p className="py-16 text-center text-[13px] font-medium text-black/50">
@@ -21,7 +21,7 @@ export function MealSection({ meals }) {
             <h2 className="text-[13px] font-bold leading-4 text-black">{label}</h2>
             <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {group.map((meal) => (
-                <MealCard key={meal.id} meal={meal} quantity={meal.credits} />
+                <MealCard key={meal.id} meal={meal} quantity={meal.credits} onAddFavorite={onAddFavorite} />
               ))}
             </div>
           </section>

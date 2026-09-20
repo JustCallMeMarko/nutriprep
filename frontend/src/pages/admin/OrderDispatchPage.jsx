@@ -5,137 +5,37 @@ import DataTable from "@/components/DataTable"
 import UpcomingDeliveries from "@/components/UpcomingDeliveries"
 import NutriHeader from "@/components/NutriHeader"
 import { Badge } from "@/components/ui/badge"
-
-const SAMPLE_ORDERS = [
-  {
-    id: "#ORD-9021",
-    customerName: "Eleanor Vance",
-    mealPlan: "High Protein Build",
-    address: "1024 Writer's Way, Suite 5",
-    status: "Preparing",
-    rider: null,
-  },
-  {
-    id: "#ORD-9022",
-    customerName: "Theo Crain",
-    mealPlan: "Paleo Standard",
-    address: "334 Main St, Apt 4A",
-    status: "Ready",
-    rider: null,
-  },
-  {
-    id: "#ORD-9023",
-    customerName: "Luke Crain",
-    mealPlan: "Vegan Reset",
-    address: "12 Caretaker Lodge",
-    status: "Ready",
-    rider: null,
-  },
-  {
-    id: "#ORD-9024",
-    customerName: "Shirley Crain",
-    mealPlan: "Balanced Core (Breakfast/Lunch)",
-    address: "12 Caretaker Lodge",
-    status: "Preparing",
-    rider: null,
-  },
-  {
-    id: "#ORD-9025",
-    customerName: "Steven Crain",
-    mealPlan: "Classic Comfort",
-    address: "892 Massachusetts Ave",
-    status: "Preparing",
-    rider: null,
-  },
-  {
-    id: "#ORD-9026",
-    customerName: "Arthur Pendelton",
-    mealPlan: "Balanced Core",
-    address: "400 Blueprint Ave",
-    status: "Ready",
-    rider: null,
-  },
-  {
-    id: "#ORD-9027",
-    customerName: "Nellie Vance",
-    mealPlan: "High Protein Build",
-    address: "42 Hill House St, Floor 1",
-    status: "Preparing",
-    rider: null,
-  },
-  {
-    id: "#ORD-9028",
-    customerName: "Hugh Crain",
-    mealPlan: "Vegan Reset",
-    address: "55 Oakwood Drive",
-    status: "Ready",
-    rider: null,
-  },
-  {
-    id: "#ORD-9029",
-    customerName: "Horace Dudley",
-    mealPlan: "Balanced Core",
-    address: "771 Elm Street",
-    status: "Ready",
-    rider: null,
-  },
-  {
-    id: "#ORD-9030",
-    customerName: "Clara Harris",
-    mealPlan: "Keto Supreme",
-    address: "14 Pine Valley Road",
-    status: "Preparing",
-    rider: null,
-  },
-  {
-    id: "#ORD-9031",
-    customerName: "Marcus Brody",
-    mealPlan: "High Protein Build",
-    address: "88 University Crescent",
-    status: "Ready",
-    rider: null,
-  },
-  {
-    id: "#ORD-9032",
-    customerName: "Elena Rodriguez",
-    mealPlan: "Paleo Standard",
-    address: "210 Grand Avenue",
-    status: "Preparing",
-    rider: null,
-  },
-]
-
-const AVAILABLE_RIDERS = [
-  { id: "r1", name: "Carlos Mendoza", vehicle: "E-Bike #04", rating: "4.9", currentLoads: 2 },
-  { id: "r2", name: "Samantha Lee", vehicle: "Scooter #12", rating: "4.8", currentLoads: 1 },
-  { id: "r3", name: "David Kim", vehicle: "Motorbike #09", rating: "5.0", currentLoads: 0 },
-  { id: "r4", name: "Aria Thorne", vehicle: "E-Bike #02", rating: "4.9", currentLoads: 3 },
-]
+import { useApi } from "@/utils/api"
+import { useApiResource } from "@/hooks/useApiResource"
 
 export default function OrderDispatchPage() {
-  const [orders, setOrders] = useState(SAMPLE_ORDERS)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedOrderForAssign, setSelectedOrderForAssign] = useState(null)
   const [assignNotification, setAssignNotification] = useState(null)
+  const { makeRequest } = useApi()
+  const { data: orders = [], loading: ordersLoading, error: ordersError, reload: reloadOrders } = useApiResource("/user/admin/orders", [])
+  const { data: riders = [], loading: ridersLoading, error: ridersError, reload: reloadRiders } = useApiResource("/user/admin/riders", [])
 
-  const handleAssignRider = (order, rider) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === order.id
-          ? { ...o, rider: rider.name, status: "Ready" }
-          : o
-      )
-    )
-    setSelectedOrderForAssign(null)
-    setAssignNotification(`Assigned ${rider.name} to ${order.id}`)
-    setTimeout(() => setAssignNotification(null), 3500)
+  const handleAssignRider = async (order, rider) => {
+    try {
+      await makeRequest(`/user/admin/orders/${order.id}/assign`, {
+        method: "POST",
+        body: JSON.stringify({ rider_id: rider.id }),
+      })
+      await reloadOrders()
+      setSelectedOrderForAssign(null)
+      setAssignNotification(`Assigned ${rider.name} to ${order.orderId}`)
+      setTimeout(() => setAssignNotification(null), 3500)
+    } catch (requestError) {
+      setAssignNotification(requestError.message)
+    }
   }
 
   // TanStack table column definitions
   const columns = useMemo(
     () => [
       {
-        accessorKey: "id",
+        accessorKey: "orderId",
         header: "Order ID",
         cell: (info) => (
           <span className="font-semibold text-slate-900 tracking-tight">
@@ -172,14 +72,14 @@ export default function OrderDispatchPage() {
         cell: (info) => {
           const status = info.getValue()
           const variant =
-            status === "Ready"
+            status === "ready"
               ? "ready"
-              : status === "Preparing"
+              : status === "pending"
               ? "preparing"
               : "outline"
           return (
             <Badge variant={variant} className="min-w-20 justify-center">
-              {status}
+              {status.replace("_", " ")}
             </Badge>
           )
         },
@@ -195,8 +95,8 @@ export default function OrderDispatchPage() {
               onClick={() => setSelectedOrderForAssign(order)}
               className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              {order.rider ? (
-                <span>Assigned: {order.rider}</span>
+              {order.riderId ? (
+                <span>Assigned: {order.riderId}</span>
               ) : (
                 <span>Assign Rider</span>
               )}
@@ -234,11 +134,20 @@ export default function OrderDispatchPage() {
           </div>
         )}
 
+        {ordersError || ridersError ? (
+          <div className="flex items-center justify-between rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>Unable to load dispatch data.</span>
+            <button type="button" onClick={() => { reloadOrders(); reloadRiders(); }} className="font-bold underline">Try again</button>
+          </div>
+        ) : null}
+
+        {(ordersLoading || ridersLoading) && <p className="text-sm text-slate-500">Loading dispatch data...</p>}
+
         {/* 3 KPI Cards Row matching Image 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <KPICard
             title="Today's Delivery"
-            value="178"
+            value={orders.length}
             icon={<Truck className="size-6 text-amber-600" />}
             iconBg="bg-amber-100/80"
             trend="+12%"
@@ -248,7 +157,7 @@ export default function OrderDispatchPage() {
 
           <KPICard
             title="Pending Orders"
-            value="12"
+            value={orders.filter((order) => order.status === "pending").length}
             icon={<Package className="size-6 text-orange-600" />}
             iconBg="bg-orange-100/80"
             trend="-3"
@@ -258,7 +167,7 @@ export default function OrderDispatchPage() {
 
           <KPICard
             title="Active Riders"
-            value="15"
+            value={riders.length}
             icon={<Bike className="size-6 text-blue-600" />}
             iconBg="bg-blue-100/80"
             trend="100%"
@@ -287,7 +196,7 @@ export default function OrderDispatchPage() {
                 alert(`Selected wave: ${wave.batchName} (${wave.slot})`)
               }
               onQuickDispatch={() => {
-                const unassigned = orders.find((o) => !o.rider)
+                const unassigned = orders.find((o) => !o.riderId)
                 if (unassigned) {
                   setSelectedOrderForAssign(unassigned)
                 } else {
@@ -324,7 +233,7 @@ export default function OrderDispatchPage() {
             <div className="space-y-2">
               <p className="text-xs font-bold text-slate-700">Available Active Riders:</p>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {AVAILABLE_RIDERS.map((rider) => (
+                {riders.map((rider) => (
                   <div
                     key={rider.id}
                     onClick={() => handleAssignRider(selectedOrderForAssign, rider)}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dummyPlans } from "@/lib/dummyPlans";
-import { dummyMeals, MEAL_TAGS } from "@/lib/dummyMeals"; // NEW
+import { dummyMeals, MEAL_TAGS } from "@/lib/dummyMeals";
 import { FilterPills } from "@/features/meal-catalog/FilterPills";
 import { SearchInput } from "@/features/meal-catalog/SearchInput";
 import { ProfileBanner } from "@/features/meal-catalog/ProfileBanner";
@@ -10,6 +10,11 @@ import { CreditBalance } from "@/features/meal-catalog/CreditBalance";
 import { PlanSection } from "@/features/meal-catalog/PlanSection";
 import { TagFilter } from "@/features/meal-catalog/Tagfilter"; // NEW
 import { MealSection } from "@/features/meal-catalog/MealSection"; // NEW
+import { useApi } from "@/utils/api";
+import { useApiResource } from "@/hooks/useApiResource";
+
+const planImages = Object.fromEntries(dummyPlans.map((plan) => [plan.id, plan.image_url]));
+const mealImages = Object.fromEntries(dummyMeals.map((meal) => [meal.id, meal.image_url]));
 
 const DIET_FILTERS = [
   { value: "all", label: "All plans" },
@@ -22,11 +27,24 @@ export default function MealCatalog() {
   const [view, setView] = useState("plans");
   const [dietFilter, setDietFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [selectedTags, setSelectedTags] = useState([]); // NEW
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [actionState, setActionState] = useState({ status: "idle", message: "" });
+  const { makeRequest } = useApi();
+  const { data, loading: catalogLoading, error, reload } = useApiResource("/user/catalog");
+  const { data: profile } = useApiResource("/user/me");
+
+  const plans = (data?.plans || []).map((plan) => ({
+    ...plan,
+    image_url: planImages[plan.id],
+  }));
+  const meals = (data?.meals || []).map((meal) => ({
+    ...meal,
+    image_url: mealImages[meal.id],
+  }));
 
   const filteredPlans = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return dummyPlans.filter((plan) => {
+    return plans.filter((plan) => {
       const matchesDiet = dietFilter === "all" || plan.category === dietFilter;
       const matchesSearch =
         !q ||
@@ -34,32 +52,51 @@ export default function MealCatalog() {
         plan.tag.toLowerCase().includes(q);
       return matchesDiet && matchesSearch;
     });
-  }, [dietFilter, search]);
+  }, [dietFilter, plans, search]);
 
   const regular = filteredPlans.filter((p) => p.category === "regular");
   const specialized = filteredPlans.filter((p) => p.category === "specialized");
 
-  // NEW — tag toggle handler for individual meals
   const toggleTag = (tag) => {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
   };
 
-  // NEW — individual meals filtering
   const filteredMeals = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return dummyMeals.filter((meal) => {
+    return meals.filter((meal) => {
       const matchesTags =
         selectedTags.length === 0 || selectedTags.every((t) => meal.tags.includes(t));
       const matchesSearch = !q || meal.title.toLowerCase().includes(q);
       return matchesTags && matchesSearch;
     });
-  }, [selectedTags, search]);
+  }, [meals, selectedTags, search]);
 
-  const handleSelectPlan = (plan) => {
-    // TODO: wire to subscription flow / cart — separate ticket
-    console.log("Selected plan:", plan.name);
+  const handleSelectPlan = async (plan) => {
+    setActionState({ status: "loading", message: "Saving your meal plan..." });
+    try {
+      await makeRequest("/user/orders", {
+        method: "POST",
+        body: JSON.stringify({ plan_id: plan.id }),
+      });
+      setActionState({ status: "success", message: `${plan.name} was added to your orders.` });
+    } catch (requestError) {
+      setActionState({ status: "error", message: requestError.message });
+    }
+  };
+
+  const handleAddFavorite = async (meal) => {
+    setActionState({ status: "loading", message: "Saving favorite..." });
+    try {
+      await makeRequest("/user/favorites", {
+        method: "POST",
+        body: JSON.stringify({ meal_id: meal.id }),
+      });
+      setActionState({ status: "success", message: `${meal.title} was added to favorites.` });
+    } catch (requestError) {
+      setActionState({ status: "error", message: requestError.message });
+    }
   };
 
   return (
@@ -94,11 +131,26 @@ export default function MealCatalog() {
 
         <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
           <ViewToggle value={view} onChange={setView} />
-          <CreditBalance credits={67} topUpTo="/user/plans" /> {/* CHANGED: /user prefix */}
+          <CreditBalance credits={profile?.credits ?? 0} topUpTo="/user/plans" />
         </div>
 
+        {actionState.status !== "idle" && (
+          <div className={actionState.status === "error" ? "rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" : "rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700"}>
+            {actionState.status === "loading" ? "Saving..." : actionState.message}
+          </div>
+        )}
+
         <div className="pt-6">
-          {view === "plans" ? (
+          {catalogLoading ? (
+            <p className="py-16 text-center text-[13px] font-medium text-black/50">Loading catalog...</p>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-[13px] font-medium text-red-600">Unable to load the meal catalog.</p>
+              <button type="button" onClick={() => reload()} className="rounded-lg bg-black px-4 py-2 text-xs font-bold text-white">
+                Try again
+              </button>
+            </div>
+          ) : view === "plans" ? (
             filteredPlans.length === 0 ? (
               <p className="py-16 text-center text-[13px] font-medium text-black/50">
                 No plans match your search.
@@ -116,7 +168,7 @@ export default function MealCatalog() {
           ) : (
             <div className="flex flex-col gap-4">
               <TagFilter tags={MEAL_TAGS} selected={selectedTags} onToggle={toggleTag} />
-              <MealSection meals={filteredMeals} />
+              <MealSection meals={filteredMeals} onAddFavorite={handleAddFavorite} />
             </div>
           )}
         </div>

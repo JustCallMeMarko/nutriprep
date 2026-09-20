@@ -1,10 +1,30 @@
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import DeliveryRequestCard from "../../features/delivery/components/DeliveryRequestCard"
 import MapPanel from "../../features/delivery/components/MapPanel"
 import FloatingInfoCard from "../../features/delivery/components/FloatingInfoCard"
+import { useApi } from "@/utils/api"
+import { useApiResource } from "@/hooks/useApiResource"
+import { ROUTES } from "@/lib/routes"
 
 function RiderHome() {
-  const handleAccept = () => {
-    console.log("Delivery accepted")
+  const navigate = useNavigate()
+  const { makeRequest } = useApi()
+  const { data: deliveries = [], loading, error, reload } = useApiResource("/user/rider/deliveries", [])
+  const [actionState, setActionState] = useState({ status: "idle", message: "" })
+  const delivery = deliveries.find((item) => item.status === "pending" || item.status === "ready")
+
+  const handleAccept = async () => {
+    if (!delivery) return
+    setActionState({ status: "loading", message: "Accepting delivery..." })
+    try {
+      await makeRequest(`/user/rider/deliveries/${delivery.id}/accept`, { method: "POST" })
+      setActionState({ status: "success", message: "Delivery accepted." })
+      navigate(ROUTES.RIDER_ACTIVE)
+    } catch (requestError) {
+      setActionState({ status: "error", message: requestError.message })
+      await reload()
+    }
   }
 
   return (
@@ -13,21 +33,36 @@ function RiderHome() {
         <h1 className="text-3xl font-bold">Deliveries</h1>
       </div>
 
+      {actionState.status === "error" && <p className="bg-red-50 px-6 py-3 text-sm text-red-700">{actionState.message}</p>}
       <div className="flex h-[calc(100vh-140px)]">
         <div className="w-full max-w-md p-6">
-          <DeliveryRequestCard
-            customerName="Zilong Martinez"
-            estimatedTime="1hr"
-            pickupLocation="Bldg. 147, Quezon City"
-            pickupDetails="2 Meals | High Protein"
-            dropoffLocation="SM North, Quezon City"
-            onAccept={handleAccept}
-          />
+          {loading ? (
+            <p className="text-sm text-slate-500">Loading delivery requests...</p>
+          ) : error ? (
+            <div className="space-y-3 text-sm text-red-600">
+              <p>Unable to load delivery requests.</p>
+              <button type="button" onClick={() => reload()} className="font-bold underline">Try again</button>
+            </div>
+          ) : delivery ? (
+            <DeliveryRequestCard
+              customerName={delivery.customerName}
+              estimatedTime="1 hr"
+              pickupLocation={delivery.pickupLocation}
+              pickupDetails={delivery.pickupDetails}
+              dropoffLocation={delivery.dropoffLocation}
+              onAccept={handleAccept}
+            />
+          ) : (
+            <div className="space-y-3 text-sm text-slate-500">
+              <p>No delivery requests are available.</p>
+              <Link to={ROUTES.RIDER} className="font-bold text-blue-600 underline">Refresh requests</Link>
+            </div>
+          )}
         </div>
 
         <div className="relative flex-1 bg-gray-200">
           <MapPanel />
-          <FloatingInfoCard customerName="Zilong Martinez" distance="5.8 km" eta="1 hr" />
+          {delivery && <FloatingInfoCard customerName={delivery.customerName} distance="5.8 km" eta="1 hr" />}
         </div>
       </div>
     </div>

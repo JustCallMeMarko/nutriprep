@@ -15,7 +15,7 @@ function FigmaStar() {
   );
 }
 
-export function MealCard({ meal, quantity = 4 }) {
+export function MealCard({ meal, quantity = 4, onAddFavorite }) {
   const {
     title,
     description,
@@ -176,6 +176,8 @@ export function MealCard({ meal, quantity = 4 }) {
 
       {/* Add to cart button */}
       <button
+        type="button"
+        onClick={() => onAddFavorite?.(meal)}
         className="absolute left-[177px] top-[243px] w-[72px] h-[26px] rounded-[5px] flex items-center justify-center"
         style={{ backgroundColor: "#306FE6" }}
       >

@@ -7,44 +7,31 @@ import Food2 from "@/assets/landing/Food2.png"
 import Food3 from "@/assets/landing/Food3.png"
 import { Link } from "react-router-dom"
 import { ROUTES } from "@/lib/routes"
-
-const INITIAL_CART = [
-  {
-    id: "meal-1",
-    name: "Chicken satay salad",
-    image: Food1,
-    rating: 5.0,
-    credits: 200
-  },
-  {
-    id: "meal-2",
-    name: "Chicken cacciatore",
-    image: Food2,
-    rating: 4.0,
-    credits: 250
-  },
-  {
-    id: "meal-3",
-    name: "Potato with Chicken",
-    image: Food3,
-    rating: 3.0,
-    credits: 200
-  },
-]
+import { useApi } from "@/utils/api"
+import { useApiResource } from "@/hooks/useApiResource"
 
 export default function FavoritePage() {
-  const [items, setItems] = useState(INITIAL_CART)
-  const [isCheckingOut, setIsCheckingOut] = useState(false)
-  const [orderComplete, setOrderComplete] = useState(false)
+  const { makeRequest } = useApi()
+  const { data: favorites = [], loading, error, reload } = useApiResource("/user/favorites", [])
+  const [actionState, setActionState] = useState({ status: "idle", message: "" })
+  const imageById = { 1: Food1, 2: Food2, 3: Food3 }
+  const items = favorites.map((item) => ({
+    id: item.id,
+    name: item.title,
+    image: imageById[item.id],
+    rating: 5,
+    credits: item.credits,
+  }))
 
-  const handleQuantityChange = (id, newQty) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity: newQty } : item))
-    )
-  }
-
-  const handleRemoveItem = (id) => {
-    setItems((prev) => prev.filter((item) => item.id !== id))
+  const handleRemoveItem = async (id) => {
+    setActionState({ status: "loading", message: "Removing favorite..." })
+    try {
+      await makeRequest(`/user/favorites/${id}`, { method: "DELETE" })
+      await reload()
+      setActionState({ status: "success", message: "Favorite removed." })
+    } catch (requestError) {
+      setActionState({ status: "error", message: requestError.message })
+    }
   }
 
   const totalItemsCount = items.length
@@ -70,7 +57,11 @@ export default function FavoritePage() {
             </div>
 
             {/* Meals List */}
-            {items.length > 0 ? (
+            {loading ? (
+              <p className="py-16 text-center text-sm text-slate-500">Loading favorites...</p>
+            ) : error ? (
+              <div className="space-y-3 py-16 text-center text-sm text-red-600"><p>Unable to load favorites.</p><button type="button" onClick={() => reload()} className="font-bold underline">Try again</button></div>
+            ) : items.length > 0 ? (
               <div className="divide-y divide-slate-100">
                 {items.map((item) => (
                   <FavoriteItem
@@ -85,13 +76,7 @@ export default function FavoritePage() {
               <div className="text-center py-16 px-4 rounded-2xl border-2 border-dashed border-slate-200">
                 <p className="text-base font-semibold text-slate-600">Your favorite meals are empty.</p>
                 <p className="text-xs text-slate-400 mt-1">Explore our meal plans to add your favorite meals.</p>
-                <button
-                  type="button"
-                  onClick={() => setItems(INITIAL_CART)}
-                  className="mt-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
-                >
-                  Reset Demo Cart
-                </button>
+                <Link to={ROUTES.USER_MEALS} className="mt-4 inline-block rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">Browse meals</Link>
               </div>
             )}
           </div>
@@ -117,6 +102,8 @@ export default function FavoritePage() {
                     </span>
                   </div>
                 </div>
+
+                {actionState.status !== "idle" && <p className={actionState.status === "error" ? "text-sm text-red-600" : "text-sm text-emerald-600"}>{actionState.status === "loading" ? "Saving..." : actionState.message}</p>}
 
                 {/* Checkout Button */}
                 <Link
