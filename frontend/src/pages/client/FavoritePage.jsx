@@ -1,5 +1,5 @@
-import React, { useState } from "react"
-import { ChevronDown, ChevronUp, ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react"
+import { useState } from "react"
+import { ShieldCheck } from "lucide-react"
 import FavoriteItem from "@/components/FavoriteItem"
 import Food1 from "@/assets/landing/Food1.png"
 import Food2 from "@/assets/landing/Food2.png"
@@ -63,7 +63,6 @@ export default function FavoritePage() {
                   <FavoriteItem
                     key={item.id}
                     item={item}
-                    onQuantityChange={handleQuantityChange}
                     onRemove={handleRemoveItem}
                   />
                 ))}

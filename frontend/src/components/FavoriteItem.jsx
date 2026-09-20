@@ -1,13 +1,9 @@
-import React from "react"
-import { Star, Minus, Plus, X, Calendar } from "lucide-react"
+import { Star, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import fallbackMealImage from "@/assets/MealCatalog/IndividualMeals/VeggieEggWhiteOmelette.jpg"
 
-const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-const MEAL_TIMES = ["Breakfast", "Lunch", "Dinner"]
-
 /**
- * Reusable CartItem component with meal schedule / day selector and credits currency.
+ * Reusable favorite item with credits pricing and removal control.
  */
 export default function CartItem({
   item,

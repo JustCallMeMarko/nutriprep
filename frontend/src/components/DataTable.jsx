@@ -28,6 +28,8 @@ export default function DataTable({
   const [sorting, setSorting] = useState([])
   const [globalFilter, setGlobalFilter] = useState("")
 
+  // TanStack Table manages mutable table state internally and is intentionally excluded from Compiler memoization.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

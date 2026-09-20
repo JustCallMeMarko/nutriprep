@@ -23,6 +23,8 @@ export function useApiResource(endpoint, initialValue = null) {
   }, [endpoint, makeRequest]);
 
   useEffect(() => {
+    // The initial fetch synchronizes local request state with the endpoint.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     reload().catch(() => {});
   }, [reload]);
 
