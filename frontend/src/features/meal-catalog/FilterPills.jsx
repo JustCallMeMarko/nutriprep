@@ -12,7 +12,7 @@ export function FilterPills({ options, value, onChange }) {
               "rounded-[5px] px-4 py-[11px] text-[13px] font-bold leading-4 transition " +
               (active
                 ? "bg-black text-white"
-                : "border-[1.5px] border-[rgba(174,174,178,0.5)] bg-[#FFFEFE] text-black hover:border-black/40")
+                : "border border-border-subtle bg-surface text-text-primary hover:border-text-primary/40")
             }
           >
             {opt.label}

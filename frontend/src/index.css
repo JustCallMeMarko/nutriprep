@@ -6,10 +6,12 @@
 @custom-variant dark (&:is(.dark *));
 
 html {
-    font-family: 'Montserrat', sans-serif;
+  font-family: var(--font-sans);
 }
 
 @theme inline {
+  --spacing-control: var(--space-control);
+  --spacing-section: var(--space-section);
     --font-heading: var(--font-sans);
     --font-sans: 'Montserrat Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
@@ -43,6 +45,15 @@ html {
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
+    --color-brand: var(--brand);
+    --color-brand-hover: var(--brand-hover);
+    --color-surface: var(--surface);
+    --color-surface-muted: var(--surface-muted);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-border-subtle: var(--border-subtle);
+    --color-status-success: var(--status-success);
+    --color-status-error: var(--status-error);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -55,6 +66,17 @@ html {
 :root {
   --layout-gutter: 1rem;
   --layout-gap: 1.5rem;
+  --space-control: 0.625rem;
+  --space-section: 2rem;
+  --brand: #306fe6;
+  --brand-hover: #2559c4;
+  --surface: #fffefe;
+  --surface-muted: #f8fafc;
+  --text-primary: #111827;
+  --text-secondary: #5e5e5e;
+  --border-subtle: rgb(174 174 178 / 50%);
+  --status-success: #15803d;
+  --status-error: #b91c1c;
     --background: oklch(1 0 0);
     --foreground: oklch(0.148 0.004 228.8);
     --card: oklch(1 0 0);

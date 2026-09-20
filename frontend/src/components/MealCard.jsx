@@ -20,8 +20,8 @@ export function MealCard({ meal, quantity = 4, onAddFavorite }) {
   } = meal
 
   return (
-    <article className="flex min-w-0 w-full max-w-sm flex-col overflow-hidden rounded-xl border border-[rgba(174,174,178,0.5)] bg-white">
-      <div className="relative aspect-[2.222] w-full overflow-hidden bg-[#FFBEBE]">
+    <article className="flex min-w-0 w-full max-w-sm flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface">
+      <div className="relative aspect-[2.222] w-full overflow-hidden bg-rose-100">
         {image_url && <img src={image_url} alt={title} className="h-full w-full object-cover" />}
       </div>
 
@@ -54,7 +54,7 @@ export function MealCard({ meal, quantity = 4, onAddFavorite }) {
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-black/20 pt-3">
           <span className="shrink-0 text-[10px] font-medium leading-3 text-black/50">{calories}kcal</span>
-          <button type="button" onClick={() => onAddFavorite?.(meal)} className="min-w-0 max-w-full rounded-md bg-[#306FE6] px-3 py-1.5 text-[9px] font-bold leading-3 text-white hover:bg-blue-700">
+          <button type="button" onClick={() => onAddFavorite?.(meal)} className="min-w-0 max-w-full rounded-md bg-brand px-3 py-1.5 text-[9px] font-bold leading-3 text-white hover:bg-brand-hover">
             Add to cart
           </button>
         </div>

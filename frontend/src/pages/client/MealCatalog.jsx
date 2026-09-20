@@ -8,8 +8,8 @@ import { ProfileBanner } from "@/features/meal-catalog/ProfileBanner";
 import { ViewToggle } from "@/features/meal-catalog/ViewToggle";
 import { CreditBalance } from "@/features/meal-catalog/CreditBalance";
 import { PlanSection } from "@/features/meal-catalog/PlanSection";
-import { TagFilter } from "@/features/meal-catalog/Tagfilter"; // NEW
-import { MealSection } from "@/features/meal-catalog/MealSection"; // NEW
+import { TagFilter } from "@/features/meal-catalog/Tagfilter";
+import { MealSection } from "@/features/meal-catalog/MealSection";
 import { useApi } from "@/utils/api";
 import { useApiResource } from "@/hooks/useApiResource";
 
@@ -102,7 +102,6 @@ export default function MealCatalog() {
   return (
     <div
       className="min-h-screen bg-white pb-24"
-      style={{ fontFamily: "Montserrat, sans-serif" }}
     >
       {/* Header */}
       <div className="border-b border-black/10 px-6 pb-8 pt-8">
@@ -118,7 +117,7 @@ export default function MealCatalog() {
       </div>
 
       {/* Controls + content */}
-      <div className="mx-auto flex max-w-[834px] flex-col gap-4 px-6 pt-8">
+      <div className="mx-auto flex max-w-[834px] flex-col gap-4 px-6 pt-section">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <FilterPills options={DIET_FILTERS} value={dietFilter} onChange={setDietFilter} />
           <SearchInput value={search} onChange={setSearch} />
@@ -126,7 +125,7 @@ export default function MealCatalog() {
 
         <ProfileBanner
           preference="Low carb · High protein"
-          onChangeProfile={() => navigate("/user/onboarding")} // CHANGED: /user prefix
+          onChangeProfile={() => navigate("/user/onboarding")}
         />
 
         <div className="flex flex-wrap items-center justify-between gap-4 pt-2">

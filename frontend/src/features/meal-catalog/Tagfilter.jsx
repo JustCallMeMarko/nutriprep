@@ -12,7 +12,7 @@ export function TagFilter({ tags, selected, onToggle }) {
               "rounded-full px-3 py-[6px] text-[11px] font-bold transition " +
               (active
                 ? "bg-black text-white"
-                : "border border-[rgba(174,174,178,0.5)] bg-white text-black hover:border-black/40")
+                : "border border-border-subtle bg-surface text-text-primary hover:border-text-primary/40")
             }
           >
             {tag}

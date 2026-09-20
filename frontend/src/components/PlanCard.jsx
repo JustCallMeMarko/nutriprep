@@ -8,9 +8,9 @@ export function PlanCard({ plan, onSelect }) {
   ].filter((m) => m.value != null);
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-[rgba(174,174,178,0.5)] bg-white">
+    <div className="flex h-full flex-col rounded-xl border border-border-subtle bg-surface">
       {/* Image */}
-      <div className="aspect-[260/117] w-full overflow-hidden rounded-t-xl bg-[#FFBEBE]">
+      <div className="aspect-[260/117] w-full overflow-hidden rounded-t-xl bg-rose-100">
         {image_url && (
           <img src={image_url} alt={name} className="h-full w-full object-cover" />
         )}
@@ -18,7 +18,7 @@ export function PlanCard({ plan, onSelect }) {
 
       {/* Body — grows so footers line up across the row */}
       <div className="flex flex-1 flex-col gap-1 px-4 pt-3 pb-4">
-        <span className="text-[10px] font-bold leading-3 text-[#306FE6]">{tag}</span>
+        <span className="text-[10px] font-bold leading-3 text-brand">{tag}</span>
         <h3 className="text-[13px] font-bold leading-4 text-black">{name}</h3>
         <p className="text-[10px] font-medium leading-3 text-black/50">{description}</p>
 
@@ -26,7 +26,7 @@ export function PlanCard({ plan, onSelect }) {
           {macroPills.map((m) => (
             <span
               key={m.label}
-              className="rounded-[7px] border border-[rgba(174,174,178,0.5)] bg-white px-2 py-[6px] text-[8px] font-bold leading-[10px] text-black/70"
+              className="rounded-[7px] border border-border-subtle bg-surface px-2 py-[6px] text-[8px] font-bold leading-[10px] text-text-primary/70"
             >
               {m.value} {m.label}
             </span>
@@ -37,13 +37,13 @@ export function PlanCard({ plan, onSelect }) {
       {/* Footer */}
       <div className="flex items-center justify-between border-t border-black/20 px-3 py-2">
         <p className="text-[10px] font-medium leading-3 text-black/50">
-          <span className="text-[13px] font-bold text-[#306FE6]">{credits_per_meal}</span>{" "}
+          <span className="text-[13px] font-bold text-brand">{credits_per_meal}</span>{" "}
           credits per meal
         </p>
         <button
           type="button"
           onClick={() => onSelect?.(plan)}
-          className="rounded-[5px] bg-[#306FE6] px-3 py-[7px] text-[9px] font-bold leading-[11px] text-white transition hover:bg-[#2559c4]"
+          className="rounded-[5px] bg-brand px-3 py-[7px] text-[9px] font-bold leading-[11px] text-white transition hover:bg-brand-hover"
         >
           Select Plan
         </button>

@@ -2,6 +2,9 @@ import React, { useState, Children, useRef, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import './Stepper.css';
+import { Step } from './Step';
+
+export { Step };
 
 export default function Stepper({
   children,
@@ -198,10 +201,6 @@ const stepVariants = {
     opacity: 0
   })
 };
-
-export function Step({ children }) {
-  return <div className="step-default">{children}</div>;
-}
 
 function StepIndicator({ step, currentStep, onClickStep, disableStepIndicators }) {
   const status = currentStep === step ? 'active' : currentStep < step ? 'inactive' : 'complete';

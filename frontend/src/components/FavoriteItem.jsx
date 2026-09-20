@@ -1,6 +1,7 @@
 import React from "react"
 import { Star, Minus, Plus, X, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
+import fallbackMealImage from "@/assets/MealCatalog/IndividualMeals/VeggieEggWhiteOmelette.jpg"
 
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 const MEAL_TIMES = ["Breakfast", "Lunch", "Dinner"]
@@ -36,7 +37,7 @@ export default function CartItem({
             alt={name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
-              e.currentTarget.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80"
+              e.currentTarget.src = fallbackMealImage
             }}
           />
         </div>
