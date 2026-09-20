@@ -1,5 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import { Bell, Utensils } from "lucide-react";
+import { UserButton } from "@clerk/react";
 
 const linkClass = ({ isActive }) =>
   "text-[14px] font-bold text-black transition " +
@@ -29,7 +30,7 @@ export function Navbar() {
               0
             </span>
           </button>
-          <div className="h-8 w-8 rounded-full bg-[#FFBEBE]" />
+          <UserButton />
         </div>
       </nav>
     </header>
