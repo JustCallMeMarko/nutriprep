@@ -1,11 +1,11 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
-import {UserButton} from "@clerk/react";
+import { Navbar } from "@/components/Navbar";
 
 export default function ClientLayout() {
   return (
-    <div>
-      <UserButton />
+    <div style={{ fontFamily: "Montserrat, sans-serif" }}>
+      <Navbar />
       <Outlet />
     </div>
   )
