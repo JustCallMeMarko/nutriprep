@@ -21,11 +21,9 @@ import RiderHome from './pages/rider/RiderHome.jsx'
 // Other Pages
 import Home from './pages/Home.jsx'
 import AuthenticationPage from './features/auth/AuthenticationPage.jsx'
-
-
-import FavoritePage from './pages/client/FavoritePage.jsx'
-import OrderDispatchPage from './pages/admin/OrderDispatchPage.jsx'
-import UserSubscriptionPage from './pages/admin/UserSubscriptionPage.jsx'
+import RequireRole from './features/auth/RequireRole.jsx'
+import { ROLES } from './features/auth/roles.js'
+import ActiveDelivery from "./pages/rider/ActiveDelivery.jsx"
 
 function App() {
   return (
@@ -49,6 +47,7 @@ function App() {
         
         <Route path="/rider" element={<RequireRole role={ROLES.RIDER}><RiderLayout /></RequireRole>} >
           <Route index element={<RiderHome />} />
+          <Route path="active" element={<ActiveDelivery />} />
         </Route>
       </Routes>
     </ClerkProviderWithRoutes>
