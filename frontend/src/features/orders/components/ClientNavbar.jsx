@@ -1,10 +1,11 @@
 import { NavLink } from "react-router-dom"
 import { Bell } from "lucide-react"
+import { ROUTES } from "@/lib/routes"
 
 const navItems = [
-  { label: "Meals", to: "/client/meals" },
-  { label: "Plans", to: "/client/plans" },
-  { label: "Cart", to: "/client/cart" },
+  { label: "Meals", to: ROUTES.USER_MEALS },
+  { label: "Plans", to: ROUTES.USER_PLANS },
+  { label: "Favorites", to: ROUTES.USER_FAVORITES },
 ]
 
 function ClientNavbar() {

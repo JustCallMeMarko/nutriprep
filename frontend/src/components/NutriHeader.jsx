@@ -2,6 +2,7 @@ import React from "react"
 import { Link } from "react-router-dom"
 import { Bell, ShoppingBag, Search } from "lucide-react"
 import logo from "../assets/icons/logo.png"
+import { ROUTES } from "@/lib/routes"
 
 export default function NutriHeader({
   type = "client", // "client" | "admin"
@@ -19,7 +20,7 @@ export default function NutriHeader({
           /* Client Header (Image 1) */
           <>
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2.5 shrink-0">
+            <Link to={ROUTES.HOME} className="flex items-center gap-2.5 shrink-0">
               <img src={logo} alt="NutriPrep" className="h-8 w-auto object-contain" />
               <span className="text-xl font-extrabold tracking-tight text-slate-900 uppercase">
                 NutriPrep
@@ -29,28 +30,28 @@ export default function NutriHeader({
             {/* Navigation Links */}
             <nav className="hidden md:flex items-center gap-8">
               <Link
-                to="/user"
+                to={ROUTES.USER_MEALS}
                 className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
               >
                 Meals
               </Link>
               <Link
-                to="/subscriptions"
+                to={ROUTES.USER_PLANS}
                 className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
               >
                 Plans
               </Link>
               <Link
-                to="/calendar"
+                to={ROUTES.USER_ONBOARDING}
                 className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
               >
-                Calendar
+                Profile
               </Link>
               <Link
-                to="/cart"
+                to={ROUTES.USER_FAVORITES}
                 className="relative text-sm font-bold text-slate-900 pb-1"
               >
-                Cart
+                Favorites
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
               </Link>
             </nav>
@@ -84,7 +85,7 @@ export default function NutriHeader({
           <>
             {/* Title / Brand */}
             <div className="flex items-center gap-3">
-              <Link to="/admin" className="flex items-center gap-2">
+              <Link to={ROUTES.ADMIN} className="flex items-center gap-2">
                 <img src={logo} alt="NutriPrep" className="h-7 w-auto object-contain" />
               </Link>
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">

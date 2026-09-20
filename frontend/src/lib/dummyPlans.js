@@ -2,7 +2,7 @@ import lowCalorieImg from "@/assets/MealCatalog/MealPlans/LowCalorie.jpg";
 import leanActiveImg from "@/assets/MealCatalog/MealPlans/LeanActive.jpg";
 import performanceImg from "@/assets/MealCatalog/MealPlans/Performance.jpg";
 import ketoImg from "@/assets/MealCatalog/MealPlans/Keto.jpg";
-import highFiberImg from "@/assets/MealCatalog/MealPlans/HighFiber.jpg";
+import highFiberImg from "@/assets/MealCatalog/MealPlans/HighFIber.jpg";
 import diabeticImg from "@/assets/MealCatalog/MealPlans/Diabetic.jpg";
 
 

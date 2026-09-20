@@ -6,6 +6,7 @@ import Food1 from "@/assets/landing/Food1.png"
 import Food2 from "@/assets/landing/Food2.png"
 import Food3 from "@/assets/landing/Food3.png"
 import { Link } from "react-router-dom"
+import { ROUTES } from "@/lib/routes"
 
 const INITIAL_CART = [
   {
@@ -119,7 +120,7 @@ export default function FavoritePage() {
 
                 {/* Checkout Button */}
                 <Link
-                  to="/calendar"
+                  to={ROUTES.USER_PLANS}
                   className="w-full py-3.5 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-base shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   Plan Meals

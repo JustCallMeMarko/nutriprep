@@ -8,7 +8,7 @@ import { ProfileBanner } from "@/features/meal-catalog/ProfileBanner";
 import { ViewToggle } from "@/features/meal-catalog/ViewToggle";
 import { CreditBalance } from "@/features/meal-catalog/CreditBalance";
 import { PlanSection } from "@/features/meal-catalog/PlanSection";
-import { TagFilter } from "@/features/meal-catalog/TagFilter"; // NEW
+import { TagFilter } from "@/features/meal-catalog/Tagfilter"; // NEW
 import { MealSection } from "@/features/meal-catalog/MealSection"; // NEW
 
 const DIET_FILTERS = [

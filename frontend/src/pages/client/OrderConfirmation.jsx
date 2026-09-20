@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import OrderConfirmationCard from "../../features/orders/components/OrderConfirmationCard"
+import { ROUTES } from "@/lib/routes"
 
 function OrderConfirmation() {
   const navigate = useNavigate()
@@ -13,8 +14,8 @@ function OrderConfirmation() {
         orderItems={[
           { name: "High Protein Meal", details: "2 pax | Chicken Breast Meal" },
         ]}
-        onMakeAnotherPurchase={() => navigate("/client/meals")}
-        onBackToHome={() => navigate("/client")}
+        onMakeAnotherPurchase={() => navigate(ROUTES.USER_MEALS)}
+        onBackToHome={() => navigate(ROUTES.USER)}
       />
     </div>
   )
