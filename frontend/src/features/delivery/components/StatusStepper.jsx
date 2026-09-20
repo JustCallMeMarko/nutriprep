@@ -19,7 +19,7 @@ function StatusStepper({ currentStatus }) {
             >
               {index < currentIndex ? "✓" : index === currentIndex ? "●" : ""}
             </div>
-            <span className="text-[10px] text-gray-500 mt-1 text-center w-16">{step.label}</span>
+            <span className="mt-1 min-w-0 px-1 text-center text-[10px] text-gray-500 wrap-break-word">{step.label}</span>
           </div>
           {index < steps.length - 1 && (
             <div className={`flex-1 h-0.5 ${index < currentIndex ? "bg-blue-600" : "bg-gray-300"}`} />

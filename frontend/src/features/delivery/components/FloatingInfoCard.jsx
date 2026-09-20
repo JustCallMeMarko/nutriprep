@@ -1,18 +1,18 @@
 function FloatingInfoCard({ customerName, distance, eta }) {
     return (
         <>
-        <div className="absolute top-4 left-4 right-4 bg-white rounded-xl shadow-md flex justify-between px-6 py-3">
-            <div>
+        <div className="absolute left-3 right-3 top-3 grid grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] gap-3 rounded-xl bg-white px-3 py-2 shadow-md sm:left-4 sm:right-4 sm:top-4 sm:px-6 sm:py-3">
+            <div className="min-w-0">
                 <p className="text-xs text-gray-400">Customer</p>
-                <p className="font-semibold">{customerName}</p>
+                <p className="wrap-break-word font-semibold">{customerName}</p>
             </div>
-            <div>
+            <div className="min-w-0">
                 <p className="text-xs text-gray-400">Distance</p>
-                <p className="font-semibold">{distance}</p>
+                <p className="wrap-break-word font-semibold">{distance}</p>
             </div>
-            <div>
+            <div className="min-w-0">
                 <p className="text-xs text-gray-400">ETA</p>
-                <p className="font-semibold">{eta}</p>
+                <p className="wrap-break-word font-semibold">{eta}</p>
             </div>
         </div>
         </>

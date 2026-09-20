@@ -30,8 +30,8 @@ function ActiveDelivery() {
   if (!delivery) return <div className="space-y-3 p-6 text-sm text-slate-500"><p>No active delivery.</p><Link to={ROUTES.RIDER} className="font-bold text-blue-600 underline">Back to requests</Link></div>
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col md:flex-row">
-      <div className="w-full max-w-sm border-b p-6 md:border-b-0 md:border-r">
+    <div className="grid min-h-[calc(100vh-4rem)] min-w-0 grid-cols-1 md:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
+      <div className="min-w-0 border-b p-(--layout-gutter) md:border-b-0 md:border-r">
         <DeliveryCard
           customerName={delivery.customerName}
           orderID={delivery.orderId}
@@ -40,10 +40,10 @@ function ActiveDelivery() {
           status={delivery.status}
           onMarkDelivered={handleMarkDelivered}
         />
-        {actionState.status !== "idle" && <p className={actionState.status === "error" ? "mt-3 text-sm text-red-600" : "mt-3 text-sm text-emerald-600"}>{actionState.status === "loading" ? "Updating..." : actionState.message}</p>}
+        {actionState.status !== "idle" && <p className={actionState.status === "error" ? "mt-3 wrap-break-word text-sm text-red-600" : "mt-3 wrap-break-word text-sm text-emerald-600"}>{actionState.status === "loading" ? "Updating..." : actionState.message}</p>}
       </div>
 
-      <div className="relative min-h-80 flex-1">
+      <div className="relative min-h-80 min-w-0 md:min-h-0">
         <MapPanel />
         <FloatingInfoCard customerName={delivery.customerName} distance="5.8 km" eta="1 hr" />
       </div>

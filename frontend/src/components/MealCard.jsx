@@ -1,18 +1,9 @@
 function FigmaStar() {
   return (
-    <svg
-      width="11"
-      height="12"
-      viewBox="0 0 11 12"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M5.5 0L6.9855 4.37946L11 6L6.9855 7.62054L5.5 12L4.0145 7.62054L0 6L4.0145 4.37946L5.5 0Z"
-        fill="black"
-      />
+    <svg width="11" height="12" viewBox="0 0 11 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M5.5 0L6.9855 4.37946L11 6L6.9855 7.62054L5.5 12L4.0145 7.62054L0 6L4.0145 7.62054L5.5 0Z" fill="black" />
     </svg>
-  );
+  )
 }
 
 export function MealCard({ meal, quantity = 4, onAddFavorite }) {
@@ -26,173 +17,48 @@ export function MealCard({ meal, quantity = 4, onAddFavorite }) {
     carbs_fiber_g,
     fat_g,
     tags = [],
-  } = meal;
+  } = meal
 
   return (
-    <div className="relative w-[262px] h-[280px] bg-white border border-[rgba(174,174,178,0.5)] rounded-xl box-border">
-      {/* Image */}
-      <div
-        className="absolute left-0 top-0 w-[260px] h-[117px] rounded-t-xl overflow-hidden"
-        style={{ backgroundColor: "#FFBEBE" }}
-      >
-        {image_url && (
-          <img
-            src={image_url}
-            alt={title}
-            className="w-full h-full object-cover"
-          />
-        )}
+    <article className="flex min-w-0 w-full max-w-sm flex-col overflow-hidden rounded-xl border border-[rgba(174,174,178,0.5)] bg-white">
+      <div className="relative aspect-[2.222] w-full overflow-hidden bg-[#FFBEBE]">
+        {image_url && <img src={image_url} alt={title} className="h-full w-full object-cover" />}
       </div>
 
-      {/*credits*/}
-      <div className="absolute right-[14px] top-[14px] w-[45px] h-[30px] rounded-full bg-white flex items-center justify-center gap-[3px]">
-        <FigmaStar />
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-(--layout-gutter)">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {tags.length > 0 && <p className="mb-1 truncate text-[10px] font-bold leading-3 text-blue-600">{tags[0]}</p>}
+            <h3 className="wrap-break-word text-[13px] font-bold leading-4 text-black line-clamp-2">{title}</h3>
+          </div>
 
-        <span
-          style={{
-            fontFamily: "Montserrat",
-            fontWeight: 800,
-            fontSize: "14px",
-            lineHeight: "17px",
-            color: "#000",
-          }}
-        >
-          {quantity}
-        </span>
-      </div>
-
-      {/* Tag */}
-      {tags.length > 0 && (
-        <div
-          className="absolute left-[19px] top-[133px]"
-          style={{
-            fontFamily: "Montserrat",
-            fontWeight: 700,
-            fontSize: "10px",
-            lineHeight: "12px",
-            color: "#306FE6",
-          }}
-        >
-          {tags[0]}
+          <div className="flex shrink-0 items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1">
+            <FigmaStar />
+            <span className="text-sm font-extrabold leading-4 text-black">{quantity}</span>
+          </div>
         </div>
-      )}
 
-      {/* Title */}
-      <div
-        className="absolute left-[19px] top-[150px] w-[224px]"
-        style={{
-          fontFamily: "Montserrat",
-          fontWeight: 700,
-          fontSize: "13px",
-          lineHeight: "16px",
-          color: "#000",
-        }}
-      >
-        {title}
+        <p className="min-w-0 wrap-break-word text-[10px] font-medium leading-3 text-black/50 line-clamp-2">{description}</p>
+
+        <div className="grid min-w-0 grid-cols-3 gap-2">
+          <span className="min-w-0 wrap-break-word rounded-md border border-[rgba(174,174,178,0.5)] px-1.5 py-1 text-center text-[8px] font-bold leading-3 text-black/70">
+            {protein_g}g Protein
+          </span>
+          <span className="min-w-0 wrap-break-word rounded-md border border-[rgba(174,174,178,0.5)] px-1.5 py-1 text-center text-[8px] font-bold leading-3 text-black/70">
+            {carbs_g}g Carbs{carbs_fiber_g != null ? ` (${carbs_fiber_g}g Fiber)` : ""}
+          </span>
+          <span className="min-w-0 wrap-break-word rounded-md border border-[rgba(174,174,178,0.5)] px-1.5 py-1 text-center text-[8px] font-bold leading-3 text-black/70">
+            {fat_g}g Fat
+          </span>
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-black/20 pt-3">
+          <span className="shrink-0 text-[10px] font-medium leading-3 text-black/50">{calories}kcal</span>
+          <button type="button" onClick={() => onAddFavorite?.(meal)} className="min-w-0 max-w-full rounded-md bg-[#306FE6] px-3 py-1.5 text-[9px] font-bold leading-3 text-white hover:bg-blue-700">
+            Add to cart
+          </button>
+        </div>
       </div>
-
-      {/* Description */}
-      <div
-        className="absolute left-[19px] top-[173px] w-[224px]"
-        style={{
-          fontFamily: "Montserrat",
-          fontWeight: 500,
-          fontSize: "10px",
-          lineHeight: "12px",
-          color: "#000",
-          opacity: 0.5,
-        }}
-      >
-        {description}
-      </div>
-
-      {/* Macro pills */}
-      <div className="absolute left-[12px] top-[207px] w-[64px] h-[23px] bg-white border border-[rgba(174,174,178,0.5)] rounded-[7px] flex items-center justify-center">
-        <span
-          style={{
-            fontFamily: "Montserrat",
-            fontWeight: 700,
-            fontSize: "8px",
-            lineHeight: "10px",
-            color: "#000",
-            opacity: 0.7,
-          }}
-        >
-          {protein_g}g Protein
-        </span>
-      </div>
-
-      <div className="absolute left-[82px] top-[207px] w-[100px] h-[23px] bg-white border border-[rgba(174,174,178,0.5)] rounded-[7px] flex items-center justify-center">
-        <span
-          style={{
-            fontFamily: "Montserrat",
-            fontWeight: 700,
-            fontSize: "8px",
-            lineHeight: "10px",
-            color: "#000",
-            opacity: 0.7,
-          }}
-        >
-          {carbs_g}g Carbs
-          {carbs_fiber_g != null ? ` (${carbs_fiber_g}g Fiber)` : ""}
-        </span>
-      </div>
-
-      <div className="absolute left-[188px] top-[207px] w-[49px] h-[23px] bg-white border border-[rgba(174,174,178,0.5)] rounded-[7px] flex items-center justify-center">
-        <span
-          style={{
-            fontFamily: "Montserrat",
-            fontWeight: 700,
-            fontSize: "8px",
-            lineHeight: "10px",
-            color: "#000",
-            opacity: 0.7,
-          }}
-        >
-          {fat_g}g Fat
-        </span>
-      </div>
-
-      {/* Separator line */}
-      <div
-        className="absolute left-[1px] top-[234px] w-[260px] border-t border-black"
-        style={{ opacity: 0.2 }}
-      />
-
-      {/* Kcals */}
-      <div
-        className="absolute left-[12px] top-[251px]"
-        style={{
-          fontFamily: "Montserrat",
-          fontWeight: 500,
-          fontSize: "10px",
-          lineHeight: "12px",
-          color: "#000",
-          opacity: 0.5,
-        }}
-      >
-        {calories}kcal
-      </div>
-
-      {/* Add to cart button */}
-      <button
-        type="button"
-        onClick={() => onAddFavorite?.(meal)}
-        className="absolute left-[177px] top-[243px] w-[72px] h-[26px] rounded-[5px] flex items-center justify-center"
-        style={{ backgroundColor: "#306FE6" }}
-      >
-        <span
-          style={{
-            fontFamily: "Montserrat",
-            fontWeight: 700,
-            fontSize: "9px",
-            lineHeight: "11px",
-            color: "#FFFFFF",
-          }}
-        >
-          Add to cart
-        </span>
-      </button>
-    </div>
-  );
+    </article>
+  )
 }

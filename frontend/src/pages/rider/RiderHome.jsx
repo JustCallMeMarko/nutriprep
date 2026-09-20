@@ -29,9 +29,9 @@ function RiderHome() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)]">
-      {actionState.status === "error" && <p className="bg-red-50 px-6 py-3 text-sm text-red-700">{actionState.message}</p>}
-      <div className="flex min-h-[calc(100vh-4rem)] flex-col md:flex-row">
-        <div className="w-full max-w-md p-6">
+      {actionState.status === "error" && <p className="wrap-break-word bg-red-50 px-4 py-3 text-sm text-red-700 sm:px-6">{actionState.message}</p>}
+      <div className="grid min-h-[calc(100vh-4rem)] min-w-0 grid-cols-1 md:grid-cols-[minmax(18rem,28rem)_minmax(0,1fr)]">
+        <div className="min-w-0 p-(--layout-gutter)">
           {loading ? (
             <p className="text-sm text-slate-500">Loading delivery requests...</p>
           ) : error ? (
@@ -56,7 +56,7 @@ function RiderHome() {
           )}
         </div>
 
-        <div className="relative min-h-80 flex-1 bg-gray-200">
+        <div className="relative min-h-80 min-w-0 bg-gray-200 md:min-h-0">
           <MapPanel />
           {delivery && <FloatingInfoCard customerName={delivery.customerName} distance="5.8 km" eta="1 hr" />}
         </div>
