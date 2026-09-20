@@ -1,10 +1,12 @@
+import os
+
 from sqlalchemy import Column, Integer, String, ForeignKey, Float, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
-# For now just use SQLite, but we can switch to MySQL later for the project requirements
-engine = create_engine("sqlite:///nutriprep.db", echo=False)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///nutriprep.db")
+engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 Base = declarative_base()
 
 class Profile(Base):
