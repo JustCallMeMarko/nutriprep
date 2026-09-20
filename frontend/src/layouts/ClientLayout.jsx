@@ -1,12 +1,5 @@
-import React from 'react'
-import { Outlet } from 'react-router-dom'
-import { Navbar } from "@/components/Navbar";
+import RoleShell from "@/components/RoleShell"
 
 export default function ClientLayout() {
-  return (
-    <div style={{ fontFamily: "Montserrat, sans-serif" }}>
-      <Navbar />
-      <Outlet />
-    </div>
-  )
+  return <RoleShell role="client" />
 }

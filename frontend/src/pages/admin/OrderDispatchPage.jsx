@@ -3,13 +3,11 @@ import { Truck, Package, Bike, UserCheck, X } from "lucide-react"
 import KPICard from "@/components/KPICard"
 import DataTable from "@/components/DataTable"
 import UpcomingDeliveries from "@/components/UpcomingDeliveries"
-import NutriHeader from "@/components/NutriHeader"
 import { Badge } from "@/components/ui/badge"
 import { useApi } from "@/utils/api"
 import { useApiResource } from "@/hooks/useApiResource"
 
 export default function OrderDispatchPage() {
-  const [searchQuery, setSearchQuery] = useState("")
   const [selectedOrderForAssign, setSelectedOrderForAssign] = useState(null)
   const [assignNotification, setAssignNotification] = useState(null)
   const { makeRequest } = useApi()
@@ -110,15 +108,6 @@ export default function OrderDispatchPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/60 text-slate-900 flex flex-col">
-      {/* Header */}
-      <NutriHeader
-        type="admin"
-        title="Order Dispatch"
-        searchPlaceholder="Search Orders..."
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
-
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         {/* Toast Notification */}

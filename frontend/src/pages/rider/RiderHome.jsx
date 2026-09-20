@@ -28,13 +28,9 @@ function RiderHome() {
   }
 
   return (
-    <div>
-      <div className="border-b bg-gray-200 px-6 py-4">
-        <h1 className="text-3xl font-bold">Deliveries</h1>
-      </div>
-
+    <div className="min-h-[calc(100vh-4rem)]">
       {actionState.status === "error" && <p className="bg-red-50 px-6 py-3 text-sm text-red-700">{actionState.message}</p>}
-      <div className="flex h-[calc(100vh-140px)]">
+      <div className="flex min-h-[calc(100vh-4rem)] flex-col md:flex-row">
         <div className="w-full max-w-md p-6">
           {loading ? (
             <p className="text-sm text-slate-500">Loading delivery requests...</p>
@@ -60,7 +56,7 @@ function RiderHome() {
           )}
         </div>
 
-        <div className="relative flex-1 bg-gray-200">
+        <div className="relative min-h-80 flex-1 bg-gray-200">
           <MapPanel />
           {delivery && <FloatingInfoCard customerName={delivery.customerName} distance="5.8 km" eta="1 hr" />}
         </div>

@@ -1,7 +1,6 @@
 import React, { useState } from "react"
 import { ChevronDown, ChevronUp, ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react"
 import FavoriteItem from "@/components/FavoriteItem"
-import NutriHeader from "@/components/NutriHeader"
 import Food1 from "@/assets/landing/Food1.png"
 import Food2 from "@/assets/landing/Food2.png"
 import Food3 from "@/assets/landing/Food3.png"
@@ -39,9 +38,6 @@ export default function FavoritePage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col">
-      {/* Header */}
-      <NutriHeader type="client" />
-
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="flex flex-col lg:flex-row items-start gap-12 lg:gap-16">

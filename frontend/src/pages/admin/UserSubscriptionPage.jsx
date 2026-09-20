@@ -4,7 +4,6 @@ import KPICard from "@/components/KPICard"
 import DataTable from "@/components/DataTable"
 import SubscriptionTrends from "@/components/SubscriptionTrends"
 import RecentStatusUpdates from "@/components/RecentStatusUpdates"
-import NutriHeader from "@/components/NutriHeader"
 
 const INITIAL_SUBSCRIBERS = [
   {
@@ -91,7 +90,6 @@ const INITIAL_SUBSCRIBERS = [
 
 export default function UserSubscriptionPage() {
   const [subscribers, setSubscribers] = useState(INITIAL_SUBSCRIBERS)
-  const [searchQuery, setSearchQuery] = useState("")
 
   const toggleStatus = (id) => {
     setSubscribers((prev) =>
@@ -161,15 +159,6 @@ export default function UserSubscriptionPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/60 text-slate-900 flex flex-col">
-      {/* Header */}
-      <NutriHeader
-        type="admin"
-        title="User Subscription"
-        searchPlaceholder="Search users, emails..."
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
-
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         {/* 3 KPI Cards Row matching Image 3 */}
