@@ -83,7 +83,11 @@ export default function DataTable({
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <label htmlFor="data-table-search" className="sr-only">
+              Search table
+            </label>
             <input
+              id="data-table-search"
               type="text"
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(e.target.value)}
@@ -93,8 +97,9 @@ export default function DataTable({
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto text-xs text-slate-500">
-            <span>Rows:</span>
+            <label htmlFor="data-table-page-size">Rows per page:</label>
             <select
+              id="data-table-page-size"
               value={pageSize}
               onChange={(e) => table.setPageSize(Number(e.target.value))}
               className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
@@ -122,18 +127,38 @@ export default function DataTable({
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
+                      aria-sort={
+                        header.column.getCanSort()
+                          ? header.column.getIsSorted() === "asc"
+                            ? "ascending"
+                            : header.column.getIsSorted() === "desc"
+                            ? "descending"
+                            : "none"
+                          : undefined
+                      }
                       className={cn(
                         "py-3.5 px-4 text-xs font-bold uppercase tracking-wider",
                         darkHeader ? "text-white bg-black" : "text-slate-700"
                       )}
                     >
                       {header.isPlaceholder ? null : (
-                        <div
+                        <button
+                          type="button"
                           className={cn(
-                            "flex items-center gap-1.5",
+                            "flex w-full items-center gap-1.5 text-left",
                             header.column.getCanSort() && "cursor-pointer select-none"
                           )}
-                          onClick={header.column.getToggleSortingHandler()}
+                          onClick={
+                            header.column.getCanSort()
+                              ? header.column.getToggleSortingHandler()
+                              : undefined
+                          }
+                          disabled={!header.column.getCanSort()}
+                          aria-label={
+                            header.column.getCanSort()
+                              ? `Sort by ${String(header.column.columnDef.header)}`
+                              : undefined
+                          }
                         >
                           {flexRender(
                             header.column.columnDef.header,
@@ -142,7 +167,7 @@ export default function DataTable({
                           {header.column.getCanSort() && (
                             <ArrowUpDown className="size-3 text-slate-400 hover:text-white" />
                           )}
-                        </div>
+                        </button>
                       )}
                     </TableHead>
                   ))}
@@ -213,6 +238,8 @@ export default function DataTable({
                       ? "bg-blue-600 text-white shadow-xs"
                       : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
                   )}
+                  aria-current={pageIndex === p ? "page" : undefined}
+                  aria-label={`Go to page ${p + 1}`}
                 >
                   {p + 1}
                 </button>

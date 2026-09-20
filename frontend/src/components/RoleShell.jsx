@@ -1,5 +1,6 @@
-import { Bell, Utensils } from "lucide-react"
+import { Bell, Menu, Utensils, X } from "lucide-react"
 import { UserButton } from "@clerk/react"
+import { useEffect, useRef, useState } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 import { ROLE_NAVIGATION } from "@/lib/navigation"
 
@@ -12,6 +13,25 @@ const linkClass = ({ isActive }) =>
 
 export function RoleNavigation({ role }) {
   const navigation = ROLE_NAVIGATION[role]
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuButtonRef = useRef(null)
+  const firstLinkRef = useRef(null)
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined
+
+    const menuButton = menuButtonRef.current
+    firstLinkRef.current?.focus()
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setIsMenuOpen(false)
+    }
+    document.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+      menuButton?.focus()
+    }
+  }, [isMenuOpen])
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md">
@@ -23,12 +43,32 @@ export function RoleNavigation({ role }) {
           </span>
         </Link>
 
-        <nav
-          aria-label={`${role} navigation`}
-          className="order-3 flex w-full gap-1 overflow-x-auto md:order-0 md:w-auto md:flex-1 md:justify-center"
+        <button
+          ref={menuButtonRef}
+          type="button"
+          aria-expanded={isMenuOpen}
+          aria-controls="role-navigation-links"
+          aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          onClick={() => setIsMenuOpen((open) => !open)}
+          className="order-2 ml-auto rounded-md p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:hidden"
         >
-          {navigation.links.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.to === navigation.home} className={linkClass}>
+          {isMenuOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
+        </button>
+
+        <nav
+          id="role-navigation-links"
+          aria-label={`${role} navigation`}
+          className={`${isMenuOpen ? "flex" : "hidden"} order-3 w-full flex-col gap-1 md:order-0 md:flex md:w-auto md:flex-1 md:flex-row md:justify-center`}
+        >
+          {navigation.links.map((link, index) => (
+            <NavLink
+              key={link.to}
+              ref={index === 0 ? firstLinkRef : undefined}
+              to={link.to}
+              end={link.to === navigation.home}
+              onClick={() => setIsMenuOpen(false)}
+              className={linkClass}
+            >
               {link.label}
             </NavLink>
           ))}
