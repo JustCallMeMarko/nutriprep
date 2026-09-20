@@ -13,11 +13,11 @@ class Profile(Base):
     __tablename__ = "profiles"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(String, nullable=False, unique=True)
-    role = Column(String, nullable=False, default="member")
+    user_id = Column(String(255), nullable=False, unique=True)
+    role = Column(String(32), nullable=False, default="member")
     credits = Column(Integer, nullable=False, default=0)
     custom_meals = Column(Integer, nullable=False, default=3)
-    last_updated = Column(String, nullable=False, default=datetime.now())
+    last_updated = Column(String(32), nullable=False, default=datetime.now())
 
 Base.metadata.create_all(engine)
 
