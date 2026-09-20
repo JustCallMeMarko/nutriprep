@@ -4,17 +4,17 @@ import KPICard from "@/components/KPICard"
 import DataTable from "@/components/DataTable"
 import UpcomingDeliveries from "@/components/UpcomingDeliveries"
 import { Badge } from "@/components/ui/badge"
-import { useApi } from "@/utils/api"
-import { useApiResource } from "@/hooks/useApiResource"
+import { makeDemoRequest } from "@/utils/demoData"
+import { useDemoResource } from "@/hooks/useDemoResource"
 
 export default function OrderDispatchPage() {
+  // TODO: Replace demo orders and riders with React Query queries and mutations.
   const [selectedOrderForAssign, setSelectedOrderForAssign] = useState(null)
   const [assignNotification, setAssignNotification] = useState(null)
   const assignTriggerRef = useRef(null)
   const dialogCloseRef = useRef(null)
-  const { makeRequest } = useApi()
-  const { data: orders = [], loading: ordersLoading, error: ordersError, reload: reloadOrders } = useApiResource("/user/admin/orders", [])
-  const { data: riders = [], loading: ridersLoading, error: ridersError, reload: reloadRiders } = useApiResource("/user/admin/riders", [])
+  const { data: orders = [], loading: ordersLoading, error: ordersError, reload: reloadOrders } = useDemoResource("/user/admin/orders", [])
+  const { data: riders = [], loading: ridersLoading, error: ridersError, reload: reloadRiders } = useDemoResource("/user/admin/riders", [])
 
   useEffect(() => {
     if (!selectedOrderForAssign) return undefined
@@ -50,7 +50,7 @@ export default function OrderDispatchPage() {
 
   const handleAssignRider = async (order, rider) => {
     try {
-      await makeRequest(`/user/admin/orders/${order.id}/assign`, {
+      await makeDemoRequest(`/user/admin/orders/${order.id}/assign`, {
         method: "POST",
         body: JSON.stringify({ rider_id: rider.id }),
       })

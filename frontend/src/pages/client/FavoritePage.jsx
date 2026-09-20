@@ -6,12 +6,12 @@ import Food2 from "@/assets/landing/Food2.png"
 import Food3 from "@/assets/landing/Food3.png"
 import { Link } from "react-router-dom"
 import { ROUTES } from "@/lib/routes"
-import { useApi } from "@/utils/api"
-import { useApiResource } from "@/hooks/useApiResource"
+import { makeDemoRequest } from "@/utils/demoData"
+import { useDemoResource } from "@/hooks/useDemoResource"
 
 export default function FavoritePage() {
-  const { makeRequest } = useApi()
-  const { data: favorites = [], loading, error, reload } = useApiResource("/user/favorites", [])
+  // TODO: Replace demo favorites with a React Query query and mutation.
+  const { data: favorites = [], loading, error, reload } = useDemoResource("/user/favorites", [])
   const [actionState, setActionState] = useState({ status: "idle", message: "" })
   const imageById = { 1: Food1, 2: Food2, 3: Food3 }
   const items = favorites.map((item) => ({
@@ -25,7 +25,7 @@ export default function FavoritePage() {
   const handleRemoveItem = async (id) => {
     setActionState({ status: "loading", message: "Removing favorite..." })
     try {
-      await makeRequest(`/user/favorites/${id}`, { method: "DELETE" })
+      await makeDemoRequest(`/user/favorites/${id}`, { method: "DELETE" })
       await reload()
       setActionState({ status: "success", message: "Favorite removed." })
     } catch (requestError) {

@@ -10,8 +10,8 @@ import { CreditBalance } from "@/features/meal-catalog/CreditBalance";
 import { PlanSection } from "@/features/meal-catalog/PlanSection";
 import { TagFilter } from "@/features/meal-catalog/Tagfilter";
 import { MealSection } from "@/features/meal-catalog/MealSection";
-import { useApi } from "@/utils/api";
-import { useApiResource } from "@/hooks/useApiResource";
+import { makeDemoRequest } from "@/utils/demoData";
+import { useDemoResource } from "@/hooks/useDemoResource";
 
 const planImages = Object.fromEntries(dummyPlans.map((plan) => [plan.id, plan.image_url]));
 const mealImages = Object.fromEntries(dummyMeals.map((meal) => [meal.id, meal.image_url]));
@@ -23,15 +23,15 @@ const DIET_FILTERS = [
 ];
 
 export default function MealCatalog() {
+  // TODO: Replace demo catalog, profile, order, and favorite actions with React Query.
   const navigate = useNavigate();
   const [view, setView] = useState("plans");
   const [dietFilter, setDietFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [actionState, setActionState] = useState({ status: "idle", message: "" });
-  const { makeRequest } = useApi();
-  const { data, loading: catalogLoading, error, reload } = useApiResource("/user/catalog");
-  const { data: profile } = useApiResource("/user/me");
+  const { data, loading: catalogLoading, error, reload } = useDemoResource("/user/catalog");
+  const { data: profile } = useDemoResource("/user/me");
 
   const plans = (data?.plans || []).map((plan) => ({
     ...plan,
@@ -76,7 +76,7 @@ export default function MealCatalog() {
   const handleSelectPlan = async (plan) => {
     setActionState({ status: "loading", message: "Saving your meal plan..." });
     try {
-      await makeRequest("/user/orders", {
+      await makeDemoRequest("/user/orders", {
         method: "POST",
         body: JSON.stringify({ plan_id: plan.id }),
       });
@@ -89,7 +89,7 @@ export default function MealCatalog() {
   const handleAddFavorite = async (meal) => {
     setActionState({ status: "loading", message: "Saving favorite..." });
     try {
-      await makeRequest("/user/favorites", {
+      await makeDemoRequest("/user/favorites", {
         method: "POST",
         body: JSON.stringify({ meal_id: meal.id }),
       });

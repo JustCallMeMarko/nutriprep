@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useApi } from "@/utils/api";
+import { makeDemoRequest } from "@/utils/demoData";
 
-export function useApiResource(endpoint, initialValue = null) {
-  const { makeRequest } = useApi();
+export function useDemoResource(endpoint, initialValue = null) {
   const [data, setData] = useState(initialValue);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,7 +10,7 @@ export function useApiResource(endpoint, initialValue = null) {
     setLoading(true);
     setError(null);
     try {
-      const response = await makeRequest(endpoint);
+      const response = await makeDemoRequest(endpoint);
       setData(response);
       return response;
     } catch (requestError) {
@@ -20,10 +19,9 @@ export function useApiResource(endpoint, initialValue = null) {
     } finally {
       setLoading(false);
     }
-  }, [endpoint, makeRequest]);
+  }, [endpoint]);
 
   useEffect(() => {
-    // The initial fetch synchronizes local request state with the endpoint.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     reload().catch(() => {});
   }, [reload]);

@@ -3,14 +3,14 @@ import { Link, useNavigate } from "react-router-dom"
 import DeliveryRequestCard from "../../features/delivery/components/DeliveryRequestCard"
 import MapPanel from "../../features/delivery/components/MapPanel"
 import FloatingInfoCard from "../../features/delivery/components/FloatingInfoCard"
-import { useApi } from "@/utils/api"
-import { useApiResource } from "@/hooks/useApiResource"
+import { makeDemoRequest } from "@/utils/demoData"
+import { useDemoResource } from "@/hooks/useDemoResource"
 import { ROUTES } from "@/lib/routes"
 
 function RiderHome() {
+  // TODO: Replace demo delivery data and acceptance action with React Query.
   const navigate = useNavigate()
-  const { makeRequest } = useApi()
-  const { data: deliveries = [], loading, error, reload } = useApiResource("/user/rider/deliveries", [])
+  const { data: deliveries = [], loading, error, reload } = useDemoResource("/user/rider/deliveries", [])
   const [actionState, setActionState] = useState({ status: "idle", message: "" })
   const delivery = deliveries.find((item) => item.status === "pending" || item.status === "ready")
 
@@ -18,7 +18,7 @@ function RiderHome() {
     if (!delivery) return
     setActionState({ status: "loading", message: "Accepting delivery..." })
     try {
-      await makeRequest(`/user/rider/deliveries/${delivery.id}/accept`, { method: "POST" })
+      await makeDemoRequest(`/user/rider/deliveries/${delivery.id}/accept`, { method: "POST" })
       setActionState({ status: "success", message: "Delivery accepted." })
       navigate(ROUTES.RIDER_ACTIVE)
     } catch (requestError) {

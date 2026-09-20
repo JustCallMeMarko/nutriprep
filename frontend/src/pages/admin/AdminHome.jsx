@@ -1,9 +1,10 @@
 import { Package, Truck, Bike } from 'lucide-react'
 import KPICard from '@/components/KPICard'
-import { useApiResource } from '@/hooks/useApiResource'
+import { useDemoResource } from '@/hooks/useDemoResource'
 
 export default function AdminHome() {
-  const { data, loading, error, reload } = useApiResource('/user/admin/dashboard')
+  // TODO: Replace demo dashboard data with a React Query API query.
+  const { data, loading, error, reload } = useDemoResource('/user/admin/dashboard')
 
   if (loading) return <div className="p-6 text-sm text-slate-500">Loading dashboard...</div>
   if (error) {

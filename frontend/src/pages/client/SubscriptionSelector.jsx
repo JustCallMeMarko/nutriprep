@@ -3,18 +3,18 @@ import { subscriptionTiers, subscriptionFaqs } from "@/lib/subscriptionTiers";
 import { TierCard } from "@/components/TierCard";
 import { CreditNote } from "@/features/subscription/CreditNote";
 import { SubscriptionFaq } from "@/features/subscription/SubscriptionFaq";
-import { useApi } from "@/utils/api";
-import { useApiResource } from "@/hooks/useApiResource";
+import { makeDemoRequest } from "@/utils/demoData";
+import { useDemoResource } from "@/hooks/useDemoResource";
 
 export default function SubscriptionSelector() {
+  // TODO: Replace demo subscription data and tier selection with React Query.
   const [actionState, setActionState] = useState({ status: "idle", message: "" });
-  const { makeRequest } = useApi();
-  const { data: subscription, loading, error, reload } = useApiResource("/user/subscriptions");
+  const { data: subscription, loading, error, reload } = useDemoResource("/user/subscriptions");
 
   const handleChooseTier = async (tier) => {
     setActionState({ status: "loading", message: "Saving your subscription..." });
     try {
-      await makeRequest("/user/subscriptions", {
+      await makeDemoRequest("/user/subscriptions", {
         method: "POST",
         body: JSON.stringify({ tier_id: tier.id }),
       });
