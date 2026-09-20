@@ -2,6 +2,8 @@ import ClerkProviderWithRoutes from './features/auth/ClerkProviderWithRoutes.jsx
 import { Routes, Route } from 'react-router-dom'
 import RequireRole from './features/auth/RequireRole.jsx'
 import { ROLES } from './features/auth/roles.js'
+import MealCatalog from './pages/client/MealCatalog.jsx'
+import SubscriptionSelector from './pages/client/SubscriptionSelector.jsx'
 
 // Layouts
 import ClientLayout from './layouts/ClientLayout.jsx'
@@ -33,6 +35,8 @@ function App() {
         <Route path="/user" element={<RequireRole role={ROLES.MEMBER}><ClientLayout /></RequireRole>} >
           <Route index element={<ClientHome />} />
           <Route path="onboarding" element={<Onboarding />} />
+          <Route path="meals" element={<MealCatalog />} />
+<Route path="plans" element={<SubscriptionSelector />} />
         </Route>
         <Route path="/admin" element={<RequireRole role={ROLES.ADMIN}><AdminLayout /></RequireRole>} >
           <Route index element={<AdminHome />} />
