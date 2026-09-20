@@ -31,6 +31,7 @@ function App() {
   return (
     <ClerkProviderWithRoutes>
       <Routes>
+
         <Route path="/" element={<Home />} />
         <Route path="/sign-in/*" element={<AuthenticationPage />} />
         <Route path="/sign-up/*" element={<AuthenticationPage />} />
@@ -45,7 +46,7 @@ function App() {
           <Route path="orders" element={<OrderDispatchPage />} />
           <Route path="subscriptions" element={<UserSubscriptionPage />} />
         </Route>
-
+        
         <Route path="/rider" element={<RequireRole role={ROLES.RIDER}><RiderLayout /></RequireRole>} >
           <Route index element={<RiderHome />} />
         </Route>
