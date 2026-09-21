@@ -16,5 +16,7 @@ export const roleFromUser = (user) => user?.publicMetadata?.role;
 
 export const homePathForRole = (role) => ROLE_TO_PATH[role] ?? '/';
 
+export const isRole = (role) => Object.values(ROLES).includes(role);
+
 export const normalizeSignupRole = (role) =>
   SIGNUP_ROLES.includes(role) ? role : ROLES.MEMBER;

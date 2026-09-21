@@ -1,8 +1,5 @@
-import React from 'react'
-import { Outlet } from 'react-router-dom'
+import RoleShell from "@/components/RoleShell"
 
 export default function RiderLayout() {
-  return (
-    <div><Outlet /></div>
-  )
+  return <RoleShell role="rider" />
 }
