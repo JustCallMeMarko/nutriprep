@@ -15,7 +15,7 @@ load_dotenv()
 
 router = APIRouter()
 
-ALLOWED_SIGNUP_ROLES = {"member", "rider"}
+ALLOWED_SIGNUP_ROLES = {"user", "rider"}
 
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
 CLERK_WEBHOOK_SECRET = os.getenv("CLERK_WEBHOOK_SECRET")
@@ -26,7 +26,7 @@ clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
 def resolve_role(user_data: dict) -> str:
     unsafe_meta = user_data.get("unsafe_metadata") or {}
     role = unsafe_meta.get("role")
-    return role if role in ALLOWED_SIGNUP_ROLES else "member"
+    return role if role in ALLOWED_SIGNUP_ROLES else "user"
 
 
 @router.post("/clerk")
