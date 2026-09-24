@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { FileCheckCorner, Info, Menu, MoveUpRight, RobotArm, X } from 'lucide-react'
 import {
@@ -24,11 +24,11 @@ import Food3 from '../assets/landing/Food3.png'
 import balance_macro from '../assets/landing/balance_macro.png'
 import low_carb from '../assets/landing/low_carb.png'
 import high_protein from '../assets/landing/high_protein.png'
+import { Show, useAuth, useUser } from '@clerk/react'
 
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-
   const closeMenu = () => setIsMenuOpen(false)
 
   return (
@@ -372,8 +372,15 @@ const Footer = () => {
 }
 
 export default function Home() {
+  const { user } = useUser()
+  const { isSignedIn } = useAuth()
+  const navigate = useNavigate()
+  if (isSignedIn) {
+    const role = user?.publicMetadata?.role
+    navigate(`/${role}`)
+  }
   return (
-    <>
+    <Show when='signed-out'>
       <Header />
       <main className="flex flex-col gap-24 md:gap-32.5 pb-24 md:pb-32.5">
         <Hero />
@@ -383,6 +390,6 @@ export default function Home() {
         <FAQ />
       </main>
       <Footer />
-    </>
+    </Show>
   )
 }
