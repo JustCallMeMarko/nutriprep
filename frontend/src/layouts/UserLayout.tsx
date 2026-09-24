@@ -17,7 +17,7 @@ export default function UserLayout() {
         { name: 'Home', href: ROUTES.USER_DASHBOARD, icon: Home },
         { name: 'Meal', href: ROUTES.USER_MEAL, icon: Pizza },
         { name: 'Calendar', href: ROUTES.USER_CALENDAR, icon: CalendarDays },
-        { name: 'Plans', href: ROUTES.USER_PLANS, icon: NotebookPen },
+        { name: 'Plan', href: ROUTES.USER_PLANS, icon: NotebookPen },
         { name: 'Favorite', href: ROUTES.USER_FAVORITE, icon: Heart },
     ]
 
@@ -70,7 +70,7 @@ export default function UserLayout() {
 
                 )}
             </header>
-            <main className="pt-15">
+            <main className="pt-23 px-4 md:px-[clamp(2rem,calc(29.4vw-194px),14.5rem)]">
                 <Outlet />
             </main>
         </>
