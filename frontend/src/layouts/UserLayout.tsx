@@ -1,21 +1,24 @@
 import { useState } from 'react'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Home, Pizza, CalendarDays, NotebookPen, Heart } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
-import { Link, Outlet } from 'react-router-dom'
+import { useNavigate, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { UserButton } from '@clerk/react'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { Button } from '@/components/ui/button'
 
 export default function UserLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
 
     const closeMenu = () => setIsMenuOpen(false)
+    const navigate = useNavigate()
 
     const NavLinks = [
-        { name: 'Home', href: ROUTES.USER_DASHBOARD },
-        { name: 'Meal', href: ROUTES.USER_MEAL },
-        { name: 'Calendar', href: ROUTES.USER_CALENDAR },
-        { name: 'Plans', href: ROUTES.USER_PLANS },
-        { name: 'Favorite', href: ROUTES.USER_FAVORITE }
+        { name: 'Home', href: ROUTES.USER_DASHBOARD, icon: Home },
+        { name: 'Meal', href: ROUTES.USER_MEAL, icon: Pizza },
+        { name: 'Calendar', href: ROUTES.USER_CALENDAR, icon: CalendarDays },
+        { name: 'Plans', href: ROUTES.USER_PLANS, icon: NotebookPen },
+        { name: 'Favorite', href: ROUTES.USER_FAVORITE, icon: Heart },
     ]
 
     return (
@@ -26,13 +29,15 @@ export default function UserLayout() {
                     <p className="text-2xl md:text-2xl font-bold uppercase">NutriPrep</p>
                 </div>
 
-                <nav className="hidden items-center justify-center gap-3 md:flex">
+                <ButtonGroup className="hidden md:flex">
                     {NavLinks.map((link) => (
-                        <Link key={link.name} to={link.href} className="whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold">
+                        <Button key={link.name} variant="outline" onClick={() => navigate(link.href)} className="flex gap-1 items-center whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold cursor-pointer">
+                            
+                            <link.icon className="size-4.5" />
                             {link.name}
-                        </Link>
+                        </Button>
                     ))}
-                </nav>
+                </ButtonGroup>
 
                 <button
                     type="button"
@@ -41,7 +46,7 @@ export default function UserLayout() {
                     onClick={() => setIsMenuOpen((open) => !open)}
                     className={`flex size-10 items-center justify-center rounded-lg text-zinc-900 hover:bg-zinc-100 md:hidden`}
                 >
-                    {isMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+                    {isMenuOpen ? <X className="size-4.5" /> : <Menu className="size-5" />}
                 </button>
                 <div className="hidden md:flex items-center justify-center gap-3">
                     <UserButton />
@@ -52,7 +57,8 @@ export default function UserLayout() {
                     <nav className="absolute top-full left-0 right-0 border-b-2 border-slate-800 bg-white px-4 py-4 shadow-lg md:hidden">
                         <div className="flex flex-col gap-1">
                             {NavLinks.map((link) => (
-                                <Link key={link.name} to={link.href} onClick={closeMenu} className="px-3 py-2 font-semibold hover:bg-zinc-100">
+                                <Link key={link.name} to={link.href} onClick={closeMenu} className="flex gap-1 items-center px-3 py-2 font-semibold hover:bg-zinc-100">
+                                    <link.icon className="size-4.5" />
                                     {link.name}
                                 </Link>
                             ))}
