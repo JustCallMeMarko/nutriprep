@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 
 import { FileCheckCorner, Info, Menu, MoveUpRight, RobotArm, X } from 'lucide-react'
 import {
@@ -25,6 +25,7 @@ import balance_macro from '../assets/landing/balance_macro.png'
 import low_carb from '../assets/landing/low_carb.png'
 import high_protein from '../assets/landing/high_protein.png'
 import { Show, useAuth, useUser } from '@clerk/react'
+import { ROUTES } from '@/constants/routes'
 
 
 const Header = () => {
@@ -372,13 +373,18 @@ const Footer = () => {
 }
 
 export default function Home() {
-  const { user } = useUser()
-  const { isSignedIn } = useAuth()
-  const navigate = useNavigate()
-  if (isSignedIn) {
-    const role = user?.publicMetadata?.role
-    navigate(`/${role}`)
+  const { isLoaded: userLoaded, user } = useUser()
+  const { isLoaded: authLoaded, isSignedIn } = useAuth()
+  const role = user?.publicMetadata?.role
+
+  if (!authLoaded || !userLoaded) {
+    return null
   }
+
+  if (isSignedIn && (role == 'user' || role == 'admin' || role == 'rider')) {
+    return <Navigate to={role ? `/${role}` : ROUTES.USER_DASHBOARD} replace />
+  }
+
   return (
     <Show when='signed-out'>
       <Header />

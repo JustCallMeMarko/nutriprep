@@ -1,17 +1,34 @@
 import { useState } from 'react'
 import { Menu, X, Home, Pizza, CalendarDays, NotebookPen, Heart } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
-import { useNavigate, Link, Outlet } from 'react-router-dom'
+import { Navigate, useNavigate, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
-import { UserButton } from '@clerk/react'
+import { UserButton, useUser } from '@clerk/react'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Button } from '@/components/ui/button'
 
 export default function UserLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
-
+    const { isLoaded, user } = useUser()
+    const role = user?.publicMetadata?.role
     const closeMenu = () => setIsMenuOpen(false)
     const navigate = useNavigate()
+
+    if (!isLoaded) {
+        return null
+    }
+
+    if (!role) {
+        return <Navigate to={ROUTES.SIGN_IN} replace />
+    }
+
+    if (role !== 'user' && role !== 'admin' && role !== 'rider') {
+        return <Navigate to={ROUTES.SIGN_IN} replace />
+    }
+
+    if (role !== 'user') {
+        return <Navigate to={`/${role}`} replace />
+    }
 
     const NavLinks = [
         { name: 'Home', href: ROUTES.USER_DASHBOARD, icon: Home },
