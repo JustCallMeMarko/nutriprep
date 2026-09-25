@@ -25,7 +25,7 @@ export default function AuthenticationPage() {
         const userRole = user?.publicMetadata?.role;
 
         if (!isRole(userRole)) {
-            return <Navigate to={ROUTES.USER_DASHBOARD} replace />;
+            return <Navigate to={ROUTES.HOME} replace />;
         }
 
         return <Navigate to={`/${userRole}`} replace />;
