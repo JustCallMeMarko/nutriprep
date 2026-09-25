@@ -7,4 +7,8 @@ export const ROUTES = {
     USER_CALENDAR: '/user/calendar',
     USER_PLANS: '/user/plans',
     USER_FAVORITE: '/user/favorite',
+    ADMIN_DASHBOARD: '/admin',
+    ADMIN_MEALS: '/admin/mealS',
+    ADMIN_ORDERS: '/admin/orders',
+    ADMIN_USERS: '/admin/users',
 }

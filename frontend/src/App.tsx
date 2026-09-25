@@ -10,6 +10,11 @@ import UserMeal from './pages/user/UserMeal'
 import UserCalendar from './pages/user/UserCalendar'
 import UserPlan from './pages/user/UserPlan'
 import UserFavorite from './pages/user/UserFavorite'
+import AdminLayout from './layouts/AdminLayout'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminUsers from './pages/admin/AdminUsers'
+import AdminOrders from './pages/admin/AdminOrders'
+import AdminMeals from './pages/admin/AdminMeals'
 
 function App() {
   return (
@@ -18,12 +23,20 @@ function App() {
         <Route path={ROUTES.HOME} element={<Home />} />
         <Route path={`${ROUTES.SIGN_IN}/*`} element={<AuthenticationPage />} />
         <Route path={`${ROUTES.SIGN_UP}/*`} element={<AuthenticationPage />} />
+
         <Route path={ROLES.USER} element={<UserLayout />}>
           <Route index element={<UserDashboard />} />
           <Route path={ROUTES.USER_MEAL.replace(`/${ROLES.USER}/`, '')} element={<UserMeal />} />
           <Route path={ROUTES.USER_CALENDAR.replace(`/${ROLES.USER}/`, '')} element={<UserCalendar />} />
           <Route path={ROUTES.USER_PLANS.replace(`/${ROLES.USER}/`, '')} element={<UserPlan />} />
           <Route path={ROUTES.USER_FAVORITE.replace(`/${ROLES.USER}/`, '')} element={<UserFavorite />} />
+        </Route>
+
+        <Route path={ROLES.ADMIN} element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path={ROUTES.ADMIN_MEALS.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminMeals />} />
+          <Route path={ROUTES.ADMIN_ORDERS.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminOrders />} />
+          <Route path={ROUTES.ADMIN_USERS.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminUsers />} />
         </Route>
       </Routes> 
     </ClerkProviderWithRoutes>
