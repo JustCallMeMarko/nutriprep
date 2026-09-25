@@ -19,11 +19,11 @@ export default function UserLayout() {
     }
 
     if (!role) {
-        return <Navigate to={ROUTES.SIGN_IN} replace />
+        return <Navigate to={ROUTES.HOME} replace />
     }
 
     if (role !== 'user' && role !== 'admin' && role !== 'rider') {
-        return <Navigate to={ROUTES.SIGN_IN} replace />
+        return <Navigate to={ROUTES.HOME} replace />
     }
 
     if (role !== 'user') {
