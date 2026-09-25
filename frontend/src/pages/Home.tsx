@@ -242,14 +242,14 @@ const PrepAI = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-zinc-900 rounded-xl h-48 md:h-64 p-8 flex flex-col items-center justify-center">
               <div className='bg-white/20 rounded-full p-3 border border-white/30 mb-4'>
-                <FileCheckCorner className="size-5.5" />
+                <FileCheckCorner className="size-5.5 invert" />
               </div>
               <h3 className="text-white font-semibold text-left md:text-center text-xs">Inventory Synced</h3>
               <p className="text-zinc-300 text-xs text-left md:text-center">Real Time Availability</p>
             </div>
             <div className="bg-zinc-900 rounded-xl h-48 md:h-64 p-8 flex flex-col items-center justify-center">
               <div className='bg-white/20 rounded-full p-3 border border-white/30 mb-4'>
-                <RobotArm className="size-5.5" />
+                <RobotArm className="size-5.5 invert" />
               </div>
               <h3 className="text-white font-semibold text-left md:text-center text-xs">Strict Macro Match</h3>
               <p className="text-zinc-300 text-xs text-left md:text-center">Precision down to the gram</p>
