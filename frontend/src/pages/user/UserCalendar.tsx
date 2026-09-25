@@ -162,12 +162,14 @@ export default function UserCalendar() {
                         <Button
                             variant={view === "weeks" ? "default" : "outline"}
                             onClick={() => setView("weeks")}
+                            className="cursor-pointer"
                         >
                             Weeks
                         </Button>
                         <Button
                             variant={view === "days" ? "default" : "outline"}
                             onClick={() => setView("days")}
+                            className="cursor-pointer"
                         >
                             Days
                         </Button>
@@ -263,12 +265,12 @@ export default function UserCalendar() {
                     size="sm"
                     variant={locked ? "secondary" : "default"}
                     onClick={() => setLocked((v) => !v)}
-                    className="gap-2 py-4.5"
+                    className="gap-2 py-4.5 cursor-pointer"
                 >
                     {locked ? <LockOpen className="size-4" /> : <Lock className="size-4" />}
                     {locked
                         ? "Unlock"
-                        : `Lock this ${view === "weeks" ? "week's" : "day's"} meals`}
+                        : `Lock meals`}
                 </Button>
             </div>
 
