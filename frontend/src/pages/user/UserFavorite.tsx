@@ -2,6 +2,9 @@ import Food1 from "@/assets/landing/Food1.png"
 import Food2 from "@/assets/landing/Food2.png"
 import Food3 from "@/assets/landing/Food3.png"
 import { MealCard } from "@/components/MealCard"
+import { ROUTES } from "@/constants/routes"
+import { ArrowRight } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 const INITIAL_CART = [
   {
@@ -49,13 +52,17 @@ const INITIAL_CART = [
 ]
 
 export default function CartPage() {
+  const navigate = useNavigate()
   const totalItemsCount = INITIAL_CART.length
+  const totalCalories = INITIAL_CART.reduce((total, meal) => total + meal.calories, 0)
+  const totalCredits = INITIAL_CART.reduce((total, meal) => total + meal.credits, 0)
 
   return (
     <section className="bg-white text-slate-900 flex flex-col">
 
       {/* Left: Your Meals & Schedule Breakdown */}
-      <div className="w-full lg:flex-1 space-y-6">
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="w-full space-y-6 lg:flex-1">
         <div className="sticky top-15 z-40 flex flex-col justify-between gap-2 border-b-2 border-slate-900 bg-white pb-4 sm:flex-row sm:items-baseline">
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
             Favorite Meals
@@ -64,11 +71,44 @@ export default function CartPage() {
             {totalItemsCount} {totalItemsCount === 1 ? "Meal" : "Meals"} Favorited
           </span>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 gap-6">
           {INITIAL_CART.map((item) => (
             <MealCard key={item.id} meal={item} />
           ))}
         </div>
+        </div>
+
+        <aside className="h-fit rounded-xl border border-slate-200 bg-slate-50 p-5 lg:sticky lg:top-15">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#306FE6]">
+            Your favorites
+          </p>
+          <h2 className="mt-2 text-2xl font-extrabold text-slate-900">
+            Ready to plan?
+          </h2>
+          <p className="mt-2 text-sm leading-5 text-slate-500">
+            You have {totalItemsCount} favorite meals ready to add to your week.
+          </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-3 border-y border-slate-200 py-4">
+            <div>
+              <p className="text-xl font-bold text-slate-900">{totalCalories}</p>
+              <p className="text-xs text-slate-500">total kcal</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-slate-900">{totalCredits}</p>
+              <p className="text-xs text-slate-500">credits</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.USER_CALENDAR)}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#306FE6] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2459bd] cursor-pointer"
+          >
+            Plan your week
+            <ArrowRight className="size-4" />
+          </button>
+        </aside>
       </div>
     </section>
   )
