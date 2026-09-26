@@ -60,30 +60,29 @@ export default function UserFavorite() {
   return (
     <section className="bg-white text-slate-900 flex flex-col">
 
-      {/* Left: Your Meals & Schedule Breakdown */}
-      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="w-full space-y-6 lg:flex-1">
-        <div className="sticky top-15 z-40 flex flex-col justify-between gap-2 border-b-2 border-slate-900 bg-white pb-4 sm:flex-row sm:items-baseline">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-            Favorite Meals
-          </h1>
-          <span className="text-sm font-semibold text-slate-500">
-            {totalItemsCount} {totalItemsCount === 1 ? "Meal" : "Meals"} Favorited
-          </span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {INITIAL_CART.map((item) => (
-            <MealCard key={item.id} meal={item} />
-          ))}
-        </div>
+      <div className="grid w-full gap-8 md:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="w-full lg:flex-1">
+          <div className="flex flex-col justify-between gap-2 border-b-2 mb-4 border-slate-900 bg-white pb-4 ">
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+              Favorite Meals
+            </h1>
+            <span className="text-sm font-semibold text-slate-500">
+              {totalItemsCount} {totalItemsCount === 1 ? "Meal" : "Meals"} Favorited
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+            {INITIAL_CART.map((item) => (
+              <MealCard key={item.id} meal={item} />
+            ))}
+          </div>
         </div>
 
-        <aside className="h-fit rounded-xl border border-slate-200 bg-slate-50 p-5 lg:sticky lg:top-15">
+        <aside className="order-first h-fit rounded-xl border border-slate-200 bg-slate-50 p-5 md:order-0 md:sticky md:top-23">
           <p className="text-xs font-bold uppercase tracking-wide text-[#306FE6]">
             Your favorites
           </p>
           <h2 className="mt-2 text-2xl font-extrabold text-slate-900">
-            Ready to plan?
+            Ready to plan?  
           </h2>
           <p className="mt-2 text-sm leading-5 text-slate-500">
             You have {totalItemsCount} favorite meals ready to add to your week.
