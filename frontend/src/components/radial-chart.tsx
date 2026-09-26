@@ -40,19 +40,20 @@ export function ChartRadialShape({
 }) {
   const current = data[0]?.current ?? 0;
   const target = data[0]?.target ?? 100;
-  const percentage = Math.min(1, current / target);
-  const calculatedEndAngle = Math.round(percentage * 250);
+  const percentage = target > 0 ? Math.min(1, current / target) : 0;
+  const startAngle = 90;
+  const calculatedEndAngle = 90 - percentage * 360;
 
   return (
     <Card className="flex flex-col border-[#E2E2E2]">
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={macroChartConfig}
-          className="mx-auto aspect-square max-h-[220px]"
+          className="mx-auto aspect-square max-h-55"
         >
           <RadialBarChart
             data={data}
-            startAngle={0}
+            startAngle={startAngle}
             endAngle={calculatedEndAngle}
             outerRadius={90}
             innerRadius={80}
