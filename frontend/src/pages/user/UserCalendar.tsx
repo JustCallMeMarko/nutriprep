@@ -149,15 +149,11 @@ export default function UserCalendar() {
         })
     }
 
-    const mealCount = Object.values(plan).reduce(
-        (sum, day) => sum + Object.keys(day ?? {}).length,
-        0
-    )
-
     return (
         <section className="flex flex-col-reverse gap-4 md:flex-row">
             <div className="flex flex-1 min-w-0 flex-col gap-2 mb-8">
                 <div className="flex items-center justify-between gap-3 mb-4">
+                    <h1 className="text-3xl font-bold text-foreground">Plan your meals</h1>
                     <ButtonGroup>
                         <Button
                             variant={view === "weeks" ? "default" : "outline"}
@@ -174,12 +170,6 @@ export default function UserCalendar() {
                             Days
                         </Button>
                     </ButtonGroup>
-
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground">
-                            {mealCount} meal{mealCount === 1 ? "" : "s"} planned
-                        </span>
-                    </div>
                 </div>
 
                 <div className="min-w-0">

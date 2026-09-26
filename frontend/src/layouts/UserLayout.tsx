@@ -1,11 +1,14 @@
 import { useState } from 'react'
-import { Menu, X, Home, Pizza, CalendarDays, NotebookPen, Heart } from 'lucide-react'
+import { Menu, X, Home, Pizza, CircleDollarSign, NotebookPen, Heart } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
 import { Navigate, useNavigate, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { UserButton, useUser } from '@clerk/react'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Button } from '@/components/ui/button'
+import { useSubscription } from '@clerk/react/experimental'
+import { SUBSCRIPTION_PLANS } from '@/constants/subscriptions'
+import ChatBot from '@/components/ChatBot'
 
 export default function UserLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -13,6 +16,7 @@ export default function UserLayout() {
     const role = user?.publicMetadata?.role
     const closeMenu = () => setIsMenuOpen(false)
     const navigate = useNavigate()
+    const { data, isLoading, error } = useSubscription()
 
     if (!isLoaded) {
         return null
@@ -33,10 +37,29 @@ export default function UserLayout() {
     const NavLinks = [
         { name: 'Home', href: ROUTES.USER_DASHBOARD, icon: Home },
         { name: 'Meal', href: ROUTES.USER_MEAL, icon: Pizza },
-        { name: 'Calendar', href: ROUTES.USER_CALENDAR, icon: CalendarDays },
-        { name: 'Plan', href: ROUTES.USER_PLANS, icon: NotebookPen },
+        { name: 'Plan', href: ROUTES.USER_CALENDAR, icon: NotebookPen },
+        { name: 'Subscription', href: ROUTES.USER_PLANS, icon: CircleDollarSign },
         { name: 'Favorite', href: ROUTES.USER_FAVORITE, icon: Heart },
     ]
+
+    if (isLoading) {
+        return <div>Loading Subscription...</div>
+    }
+
+    if (error) {
+        return <div>Error loading Subscription: {error.message}</div>
+    }
+
+    if (!data) {
+        return <div>No Subscription found</div>
+    }
+
+     // 1. Extract plan name from subscriptionItems
+    const firstItem = data?.subscriptionItems?.[0]
+    const planName = firstItem?.plan?.name || "Free"
+
+    const isAIEnabled = planName === SUBSCRIPTION_PLANS.SILVER || planName === SUBSCRIPTION_PLANS.GOLD
+
 
     return (
         <>
@@ -49,7 +72,7 @@ export default function UserLayout() {
                 <ButtonGroup className="hidden md:flex">
                     {NavLinks.map((link) => (
                         <Button key={link.name} variant="outline" onClick={() => navigate(link.href)} className="flex gap-1 items-center whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold cursor-pointer">
-                            
+
                             <link.icon className="size-4.5" />
                             {link.name}
                         </Button>
@@ -90,6 +113,9 @@ export default function UserLayout() {
             <main className="pt-23 px-4 md:px-[clamp(2rem,calc(29.4vw-194px),14.5rem)]">
                 <Outlet />
             </main>
+            {isAIEnabled && (
+                <ChatBot />
+            )}
         </>
     )
 }
