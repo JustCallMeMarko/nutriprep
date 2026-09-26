@@ -102,7 +102,7 @@ function formatRange(start: Date, end: Date) {
 
 type PlannerState = Record<string, Partial<Record<SlotKey, Meal>>> // keyed by ISO date
 
-export default function UserCalendar() {
+export default function UserPlan() {
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [view, setView] = useState<ViewMode>("weeks")
     const [plan, setPlan] = useState<PlannerState>({})
