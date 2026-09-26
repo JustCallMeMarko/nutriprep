@@ -186,11 +186,14 @@ export default function UserCalendar() {
                         </span>
                     </div>
 
-                    <div className="overflow-x-auto rounded-lg border lg:overflow-x-hidden">
+                    <div className={view === "days" ? "rounded-lg border overflow-hidden" : "overflow-x-auto rounded-lg border lg:overflow-x-hidden"}>
                         <div
-                            className="grid min-w-190 lg:min-w-0"
+                            className={view === "days" ? "grid w-full min-w-0" : "grid min-w-190 lg:min-w-0"}
                             style={{
-                                gridTemplateColumns: `minmax(88px, 0.8fr) repeat(${days.length}, minmax(0, 1fr))`,
+                                gridTemplateColumns:
+                                    view === "days"
+                                        ? "minmax(90px, auto) minmax(0, 1fr)"
+                                        : `minmax(88px, 0.8fr) repeat(${days.length}, minmax(0, 1fr))`,
                                 width: "100%",
                             }}
                         >
