@@ -51,7 +51,7 @@ const INITIAL_CART = [
   },
 ]
 
-export default function CartPage() {
+export default function UserFavorite() {
   const navigate = useNavigate()
   const totalItemsCount = INITIAL_CART.length
   const totalCalories = INITIAL_CART.reduce((total, meal) => total + meal.calories, 0)
@@ -71,7 +71,7 @@ export default function CartPage() {
             {totalItemsCount} {totalItemsCount === 1 ? "Meal" : "Meals"} Favorited
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {INITIAL_CART.map((item) => (
             <MealCard key={item.id} meal={item} />
           ))}
@@ -102,7 +102,7 @@ export default function CartPage() {
 
           <button
             type="button"
-            onClick={() => navigate(ROUTES.USER_CALENDAR)}
+            onClick={() => navigate(ROUTES.USER_PLAN)}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#306FE6] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2459bd] cursor-pointer"
           >
             Plan your week
