@@ -37,8 +37,8 @@ export default function UserLayout() {
     const NavLinks = [
         { name: 'Home', href: ROUTES.USER_DASHBOARD, icon: Home },
         { name: 'Meal', href: ROUTES.USER_MEAL, icon: Pizza },
-        { name: 'Plan', href: ROUTES.USER_CALENDAR, icon: NotebookPen },
-        { name: 'Subscription', href: ROUTES.USER_PLANS, icon: CircleDollarSign },
+        { name: 'Plan', href: ROUTES.USER_PLAN, icon: NotebookPen },
+        { name: 'Subscription', href: ROUTES.USER_SUBSCRIPTION, icon: CircleDollarSign },
         { name: 'Favorite', href: ROUTES.USER_FAVORITE, icon: Heart },
     ]
 

@@ -7,8 +7,8 @@ import { ROLES } from './constants/roles'
 import UserLayout from './layouts/UserLayout'
 import UserDashboard from './pages/user/UserDashboard'
 import UserMeal from './pages/user/UserMeal'
-import UserCalendar from './pages/user/UserCalendar'
 import UserPlan from './pages/user/UserPlan'
+import UserSubscription from './pages/user/UserSubscription'
 import UserFavorite from './pages/user/UserFavorite'
 import AdminLayout from './layouts/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -27,8 +27,8 @@ function App() {
         <Route path={ROLES.USER} element={<UserLayout />}>
           <Route index element={<UserDashboard />} />
           <Route path={ROUTES.USER_MEAL.replace(`/${ROLES.USER}/`, '')} element={<UserMeal />} />
-          <Route path={ROUTES.USER_CALENDAR.replace(`/${ROLES.USER}/`, '')} element={<UserCalendar />} />
-          <Route path={ROUTES.USER_PLANS.replace(`/${ROLES.USER}/`, '')} element={<UserPlan />} />
+          <Route path={ROUTES.USER_PLAN.replace(`/${ROLES.USER}/`, '')} element={<UserPlan />} />
+          <Route path={ROUTES.USER_SUBSCRIPTION.replace(`/${ROLES.USER}/`, '')} element={<UserSubscription />} />
           <Route path={ROUTES.USER_FAVORITE.replace(`/${ROLES.USER}/`, '')} element={<UserFavorite />} />
         </Route>
 
