@@ -79,7 +79,7 @@ export function BroadcastDialog() {
                                 id="message"
                                 name="message"
                                 placeholder="Write your broadcast content here..."
-                                className="min-h-[120px] resize-none"
+                                className="min-h-30 resize-none"
                                 required
                             />
                         </Field>
