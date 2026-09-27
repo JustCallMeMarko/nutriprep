@@ -1,9 +1,8 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { Navigate, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { useUser } from '@clerk/react'
-
 
 export default function Layout() {
     const { isLoaded, user } = useUser()
@@ -27,10 +26,14 @@ export default function Layout() {
     return (
         <SidebarProvider>
             <AppSidebar />
-            <main className="relative flex-1 bg-background pt-12 px-4 md:px-16">
-                <SidebarTrigger className="cursor-pointer absolute top-4 left-4" />
-                <Outlet />
-            </main>
+            <SidebarInset className="min-w-0">
+                <div className="sticky top-4 z-40 w-fit px-4 -mb-10">
+                    <SidebarTrigger className="cursor-pointer" />
+                </div>
+                <main className="flex-1 pt-12 px-4 md:px-16 pb-12">
+                    <Outlet />
+                </main>
+            </SidebarInset>
         </SidebarProvider>
     )
 }
