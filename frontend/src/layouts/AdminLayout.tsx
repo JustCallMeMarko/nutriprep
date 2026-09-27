@@ -27,8 +27,8 @@ export default function Layout() {
     return (
         <SidebarProvider>
             <AppSidebar />
-            <main className="flex-1 bg-background">
-                <SidebarTrigger className="cursor-pointer fixed" />
+            <main className="relative flex-1 bg-background pt-12 px-4 md:px-16">
+                <SidebarTrigger className="cursor-pointer absolute top-4 left-4" />
                 <Outlet />
             </main>
         </SidebarProvider>
