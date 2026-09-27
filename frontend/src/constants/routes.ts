@@ -11,4 +11,7 @@ export const ROUTES = {
     ADMIN_MEAL: '/admin/meal',
     ADMIN_ORDER: '/admin/order',
     ADMIN_USER: '/admin/user',
+    ADMIN_NOTIFICATION: '/admin/notification',
+    RIDER_DASHBOARD: '/rider',
+    RIDER_NOTIFICATION: '/rider/notification',
 }

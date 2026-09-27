@@ -77,6 +77,7 @@ export function AppSidebar() {
                             ))}
                             <SidebarMenuItem>
                                 <SidebarMenuButton
+                                    render={<Link to={ROUTES.ADMIN_NOTIFICATION} />}
                                     tooltip="Notifications"
                                 >
                                     <Bell />

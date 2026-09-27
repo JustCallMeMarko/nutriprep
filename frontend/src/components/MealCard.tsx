@@ -1,6 +1,7 @@
 import favorite from "@/assets/icons/favorite.svg"
 import active_favorite from "@/assets/icons/active_favorite.svg"
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function FigmaStar() {
   return (
@@ -20,6 +21,7 @@ function FigmaStar() {
 }
 
 type Meal = {
+  id?: string | number;
   title: string;
   description: string;
   image_url: string;
@@ -34,7 +36,9 @@ type Meal = {
 };
 
 export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' | 'user' }) {
+  const navigate = useNavigate();
   const {
+    id,
     title,
     description,
     image_url,
@@ -49,42 +53,54 @@ export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' |
   } = meal;
   const [isFav, setIsFav] = useState(isFavorite);
 
+  const handleCardClick = () => {
+    if (type === 'user' && id !== undefined) {
+      navigate(`/user/meal/${id}`);
+    }
+  };
+
   return (
-    <div className="relative w-full h-77 bg-white border border-[rgba(174,174,178,0.5)] rounded-xl">
-      <div
-        className="absolute left-0 top-0 w-full h-36 rounded-t-xl overflow-hidden"
-      >
-          <img
-            src={image_url}
-            alt={title}
-            className="w-full h-full object-cover"
-          />
+    <div
+      onClick={handleCardClick}
+      className={`relative flex flex-col w-full h-full bg-white border border-[rgba(174,174,178,0.5)] rounded-xl overflow-hidden shadow-xs hover:border-black/30 transition-all ${
+        type === 'user' ? 'cursor-pointer group' : ''
+      }`}
+    >
+      {/* Image Banner */}
+      <div className="relative w-full h-36 shrink-0 overflow-hidden bg-slate-100">
+        <img
+          src={image_url}
+          alt={title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+        />
+
+        {/* Credits Badge */}
+        <div className="absolute right-3.5 top-3.5 w-11.25 h-7.5 rounded-full bg-white flex items-center justify-center gap-0.75 shadow-xs">
+          <FigmaStar />
+          <span className="text-[14px] font-semibold leading-4.25 text-black">
+            {credits}
+          </span>
+        </div>
       </div>
 
-      <div className="absolute right-3.5 top-3.5 w-11.25 h-7.5 rounded-full bg-white flex items-center justify-center gap-0.75">
-        <FigmaStar />
-
-        <span className="text-[14px] font-semibold leading-4.25">
-          {credits}
-        </span>
-      </div>
-
-      <div className="absolute px-4.75 left-0 top-38 w-full flex flex-col">
+      {/* Card Body */}
+      <div className="flex flex-1 flex-col p-4">
         {tags.length > 0 && (
           <span className="text-xs font-bold leading-3 text-[#306FE6] mb-1">
             {tags[0]}
           </span>
         )}
 
-        <h2 className="text-lg font-bold leading-4 mb-2">
+        <h2 className="text-lg font-bold leading-5 mb-1.5 text-foreground line-clamp-1 group-hover:text-[#306FE6] transition-colors">
           {title}
         </h2>
 
-        <p className="mb-4 line-clamp-2 text-xs font-medium leading-3 opacity-50">
+        <p className="mb-3 text-xs font-medium leading-relaxed opacity-50 line-clamp-2">
           {description}
         </p>
 
-        <div className="flex gap-1.5 mb-2">
+        {/* Macro Badges */}
+        <div className="mt-auto flex flex-wrap gap-1.5 mb-3">
           <span className="flex h-5.75 w-fit px-2 items-center justify-center rounded-[7px] border border-[rgba(174,174,178,0.5)] bg-white text-xs font-bold leading-2.5 opacity-70">
             {protein_g}g Protein
           </span>
@@ -96,14 +112,22 @@ export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' |
           </span>
         </div>
 
-        <span className="border-t border-black opacity-20 mb-2" />
+        <span className="border-t border-black opacity-20 mb-2.5" />
 
-        <div className=" flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <span className="text-xs font-medium leading-3 opacity-50">
             {calories}kcal
           </span>
           {type === 'user' ? (
-            <img src={isFav ? active_favorite : favorite} alt="Favorite" className="size-6 cursor-pointer" onClick={() => setIsFav(!isFav)} />
+            <img
+              src={isFav ? active_favorite : favorite}
+              alt="Favorite"
+              className="size-6 cursor-pointer hover:scale-110 transition-transform"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsFav(!isFav);
+              }}
+            />
           ) : (
             <span className="text-sm font-semibold">
               {stocks} Qty

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useSubscription } from '@clerk/react/experimental'
 import { SUBSCRIPTION_PLANS } from '@/constants/subscriptions'
 import ChatBot from '@/components/ChatBot'
+import { UserNotificationBell } from '@/components/UserNotificationBell'
 
 export default function UserLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -36,10 +37,10 @@ export default function UserLayout() {
 
     const NavLinks = [
         { name: 'Home', href: ROUTES.USER_DASHBOARD, icon: Home },
-        { name: 'Meal', href: ROUTES.USER_MEAL, icon: Pizza },
         { name: 'Plan', href: ROUTES.USER_PLAN, icon: NotebookPen },
-        { name: 'Subscription', href: ROUTES.USER_SUBSCRIPTION, icon: CircleDollarSign },
+        { name: 'Meal', href: ROUTES.USER_MEAL, icon: Pizza },
         { name: 'Favorite', href: ROUTES.USER_FAVORITE, icon: Heart },
+        { name: 'Subscription', href: ROUTES.USER_SUBSCRIPTION, icon: CircleDollarSign },
     ]
 
     if (isLoading) {
@@ -89,6 +90,7 @@ export default function UserLayout() {
                     {isMenuOpen ? <X className="size-4.5" /> : <Menu className="size-5" />}
                 </button>
                 <div className="hidden md:flex items-center justify-center gap-3">
+                    <UserNotificationBell />
                     <UserButton />
                 </div>
                 {isMenuOpen && (
@@ -102,8 +104,12 @@ export default function UserLayout() {
                                     {link.name}
                                 </Link>
                             ))}
-                            <div className="px-3 py-2">
-                                <UserButton />
+                            <div className="px-3 py-2 flex items-center justify-between border-t border-slate-100 mt-2 pt-3">
+                                <span className="text-xs font-semibold text-slate-600">Account & Alerts</span>
+                                <div className="flex items-center gap-2">
+                                    <UserNotificationBell />
+                                    <UserButton />
+                                </div>
                             </div>
                         </div>
                     </nav>

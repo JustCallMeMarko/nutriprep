@@ -1,0 +1,162 @@
+import veggieEggWhiteOmeletteImg from "@/assets/MealCatalog/IndividualMeals/VeggieEggWhiteOmelette.jpg"
+import chiaGreekYogurtParfaitImg from "@/assets/MealCatalog/IndividualMeals/ChiaGreekYogurtParfait.jpg"
+import turkeyCheeseFrittataImg from "@/assets/MealCatalog/IndividualMeals/TurkeyCheeseFrittata.jpg"
+import steakWholeEggPowerSkilletImg from "@/assets/MealCatalog/IndividualMeals/SteakWholeEggPowerSkillet.jpg"
+import grilledChickenQuinoaBowlImg from "@/assets/MealCatalog/IndividualMeals/GrilledChickenQuinoaBowl.jpg"
+import beefGreensStirfryImg from "@/assets/MealCatalog/IndividualMeals/BeefGreensStirfry.jpg"
+import avocadoSalmonKetoBowlImg from "@/assets/MealCatalog/IndividualMeals/AvocadoSalmonKetoBowl.jpg"
+import salmonTeriyakiBroccoliImg from "@/assets/MealCatalog/IndividualMeals/SalmonTeriyakiBroccoli.jpg"
+import diabeticFriendlyBeefTapaImg from "@/assets/MealCatalog/IndividualMeals/DiabeticfriendlyBeefTapa.jpg"
+
+export interface CatalogMeal {
+  id: string | number
+  title: string
+  description: string
+  image_url: string
+  calories: number
+  protein_g: number
+  carbs_g: number
+  carbs_fiber_g?: number
+  fat_g: number
+  tags?: string[]
+  credits: number
+  meal_time?: "breakfast" | "lunch_dinner"
+  stocks?: number
+  isFavorite?: boolean
+}
+
+export const dummyMeals: CatalogMeal[] = [
+  {
+    id: 1,
+    title: "Veggie Egg White Omelette",
+    description: "Egg whites, spinach, tomato and mushroom, served with wholegrain toast.",
+    image_url: veggieEggWhiteOmeletteImg,
+    calories: 310,
+    protein_g: 26,
+    carbs_g: 16,
+    carbs_fiber_g: 4,
+    fat_g: 9,
+    tags: ["Low calorie"],
+    credits: 4,
+    meal_time: "breakfast",
+  },
+  {
+    id: 2,
+    title: "Chia & Greek Yogurt Parfait",
+    description: "Chia seeds blended with Greek yogurt, berries, and honey, topped with crushed walnuts.",
+    image_url: chiaGreekYogurtParfaitImg,
+    calories: 290,
+    protein_g: 22,
+    carbs_g: 26,
+    carbs_fiber_g: 6,
+    fat_g: 10,
+    tags: ["Diabetic"],
+    credits: 5,
+    meal_time: "breakfast",
+  },
+  {
+    id: 3,
+    title: "Turkey & Cheese Frittata",
+    description: "Baked egg frittata with lean turkey, bell pepper, and light cheese.",
+    image_url: turkeyCheeseFrittataImg,
+    calories: 290,
+    protein_g: 32,
+    carbs_g: 10,
+    carbs_fiber_g: 2,
+    fat_g: 13,
+    tags: ["Low-Carb", "High-Protein"],
+    credits: 6,
+    meal_time: "breakfast",
+  },
+  {
+    id: 4,
+    title: "Steak & Whole Egg Power Skillet",
+    description: "Flank steak with 3 sunny-side-up eggs and sautéed bell peppers in olive oil.",
+    image_url: steakWholeEggPowerSkilletImg,
+    calories: 520,
+    protein_g: 48,
+    carbs_g: 10,
+    carbs_fiber_g: 3,
+    fat_g: 30,
+    tags: ["Performance"],
+    credits: 7,
+    meal_time: "breakfast",
+  },
+  {
+    id: 5,
+    title: "Grilled Chicken & Quinoa Bowl",
+    description: "Grilled chicken breast, quinoa, roasted vegetables, and a lemon-herb dressing.",
+    image_url: grilledChickenQuinoaBowlImg,
+    calories: 430,
+    protein_g: 38,
+    carbs_g: 35,
+    carbs_fiber_g: 5,
+    fat_g: 13,
+    tags: ["Lean & Active"],
+    credits: 7,
+    meal_time: "lunch_dinner",
+  },
+  {
+    id: 6,
+    title: "Beef & Greens Stir-fry",
+    description: "Sirloin strips, broccoli, snap peas and garlic sauce over brown rice.",
+    image_url: beefGreensStirfryImg,
+    calories: 470,
+    protein_g: 40,
+    carbs_g: 30,
+    carbs_fiber_g: 6,
+    fat_g: 16,
+    tags: ["Performance"],
+    credits: 8,
+    meal_time: "lunch_dinner",
+  },
+  {
+    id: 7,
+    title: "Avocado & Salmon Keto Bowl",
+    description: "Seared salmon, avocado, cauliflower rice and olive oil dressing.",
+    image_url: avocadoSalmonKetoBowlImg,
+    calories: 510,
+    protein_g: 35,
+    carbs_g: 9,
+    carbs_fiber_g: 4,
+    fat_g: 38,
+    tags: ["Keto"],
+    credits: 9,
+    meal_time: "lunch_dinner",
+  },
+  {
+    id: 8,
+    title: "Salmon Teriyaki & Broccoli",
+    description: "Pan-seared salmon glazed in light teriyaki, steamed broccoli and jasmine rice.",
+    image_url: salmonTeriyakiBroccoliImg,
+    calories: 480,
+    protein_g: 36,
+    carbs_g: 40,
+    carbs_fiber_g: 4,
+    fat_g: 16,
+    tags: ["Performance"],
+    credits: 8,
+    meal_time: "lunch_dinner",
+  },
+  {
+    id: 9,
+    title: "Diabetic-friendly Beef Tapa",
+    description: "Lean beef tapa, cauliflower rice and sautéed veggies, portioned for glycemic control.",
+    image_url: diabeticFriendlyBeefTapaImg,
+    calories: 400,
+    protein_g: 34,
+    carbs_g: 26,
+    carbs_fiber_g: 5,
+    fat_g: 15,
+    tags: ["Diabetic"],
+    credits: 7,
+    meal_time: "lunch_dinner",
+  },
+]
+
+export const MEAL_TAGS = ["Low-Carb", "High-Protein", "Keto", "Vegan"]
+
+export const MEAL_TIME_SECTIONS = [
+  { key: "breakfast" as const, label: "Breakfast" },
+  { key: "lunch_dinner" as const, label: "Lunch & Dinner" },
+]

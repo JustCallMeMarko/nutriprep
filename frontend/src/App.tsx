@@ -7,6 +7,7 @@ import { ROLES } from './constants/roles'
 import UserLayout from './layouts/UserLayout'
 import UserDashboard from './pages/user/UserDashboard'
 import UserMeal from './pages/user/UserMeal'
+import UserMealDetail from './pages/user/UserMealDetail'
 import UserPlan from './pages/user/UserPlan'
 import UserSubscription from './pages/user/UserSubscription'
 import UserFavorite from './pages/user/UserFavorite'
@@ -15,6 +16,10 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUser from './pages/admin/AdminUser'
 import AdminOrder from './pages/admin/AdminOrder'
 import AdminMeal from './pages/admin/AdminMeal'
+import AdminNotification from './pages/admin/AdminNotification'
+import RiderLayout from './layouts/RiderLayout'
+import RiderDashboard from './pages/rider/RiderDashboard'
+import RiderNotification from './pages/rider/RiderNotification'
 
 function App() {
   return (
@@ -27,6 +32,7 @@ function App() {
         <Route path={ROLES.USER} element={<UserLayout />}>
           <Route index element={<UserDashboard />} />
           <Route path={ROUTES.USER_MEAL.replace(`/${ROLES.USER}/`, '')} element={<UserMeal />} />
+          <Route path="meal/:id" element={<UserMealDetail />} />
           <Route path={ROUTES.USER_PLAN.replace(`/${ROLES.USER}/`, '')} element={<UserPlan />} />
           <Route path={ROUTES.USER_SUBSCRIPTION.replace(`/${ROLES.USER}/`, '')} element={<UserSubscription />} />
           <Route path={ROUTES.USER_FAVORITE.replace(`/${ROLES.USER}/`, '')} element={<UserFavorite />} />
@@ -37,6 +43,12 @@ function App() {
           <Route path={ROUTES.ADMIN_MEAL.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminMeal />} />
           <Route path={ROUTES.ADMIN_ORDER.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminOrder />} />
           <Route path={ROUTES.ADMIN_USER.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminUser />} />
+          <Route path={ROUTES.ADMIN_NOTIFICATION.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminNotification />} />
+        </Route>
+
+        <Route path={ROLES.RIDER} element={<RiderLayout />}>
+          <Route index element={<RiderDashboard />} />
+          <Route path={ROUTES.RIDER_NOTIFICATION.replace(`/${ROLES.RIDER}/`, '')} element={<RiderNotification />} />
         </Route>
       </Routes> 
     </ClerkProviderWithRoutes>
