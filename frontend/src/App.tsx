@@ -12,9 +12,9 @@ import UserSubscription from './pages/user/UserSubscription'
 import UserFavorite from './pages/user/UserFavorite'
 import AdminLayout from './layouts/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminUsers from './pages/admin/AdminUsers'
-import AdminOrders from './pages/admin/AdminOrders'
-import AdminMeals from './pages/admin/AdminMeals'
+import AdminUser from './pages/admin/AdminUser'
+import AdminOrder from './pages/admin/AdminOrder'
+import AdminMeal from './pages/admin/AdminMeal'
 
 function App() {
   return (
@@ -34,9 +34,9 @@ function App() {
 
         <Route path={ROLES.ADMIN} element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          <Route path={ROUTES.ADMIN_MEALS.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminMeals />} />
-          <Route path={ROUTES.ADMIN_ORDERS.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminOrders />} />
-          <Route path={ROUTES.ADMIN_USERS.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminUsers />} />
+          <Route path={ROUTES.ADMIN_MEAL.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminMeal />} />
+          <Route path={ROUTES.ADMIN_ORDER.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminOrder />} />
+          <Route path={ROUTES.ADMIN_USER.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminUser />} />
         </Route>
       </Routes> 
     </ClerkProviderWithRoutes>
