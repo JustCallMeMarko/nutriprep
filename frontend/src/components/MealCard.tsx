@@ -28,11 +28,12 @@ type Meal = {
   carbs_g: number;
   fat_g: number;
   tags?: string[];
+  stocks: number;
   credits: number;
   isFavorite: boolean;
 };
 
-export function MealCard({ meal }: { meal: Meal }) {
+export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' | 'user' }) {
   const {
     title,
     description,
@@ -42,6 +43,7 @@ export function MealCard({ meal }: { meal: Meal }) {
     carbs_g,
     fat_g,
     tags = [],
+    stocks,
     credits,
     isFavorite,
   } = meal;
@@ -100,7 +102,13 @@ export function MealCard({ meal }: { meal: Meal }) {
           <span className="text-xs font-medium leading-3 opacity-50">
             {calories}kcal
           </span>
-          <img src={isFav ? active_favorite : favorite} alt="Favorite" className="size-6 cursor-pointer" onClick={() => setIsFav(!isFav)} />
+          {type === 'user' ? (
+            <img src={isFav ? active_favorite : favorite} alt="Favorite" className="size-6 cursor-pointer" onClick={() => setIsFav(!isFav)} />
+          ) : (
+            <span className="text-sm font-semibold">
+              {stocks} Qty
+            </span>
+          )}
         </div>
       </div>
     </div>
