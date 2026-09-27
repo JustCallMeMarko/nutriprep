@@ -28,9 +28,9 @@ type Meal = {
   carbs_g: number;
   fat_g: number;
   tags?: string[];
-  stocks: number;
+  stocks?: number;
   credits: number;
-  isFavorite: boolean;
+  isFavorite?: boolean;
 };
 
 export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' | 'user' }) {
@@ -43,7 +43,7 @@ export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' |
     carbs_g,
     fat_g,
     tags = [],
-    stocks,
+    stocks = 0,
     credits,
     isFavorite,
   } = meal;
