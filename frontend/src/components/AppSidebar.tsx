@@ -10,7 +10,7 @@ import {
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useRef, type KeyboardEvent, type MouseEvent } from "react"
-import { LayoutDashboard, ShoppingCart, User, Utensils } from "lucide-react"
+import { Bell, LayoutDashboard, ShoppingCart, User, Utensils } from "lucide-react"
 import { UserButton, useUser } from "@clerk/react"
 import { Link } from "react-router-dom"
 import logo from "@/assets/icons/logo.svg"
@@ -75,6 +75,14 @@ export function AppSidebar() {
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             ))}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    tooltip="Notifications"
+                                >
+                                    <Bell />
+                                    <span className="font-medium">Notifications</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
