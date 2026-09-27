@@ -18,9 +18,9 @@ import { ROUTES } from "@/constants/routes"
 
 const navItems = [
     { title: "Dashboard", url: ROUTES.ADMIN_DASHBOARD, icon: LayoutDashboard },
-    { title: "Meal", url: ROUTES.ADMIN_MEALS, icon: Utensils },
-    { title: "Order", url: ROUTES.ADMIN_ORDERS, icon: ShoppingCart },
-    { title: "User", url: ROUTES.ADMIN_USERS, icon: User },
+    { title: "Meal", url: ROUTES.ADMIN_MEAL, icon: Utensils },
+    { title: "Order", url: ROUTES.ADMIN_ORDER, icon: ShoppingCart },
+    { title: "User", url: ROUTES.ADMIN_USER, icon: User },
 ]
 
 export function AppSidebar() {
@@ -71,7 +71,7 @@ export function AppSidebar() {
                                         tooltip={item.title}
                                     >
                                         <item.icon />
-                                        <span>{item.title}</span>
+                                        <span className="font-medium">{item.title}</span>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             ))}
