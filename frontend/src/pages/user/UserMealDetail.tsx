@@ -5,7 +5,6 @@ import { ROUTES } from "@/constants/routes"
 import {
   ArrowLeft,
   Check,
-  Flame,
   Heart,
   Plus,
   Minus,
