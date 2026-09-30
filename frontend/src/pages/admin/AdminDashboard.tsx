@@ -7,6 +7,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import { BroadcastDialog } from "@/components/BroadcastDialog";
+import { useQuery } from "@tanstack/react-query";
+import { useApi } from "@/lib/api";
 
 function TruckIcon({ size = 20, className = "" }) {
   return (
@@ -42,6 +44,15 @@ const acquisitionData = [
 export default function AdminDashboard() {
   const maxValue = 5000;
   const navigate = useNavigate();
+  const {makeRequest} = useApi();
+
+  const { data } = useQuery({
+    queryKey: ["total-users"],
+    queryFn: async () => { 
+      const response = await makeRequest("/admin/total-users");
+      return response.total_users;
+    },
+  })
 
   return (
     <section
@@ -66,7 +77,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex flex-col gap-1">
               <p className="text-[32px] font-bold tracking-[-0.01em] text-[#1B1B1B]">
-                12,482
+                {data ?? 'Loading...'}
               </p>
               <p className="text-xs font-medium text-[#306FE6]">
                 ↑ +8.4% vs last week
