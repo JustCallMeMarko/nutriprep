@@ -24,6 +24,8 @@ RUSTFS_BUCKET = os.getenv("RUSTFS_BUCKET", "meals")
 RUSTFS_ACCESS_KEY = os.getenv("RUSTFS_ACCESS_KEY", "admin")
 RUSTFS_SECRET_KEY = os.getenv("RUSTFS_SECRET_KEY", "adminpassword")
 
+load_dotenv()
+
 # Initialize S3 Client targeting RustFS
 s3_client = boto3.client(
     "s3",
