@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Menu, X, Package } from 'lucide-react'
+import { Menu, X, Package, Navigation, BarChart3 } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
 import { Navigate, useNavigate, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
@@ -34,6 +34,8 @@ export default function RiderLayout() {
 
     const NavLinks = [
         { name: 'Dispatches', href: ROUTES.RIDER_DASHBOARD, icon: Package },
+        { name: 'Active Route', href: ROUTES.RIDER_ACTIVE_DELIVERY, icon: Navigation },
+        { name: 'Analytics', href: ROUTES.RIDER_ANALYTICS, icon: BarChart3 },
     ]
 
     return (

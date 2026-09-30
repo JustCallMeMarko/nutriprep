@@ -19,6 +19,8 @@ import AdminMeal from './pages/admin/AdminMeal'
 import AdminNotification from './pages/admin/AdminNotification'
 import RiderLayout from './layouts/RiderLayout'
 import RiderDashboard from './pages/rider/RiderDashboard'
+import RiderActiveDelivery from './pages/rider/RiderActiveDelivery'
+import RiderAnalytics from './pages/rider/RiderAnalytics'
 import RiderNotification from './pages/rider/RiderNotification'
 
 function App() {
@@ -48,6 +50,8 @@ function App() {
 
         <Route path={ROLES.RIDER} element={<RiderLayout />}>
           <Route index element={<RiderDashboard />} />
+          <Route path="active" element={<RiderActiveDelivery />} />
+          <Route path="analytics" element={<RiderAnalytics />} />
           <Route path={ROUTES.RIDER_NOTIFICATION.replace(`/${ROLES.RIDER}/`, '')} element={<RiderNotification />} />
         </Route>
       </Routes> 
