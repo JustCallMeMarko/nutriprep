@@ -11,9 +11,10 @@ dependencies = [
     "boto3>=1.43.102",
     "clerk-backend-api>=7.0.0",
     "fastapi>=0.141.1",
+    "openai-agents>=0.22.3",
     "python-dotenv>=1.2.3",
     "python-multipart>=0.0.32",
-    "sqlalchemy>=2.0.52",
+    "sqlalchemy>=2.1.2",
     "svix>=2.3.0",
     "uvicorn>=0.52.4",
 ]
