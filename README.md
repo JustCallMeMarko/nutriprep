@@ -43,29 +43,6 @@ uv run dev
 
 > Note: Run `ngrok http 8000` to expose the backend publicly and add your url <your_url>/webhooks/clerk in clerk's webhook dashboard.
 
-### Docker Compose
-
-Docker Compose can run MySQL, the backend, and the frontend together. Copy the root environment template first and add your Clerk credentials:
-
-```sh
-cp .env.example .env
-docker compose up --build
-```
-
-The services are available at:
-
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8000`
-- MySQL: `localhost:3306`
-
-To include the ngrok tunnel, set `NGROK_AUTHTOKEN` in `.env` and run:
-
-```sh
-docker compose --profile tunnel up --build
-```
-
-The MySQL data is persisted in the `nutriprep_mysql_data` volume. Stop the stack with `Ctrl+C`, or remove it with `docker compose down`. To also delete the database volume, use `docker compose down -v`.
-
 ## Contributing Guidelines
 
 Follow these steps to contribute to the project:

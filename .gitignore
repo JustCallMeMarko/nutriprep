@@ -8,5 +8,4 @@
 *.njsproj
 *.sln
 *.sw?
-backend/nutriprep.db
 .env
