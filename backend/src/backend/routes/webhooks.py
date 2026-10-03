@@ -12,7 +12,7 @@ from ..database.models import get_db
 logger = logging.getLogger(__name__)
 load_dotenv()
 
-router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+router = APIRouter()
 
 ALLOWED_SIGNUP_ROLES = {"user", "rider"}
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
