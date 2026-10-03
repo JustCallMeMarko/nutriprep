@@ -58,11 +58,13 @@ class CustomerProfile(Base):
         ForeignKey("users.id", ondelete="CASCADE"), 
         primary_key=True
     )
+    phone_number: Mapped[str] = mapped_column(String(13), nullable=False)
     credits: Mapped[int] = mapped_column(nullable=False, default=0)
     height: Mapped[float] = mapped_column(nullable=False)
     weight: Mapped[float] = mapped_column(nullable=False)
     target_weight: Mapped[float] = mapped_column(nullable=False)
     goal: Mapped[Goals] = mapped_column(Enum(Goals, native_enum=False), nullable=False)
+    delivery_address: Mapped[str] = mapped_column(String(255), nullable=False)
     delivery_lat: Mapped[float | None] = mapped_column(default=None)
     delivery_long: Mapped[float | None] = mapped_column(default=None)
 
@@ -85,12 +87,12 @@ class Meal(Base):
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     image_url: Mapped[str] = mapped_column(String(255), nullable=False)
-    calories: Mapped[float] = mapped_column(nullable=False)
+    calories: Mapped[int] = mapped_column(nullable=False)
     protein: Mapped[float] = mapped_column(nullable=False)
     carb: Mapped[float] = mapped_column(nullable=False)
     fat: Mapped[float] = mapped_column(nullable=False)
     credits: Mapped[int] = mapped_column(nullable=False)
-    stocks: Mapped[int | None] = mapped_column(nullable=True, default=None)
+    stocks: Mapped[int] = mapped_column(nullable=True, default=0)
 
     creator: Mapped["User"] = relationship(back_populates="meals")
     favorited_by: Mapped[list["FavoriteMeal"]] = relationship(back_populates="meal", cascade="all, delete-orphan")

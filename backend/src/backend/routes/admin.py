@@ -12,3 +12,7 @@ clerk = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
 def get_total_users():
     response = clerk.users.count()
     return {"total_users": response.total_count}
+
+@router.post("/meal")
+def create_meal(meal_data: dict):
+    pass
