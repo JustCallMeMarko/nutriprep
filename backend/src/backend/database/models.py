@@ -18,7 +18,7 @@ encoded_user = quote_plus(MYSQL_USER)
 encoded_password = quote_plus(MYSQL_PASSWORD)
 
 DB_URL = f"mysql+pymysql://{encoded_user}:{encoded_password}@localhost:3306/{MYSQL_DATABASE}"
-engine = create_engine(DB_URL, echo=True)
+engine = create_engine(DB_URL, echo=True, pool_pre_ping=True)
 
 # Enums
 class Goals(str, enum.Enum):
@@ -43,8 +43,8 @@ class User(Base):
     role: Mapped[Roles] = mapped_column(Enum(Roles, native_enum=False), nullable=False, default=Roles.USER, index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
-    customer_profile: Mapped["CustomerProfile | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
-    rider_profile: Mapped["RiderProfile | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
+    customer_profile: Mapped["CustomerProfile | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
+    rider_profile: Mapped["RiderProfile | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
 
     meals: Mapped[list["Meal"]] = relationship(back_populates="creator", cascade="all, delete-orphan")
     favorites: Mapped[list["FavoriteMeal"]] = relationship(back_populates="user", cascade="all, delete-orphan")
