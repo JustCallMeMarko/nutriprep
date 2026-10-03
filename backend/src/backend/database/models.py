@@ -58,11 +58,13 @@ class CustomerProfile(Base):
         ForeignKey("users.id", ondelete="CASCADE"), 
         primary_key=True
     )
+    phone_number: Mapped[str] = mapped_column(String(13), nullable=False)
     credits: Mapped[int] = mapped_column(nullable=False, default=0)
     height: Mapped[float] = mapped_column(nullable=False)
     weight: Mapped[float] = mapped_column(nullable=False)
     target_weight: Mapped[float] = mapped_column(nullable=False)
     goal: Mapped[Goals] = mapped_column(Enum(Goals, native_enum=False), nullable=False)
+    delivery_address: Mapped[str] = mapped_column(String(255), nullable=False)
     delivery_lat: Mapped[float | None] = mapped_column(default=None)
     delivery_long: Mapped[float | None] = mapped_column(default=None)
 
