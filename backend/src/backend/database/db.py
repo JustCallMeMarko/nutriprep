@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from . import models
 
-def create_user_with_profile(db: Session, user_id: str, role: str) -> models.User:
+def create_user(db: Session, user_id: str, role: str) -> models.User:
+    """Creates only the base user record without provisioning profiles."""
     existing = db.query(models.User).filter(models.User.id == user_id).first()
     if existing:
         return existing
@@ -11,22 +12,6 @@ def create_user_with_profile(db: Session, user_id: str, role: str) -> models.Use
 
     db_user = models.User(id=user_id, role=assigned_role)
     db.add(db_user)
-
-    if assigned_role == models.Roles.USER:
-        db.add(models.CustomerProfile(
-            user_id=user_id,
-            credits=0,
-            height=0.0,
-            weight=0.0,
-            target_weight=0.0,
-            goal=models.Goals.MAINTAIN_WEIGHT
-        ))
-    elif assigned_role == models.Roles.RIDER:
-        db.add(models.RiderProfile(
-            user_id=user_id,
-            is_available=False
-        ))
-
     db.commit()
     db.refresh(db_user)
     return db_user
@@ -56,19 +41,19 @@ def create_meal(
         user_id: str, 
         title: str, 
         description: str, 
-        img_url: str, 
-        calories: float,
+        image_url: str, 
+        calories: int,
         protein: float,
         carb: float,
         fat: float,
         credits: int,
-        stocks: int
+        stocks: int = 0
     ) -> models.Meal:
     new_meal = models.Meal(
         user_id=user_id,
         title=title,
         description=description,
-        img_url=img_url,
+        image_url=image_url,
         calories=calories,
         protein=protein,
         carb=carb,

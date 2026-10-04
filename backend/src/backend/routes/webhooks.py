@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from svix.webhooks import Webhook
 from clerk_backend_api import Clerk
 
-from ..database.db import create_user_with_profile, sync_role_from_metadata
+from ..database.db import create_user, sync_role_from_metadata
 from ..database.models import get_db
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
         role = requested_role if requested_role in ALLOWED_SIGNUP_ROLES else "user"
 
         try:
-            create_user_with_profile(db, user_id=user_id, role=role)
+            create_user(db, user_id=user_id, role=role)
         except Exception as err:
             logger.error(f"Error provisioning user {user_id}: {err}")
             db.rollback()
