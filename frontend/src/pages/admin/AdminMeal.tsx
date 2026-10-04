@@ -10,6 +10,7 @@ import Food3 from "@/assets/landing/Food3.png"
 import Salad from "@/assets/landing/salad.png"
 import { MealCard } from '@/components/MealCard'
 import MealDataTable, { type Meal } from '@/components/MealDataTable'
+import { AddMealSheet } from '@/components/AddMealSheet'
 
 const INITIAL_MEALS: Meal[] = [
   {
@@ -111,12 +112,17 @@ const INITIAL_MEALS: Meal[] = [
 ]
 
 export default function AdminMeals() {
+  const [meals, setMeals] = useState<Meal[]>(INITIAL_MEALS)
   const [selected, setSelected] = useState<'all' | 'low' | 'archived'>('all')
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
 
+  const handleAddMeal = (newMeal: Meal) => {
+    setMeals((prev) => [newMeal, ...prev])
+  }
+
   const filteredMeals = useMemo(() => {
-    return INITIAL_MEALS.filter((meal) => {
+    return meals.filter((meal) => {
       const q = searchQuery.toLowerCase().trim()
       const matchesSearch =
         !q ||
@@ -134,7 +140,7 @@ export default function AdminMeals() {
       }
       return true
     })
-  }, [searchQuery, selected])
+  }, [meals, searchQuery, selected])
 
   return (
     <section className="flex flex-col">
@@ -142,10 +148,15 @@ export default function AdminMeals() {
         <h1 className="text-3xl font-bold tracking-[-0.02em] text-black">
           Meal Management
         </h1>
-        <Button className="cursor-pointer flex items-center gap-2 px-4 py-4.5">
-          <Plus size={16} />
-          Add Meal
-        </Button>
+        <AddMealSheet
+          onAddMeal={handleAddMeal}
+          trigger={
+            <Button className="cursor-pointer flex items-center gap-2 px-4 py-4.5 font-bold text-sm shadow-xs">
+              <Plus size={16} />
+              Add Meal
+            </Button>
+          }
+        />
       </div>
 
       <Field className="w-full sm:w-1/2 md:w-1/3 mb-2">
