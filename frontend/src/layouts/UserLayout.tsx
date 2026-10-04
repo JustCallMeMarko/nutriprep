@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Menu, X, Home, Pizza, CircleDollarSign, NotebookPen, Heart } from 'lucide-react'
+import { Menu, X, Home, Pizza, CircleDollarSign, NotebookPen, Heart, Flame } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
 import { Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
@@ -19,7 +19,7 @@ export default function UserLayout() {
     const closeMenu = () => setIsMenuOpen(false)
     const navigate = useNavigate()
     const location = useLocation()
-    const { data, isLoading, error } = useSubscription()
+    const { data } = useSubscription()
 
     if (!isLoaded) {
         return null
@@ -36,7 +36,10 @@ export default function UserLayout() {
     if (role !== 'user') {
         return <Navigate to={`/${role}`} replace />
     }
-    if (!onboarded) {
+
+    const isProfilePage = location.pathname === ROUTES.USER_PROFILE
+
+    if (!onboarded && !isProfilePage) {
         return <Navigate to={ROUTES.USER_PROFILE} replace />
     }
 
@@ -48,23 +51,10 @@ export default function UserLayout() {
         { name: 'Subscription', href: ROUTES.USER_SUBSCRIPTION, icon: CircleDollarSign },
     ]
 
-    if (isLoading) {
-        return <div>Loading Subscription...</div>
-    }
-
-    if (error) {
-        return <div>Error loading Subscription: {error.message}</div>
-    }
-
-    if (!data) {
-        return <div>No Subscription found</div>
-    }
-
-     // 1. Extract plan name from subscriptionItems
     const firstItem = data?.subscriptionItems?.[0]
     const planName = firstItem?.plan?.name || "Free"
 
-    const isAIEnabled = planName === SUBSCRIPTION_PLANS.SILVER || planName === SUBSCRIPTION_PLANS.GOLD
+    const isAIEnabled = !isProfilePage && (planName === SUBSCRIPTION_PLANS.SILVER || planName === SUBSCRIPTION_PLANS.GOLD)
 
 
     return (
@@ -96,7 +86,15 @@ export default function UserLayout() {
                 </button>
                 <div className="hidden md:flex items-center justify-center gap-3">
                     <UserNotificationBell />
-                    <UserButton />
+                    <UserButton>
+                        <UserButton.MenuItems>
+                            <UserButton.Action
+                                label="NutriPrep Info"
+                                labelIcon={<Flame className="size-4" />}
+                                onClick={() => navigate(ROUTES.USER_PROFILE)}
+                            />
+                        </UserButton.MenuItems>
+                    </UserButton>
                 </div>
                 {isMenuOpen && (
 
