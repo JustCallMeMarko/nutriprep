@@ -7,6 +7,7 @@ export const ROUTES = {
     USER_PLAN: '/user/plan',
     USER_SUBSCRIPTION: '/user/subscription',
     USER_FAVORITE: '/user/favorite',
+    USER_PROFILE: '/user/profile',
     ADMIN_DASHBOARD: '/admin',
     ADMIN_MEAL: '/admin/meal',
     ADMIN_ORDER: '/admin/order',

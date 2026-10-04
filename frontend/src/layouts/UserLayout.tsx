@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Menu, X, Home, Pizza, CircleDollarSign, NotebookPen, Heart } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
-import { Navigate, useNavigate, Link, Outlet } from 'react-router-dom'
+import { Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { UserButton, useUser } from '@clerk/react'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -15,8 +15,10 @@ export default function UserLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const { isLoaded, user } = useUser()
     const role = user?.publicMetadata?.role
+    const onboarded = user?.publicMetadata?.onboarded
     const closeMenu = () => setIsMenuOpen(false)
     const navigate = useNavigate()
+    const location = useLocation()
     const { data, isLoading, error } = useSubscription()
 
     if (!isLoaded) {
@@ -33,6 +35,9 @@ export default function UserLayout() {
 
     if (role !== 'user') {
         return <Navigate to={`/${role}`} replace />
+    }
+    if (!onboarded) {
+        return <Navigate to={ROUTES.USER_PROFILE} replace />
     }
 
     const NavLinks = [
@@ -72,7 +77,7 @@ export default function UserLayout() {
 
                 <ButtonGroup className="hidden md:flex">
                     {NavLinks.map((link) => (
-                        <Button key={link.name} variant="outline" onClick={() => navigate(link.href)} className="flex gap-1 items-center whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold cursor-pointer">
+                        <Button key={link.name} variant="outline" onClick={() => navigate(link.href)} className={`flex gap-1 items-center whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold cursor-pointer ${location.pathname === link.href ? 'text-blue-600 hover:bg-transparent hover:text-blue-600' : ''}`}>
 
                             <link.icon className="size-4.5" />
                             {link.name}
@@ -99,7 +104,7 @@ export default function UserLayout() {
                     <nav className="absolute top-full left-0 right-0 border-b-2 border-slate-800 bg-white px-4 py-4 shadow-lg md:hidden">
                         <div className="flex flex-col gap-1">
                             {NavLinks.map((link) => (
-                                <Link key={link.name} to={link.href} onClick={closeMenu} className="flex gap-1 items-center px-3 py-2 font-semibold hover:bg-zinc-100">
+                                <Link key={link.name} to={link.href} onClick={closeMenu} className={`flex gap-1 items-center px-3 py-2 font-semibold hover:bg-zinc-100 ${location.pathname === link.href ? 'text-blue-600 hover:bg-transparent' : ''}`}>
                                     <link.icon className="size-4.5" />
                                     {link.name}
                                 </Link>
