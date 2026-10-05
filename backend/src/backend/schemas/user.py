@@ -3,7 +3,6 @@ from typing import Optional
 from ..database.models import Goals
 
 class ProfileCreate(BaseModel):
-    user_id: str
     phone_number: str
     height: float
     weight: float
