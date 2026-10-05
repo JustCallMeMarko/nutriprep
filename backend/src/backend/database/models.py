@@ -31,6 +31,11 @@ class Roles(str, enum.Enum):
     USER = "user"
     RIDER = "rider"
 
+class MealStatus(str, enum.Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+    USER_OWNED = "user_owned"
+
 # Base class
 class Base(DeclarativeBase):
     pass
@@ -87,6 +92,7 @@ class Meal(Base):
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     image_url: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[MealStatus] = mapped_column(Enum(MealStatus, native_enum=False), nullable=False, default=MealStatus.ACTIVE)
     calories: Mapped[int] = mapped_column(nullable=False)
     protein: Mapped[float] = mapped_column(nullable=False)
     carb: Mapped[float] = mapped_column(nullable=False)
