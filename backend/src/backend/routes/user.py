@@ -1,15 +1,15 @@
 import os
-import json
 import logging
 import uuid
 import boto3
 from botocore.config import Config
-from fastapi import APIRouter, Request, HTTPException, Depends, File, UploadFile
+from fastapi import APIRouter, Request, HTTPException, Depends, File, UploadFile, status
+from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from svix.webhooks import Webhook
-from clerk_backend_api import Clerk
-
+from ..database import models
+from ..schemas import user
 from ..database.models import get_db
+from clerk_backend_api import Clerk
 
 load_dotenv()
 
@@ -23,7 +23,7 @@ AWS_ENDPOINT = os.getenv("AWS_ENDPOINT")
 AWS_BUCKET = os.getenv("AWS_BUCKET")
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
-
+CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
 
 # Initialize S3 Client targeting AWS
 s3_client = boto3.client(
@@ -32,13 +32,15 @@ s3_client = boto3.client(
     aws_access_key_id=AWS_ACCESS_KEY,
     aws_secret_access_key=AWS_SECRET_KEY,
     config=Config(s3={"addressing_style": "path"}),
-    region_name="us-east-1"
+    region_name="us-east-1",
 )
 
+clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
 
 # ------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------
+
 
 @router.post("/upload-image")
 async def upload_image(file: UploadFile = File(...)):
@@ -57,7 +59,7 @@ async def upload_image(file: UploadFile = File(...)):
             file.file,
             AWS_BUCKET,
             unique_filename,
-            ExtraArgs={"ContentType": file.content_type}
+            ExtraArgs={"ContentType": file.content_type},
         )
     except Exception as e:
         logger.error(f"Failed to upload image to S3 Bucket: {e}")
@@ -71,7 +73,7 @@ async def upload_image(file: UploadFile = File(...)):
     return {
         "message": "Image uploaded successfully",
         "filename": unique_filename,
-        "url": image_url
+        "url": image_url,
     }
 
 
@@ -80,18 +82,74 @@ def get_images():
     """Lists all stored meal images with their public URLs."""
     try:
         response = s3_client.list_objects_v2(Bucket=AWS_BUCKET)
-        
+
         images = []
         if "Contents" in response:
             for obj in response["Contents"]:
-                images.append({
-                    "filename": obj["Key"],
-                    "url": f"{AWS_ENDPOINT}/{AWS_BUCKET}/{obj['Key']}",
-                    "size": obj["Size"],
-                    "last_modified": obj["LastModified"]
-                })
+                images.append(
+                    {
+                        "filename": obj["Key"],
+                        "url": f"{AWS_ENDPOINT}/{AWS_BUCKET}/{obj['Key']}",
+                        "size": obj["Size"],
+                        "last_modified": obj["LastModified"],
+                    }
+                )
 
         return {"images": images}
     except Exception as e:
         logger.error(f"Failed to fetch images from S3 Bucket: {e}")
         raise HTTPException(status_code=500, detail="Could not retrieve images")
+
+@router.post("/profile", status_code=status.HTTP_201_CREATED)
+async def create_profile(
+    payload: user.ProfileCreate,
+    db: Session = Depends(get_db),
+):
+    """Creates a customer profile in the database and sets onboarded metadata in Clerk."""
+
+    db_user = db.query(models.User).filter(models.User.id == payload.user_id).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User does not exist"
+        )
+
+    existing_profile = (
+        db.query(models.CustomerProfile)
+        .filter(models.CustomerProfile.user_id == payload.user_id)
+        .first()
+    )
+    if existing_profile:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Profile already exists for this user",
+        )
+
+    profile = models.CustomerProfile(
+        user_id=payload.user_id,
+        phone_number=payload.phone_number,
+        height=payload.height,
+        weight=payload.weight,
+        target_weight=payload.target_weight,
+        goal=payload.goal,
+        delivery_address=payload.delivery_address,
+        delivery_lat=payload.delivery_lat,
+        delivery_long=payload.delivery_long,
+        credits=0,
+    )
+
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+
+    try:
+        await clerk.users.update_metadata_async(
+            user_id=payload.user_id,
+            public_metadata={
+                "onboarded": True,
+            },
+        )
+    except Exception as clerk_err:
+        logger.error(f"Failed to update Clerk metadata for user {payload.user_id}: {clerk_err}")
+
+    return profile

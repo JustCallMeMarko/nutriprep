@@ -1,0 +1,14 @@
+from pydantic import BaseModel
+from typing import Optional
+from ..database.models import Goals
+
+class ProfileCreate(BaseModel):
+    user_id: str
+    phone_number: str
+    height: float
+    weight: float
+    target_weight: float
+    goal: Goals  # Automatically validates against your Goals enum ("lose_weight", "maintain_weight", "gain_weight")
+    delivery_address: str
+    delivery_lat: Optional[float] = None
+    delivery_long: Optional[float] = None

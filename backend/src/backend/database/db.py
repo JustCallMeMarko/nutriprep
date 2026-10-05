@@ -16,6 +16,39 @@ def create_user(db: Session, user_id: str, role: str) -> models.User:
     db.refresh(db_user)
     return db_user
 
+def create_customer_profile(
+        db: Session,
+        user_id: str,
+        phone_number: str,
+        height: float,
+        weight: float,
+        target_weight: float,
+        goal: Goals,
+        delivery_address: str,
+        delivery_lat: float | None = None,
+        delivery_long: float | None = None
+        ) -> models.CustomerProfile:
+    """Creates a customer profile for a user."""
+    existing = db.query(models.CustomerProfile).filter(models.CustomerProfile.user_id == user_id).first()
+    if existing:
+        return existing
+    
+    profile = models.CustomerProfile(
+        user_id=user_id,
+        phone_number=phone_number,
+        height=height,
+        weight=weight,
+        target_weight=target_weight,
+        goal=goal,
+        delivery_address=delivery_address,
+        delivery_lat=delivery_lat,
+        delivery_long=delivery_long
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
 def sync_role_from_metadata(db: Session, user_id: str, new_role_str: str) -> models.User | None:
     """Syncs manual role promotions (e.g. promoting to admin in Clerk dashboard)."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
