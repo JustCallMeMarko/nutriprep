@@ -54,6 +54,7 @@ class User(Base):
     meals: Mapped[list["Meal"]] = relationship(back_populates="creator", cascade="all, delete-orphan")
     favorites: Mapped[list["FavoriteMeal"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     broadcasts: Mapped[list["Broadcast"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    meal_logs: Mapped[list["MealLog"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 class CustomerProfile(Base):
     __tablename__ = "customer_profiles"
@@ -103,6 +104,18 @@ class Meal(Base):
     creator: Mapped["User"] = relationship(back_populates="meals")
     favorited_by: Mapped[list["FavoriteMeal"]] = relationship(back_populates="meal", cascade="all, delete-orphan")
     tags: Mapped[list["Tag"]] = relationship(secondary="meal_tags", back_populates="meals")
+    meal_logs: Mapped[list["MealLog"]] = relationship(back_populates="meal", cascade="all, delete-orphan")
+
+class MealLog(Base):
+    __tablename__ = "meal_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    meal_id: Mapped[int] = mapped_column(ForeignKey("meals.id", ondelete="CASCADE"), nullable=False)
+    consumed_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="meal_logs")
+    meal: Mapped["Meal"] = relationship(back_populates="meal_logs")
 
 class FavoriteMeal(Base):
     __tablename__ = "favorite_meals"

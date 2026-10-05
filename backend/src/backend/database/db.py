@@ -136,6 +136,22 @@ def remove_tag_from_meal(db: Session, meal_id: int, tag_id: int) -> bool:
     db.commit()
     return True
 
+def log_meal_consumption(db: Session, user_id: str, meal_id: int) -> models.MealLog:
+    new_log = models.MealLog(user_id=user_id, meal_id=meal_id)
+    db.add(new_log)
+    db.commit()
+    db.refresh(new_log)
+    return new_log
+
+def get_recent_meal_logs(db: Session, user_id: str, limit: int = 10) -> list[models.MealLog]:
+    return (
+        db.query(models.MealLog)
+        .filter(models.MealLog.user_id == user_id)
+        .order_by(models.MealLog.consumed_at.desc())
+        .limit(limit)
+        .all()
+    )
+
 def favorite_meal(db: Session, user_id: str, meal_id: int) -> models.FavoriteMeal:
     existing = db.query(models.FavoriteMeal).filter(
         models.FavoriteMeal.user_id == user_id,
