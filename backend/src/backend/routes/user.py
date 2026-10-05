@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 from ..database import models
+from ..database.db import favorite_meal, unfavorite_meal
 from ..schemas import user
 from ..database.models import get_db
 from clerk_backend_api import Clerk
@@ -105,6 +106,72 @@ async def get_meals(
 ):
     """Retrieves all meals from the database."""
     return db.query(models.Meal).all()
+
+@router.post("/fav-meal", status_code=status.HTTP_201_CREATED)
+def add_favorite_meal(
+    request: Request,
+    meal_id: int,
+    db: Session = Depends(get_db),
+):
+    """Adds a meal to the user's favorites."""
+    user_details = authenticate_and_get_user_details(request)
+    user_id = user_details.get("user_id")
+
+    # Check if the meal exists
+    meal = db.query(models.Meal).filter(models.Meal.id == meal_id).first()
+    if not meal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Meal does not exist"
+        )
+
+    # Add to favorites
+    favorite = favorite_meal(db, user_id, meal_id)
+    return favorite
+
+@router.delete("/fav-meal", status_code=status.HTTP_200_OK)
+def remove_favorite_meal(
+    request: Request,
+    meal_id: int,
+    db: Session = Depends(get_db),
+):
+    """Removes a meal from the user's favorites."""
+    user_details = authenticate_and_get_user_details(request)
+    user_id = user_details.get("user_id")
+
+    # Check if the meal exists
+    meal = db.query(models.Meal).filter(models.Meal.id == meal_id).first()
+    if not meal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Meal does not exist"
+        )
+
+    # Remove from favorites
+    success = unfavorite_meal(db, user_id, meal_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Favorite meal entry does not exist"
+        )
+
+    return {"detail": "Meal removed from favorites"}
+
+@router.get("/fav-meal", status_code=status.HTTP_200_OK)
+def get_favorite_meals(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Retrieves the user's favorite meals."""
+    user_details = authenticate_and_get_user_details(request)
+    user_id = user_details.get("user_id")
+
+    favorites = (
+        db.query(models.FavoriteMeal)
+        .filter(models.FavoriteMeal.user_id == user_id)
+        .all()
+    )
+    return favorites
 # @router.put("/meal-logs", status_code=status.HTTP_200_OK)
 # async def log_meal(
 #     request: Request,
