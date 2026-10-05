@@ -99,6 +99,12 @@ async def get_profile(
 
     return profile
 
+@router.get("/meals", status_code=status.HTTP_200_OK)
+async def get_meals(
+    db: Session = Depends(get_db),
+):
+    """Retrieves all meals from the database."""
+    return db.query(models.Meal).all()
 # @router.put("/meal-logs", status_code=status.HTTP_200_OK)
 # async def log_meal(
 #     request: Request,
