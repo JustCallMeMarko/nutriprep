@@ -1,10 +1,9 @@
 import os
 import logging
-import uuid
 from backend.utils import authenticate_and_get_user_details
 import boto3
 from botocore.config import Config
-from fastapi import APIRouter, Request, HTTPException, Depends, File, UploadFile, status
+from fastapi import APIRouter, Request, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
@@ -15,33 +14,14 @@ from clerk_backend_api import Clerk
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
-router = APIRouter()
-
-# ------------------------------------------------------------------
-# RustFS / AWS S3 Configuration
-# ------------------------------------------------------------------
-AWS_ENDPOINT = os.getenv("AWS_ENDPOINT")
-AWS_BUCKET = os.getenv("AWS_BUCKET")
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
 
-# Initialize S3 Client targeting AWS
-s3_client = boto3.client(
-    "s3",
-    endpoint_url=AWS_ENDPOINT,
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY,
-    config=Config(s3={"addressing_style": "path"}),
-    region_name="us-east-1",
-)
+if not CLERK_SECRET_KEY:
+    raise ValueError("CLERK_SECRET_KEY is not set in the environment variables.")
 
+logger = logging.getLogger(__name__)
+router = APIRouter()
 clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
-
-# ------------------------------------------------------------------
-# Routes
-# ------------------------------------------------------------------
 
 @router.post("/profile", status_code=status.HTTP_201_CREATED)
 def create_profile(
