@@ -2,6 +2,7 @@ import * as React from "react"
 import { Bell, Clock, Megaphone, Package, Navigation, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useApi } from "@/lib/api"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,57 +21,44 @@ export interface RiderNotificationItem {
   read: boolean
 }
 
-const INITIAL_RIDER_NOTIFICATIONS: RiderNotificationItem[] = [
-  {
-    id: "rn-1",
-    title: "Severe Weather & Delivery Delay Advisory",
-    message: "Tropical storm conditions are currently impacting Metro Manila routes. Drive with extreme caution and follow dispatch protocols.",
-    type: "announcement",
-    time: "15m ago",
-    isUrgent: true,
-    read: false,
-  },
-  {
-    id: "rn-2",
-    title: "BGC & Makati Hub Route Re-Optimization",
-    message: "New designated pickup points for high-density business hubs are now active in the rider app. Review updated route sequences before lunch runs.",
-    type: "route",
-    time: "1h ago",
-    read: false,
-  },
-  {
-    id: "rn-3",
-    title: "Batch 2 Lunch Dispatch Ready for Pickup",
-    message: "12 meal prep boxes packed and tagged at Central Kitchen Hub (Bay 4). Pickup deadline is 11:30 AM.",
-    type: "dispatch",
-    time: "2h ago",
-    read: true,
-  },
-  {
-    id: "rn-4",
-    title: "Rider Incentive Bonus Active Today",
-    message: "Complete 8 on-time deliveries during today's lunch window to qualify for the ₱300 peak-hour incentive bonus.",
-    type: "announcement",
-    time: "Yesterday",
-    read: true,
-  },
-]
-
 export function RiderNotificationBell() {
-  const [notifications, setNotifications] = React.useState<RiderNotificationItem[]>(INITIAL_RIDER_NOTIFICATIONS)
+  const { makeRequest } = useApi()
+  const [notifications, setNotifications] = React.useState<RiderNotificationItem[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+
+  const loadNotifications = React.useCallback(async () => {
+    try {
+      const response = await makeRequest("notifications")
+      setNotifications(response as RiderNotificationItem[])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [makeRequest])
+
+  React.useEffect(() => {
+    void loadNotifications()
+  }, [loadNotifications])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    const unread = notifications.filter((notification) => !notification.read)
+    await Promise.all(unread.map((notification) =>
+      makeRequest(`notifications/${notification.id}/read`, { method: "PATCH" })
+    ))
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
   }
 
-  const deleteNotification = (id: string, e: React.MouseEvent) => {
+  const deleteNotification = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    await makeRequest(`notifications/${id}`, { method: "DELETE" })
     setNotifications((prev) => prev.filter((n) => n.id !== id))
   }
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
+    const notification = notifications.find((item) => item.id === id)
+    if (!notification || notification.read) return
+    await makeRequest(`notifications/${id}/read`, { method: "PATCH" })
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     )
@@ -121,7 +109,9 @@ export function RiderNotificationBell() {
           </div>
 
           <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-100">
-            {notifications.length ? (
+            {isLoading ? (
+              <div className="p-8 text-center text-xs text-slate-500">Loading rider alerts...</div>
+            ) : notifications.length ? (
               notifications.map((item) => {
                 const typeIcon = {
                   dispatch: <Package size={14} />,

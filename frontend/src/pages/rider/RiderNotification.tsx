@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Input } from "@/components/ui/input"
+import { useApi } from "@/lib/api"
 
 export interface RiderNotification {
   id: string
@@ -26,53 +27,48 @@ export interface RiderNotification {
   read: boolean
 }
 
-const INITIAL_RIDER_NOTIFICATIONS: RiderNotification[] = [
-  {
-    id: "rn-1",
-    title: "Severe Weather & Delivery Delay Advisory",
-    message: "Tropical storm conditions are currently impacting Metro Manila routes. Drive with extreme caution and follow dispatch protocol.",
-    type: "announcement",
-    time: "15 mins ago",
-    isUrgent: true,
-    read: false,
-  },
-  {
-    id: "rn-2",
-    title: "BGC & Makati Hub Route Re-Optimization",
-    message: "New designated pickup points for high-density business hubs are now active. Please review your updated route sequences before beginning lunch runs.",
-    type: "route",
-    time: "1 hour ago",
-    read: false,
-  },
-  {
-    id: "rn-3",
-    title: "Batch 2 Lunch Dispatch Ready for Pickup",
-    message: "12 meal prep boxes packed and tagged at Central Kitchen Hub (Bay 4). Pickup deadline is 11:30 AM.",
-    type: "dispatch",
-    time: "2 hours ago",
-    read: true,
-  },
-  {
-    id: "rn-4",
-    title: "Rider Incentive Bonus Active Today",
-    message: "Complete 8 on-time deliveries during today's lunch window to qualify for the ₱300 peak-hour incentive bonus.",
-    type: "announcement",
-    time: "Yesterday",
-    read: true,
-  },
-]
-
 export default function RiderNotificationPage() {
-  const [notifications, setNotifications] = React.useState<RiderNotification[]>(INITIAL_RIDER_NOTIFICATIONS)
+  const { makeRequest } = useApi()
+  const [notifications, setNotifications] = React.useState<RiderNotification[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [typeFilter, setTypeFilter] = React.useState<"all" | "dispatch" | "route" | "announcement">("all")
 
-  const handleDelete = (id: string) => {
+  const loadNotifications = React.useCallback(async () => {
+    try {
+      const response = await makeRequest("notifications")
+      setNotifications(response as RiderNotification[])
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to load rider alerts.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [makeRequest])
+
+  React.useEffect(() => {
+    void loadNotifications()
+  }, [loadNotifications])
+
+  const handleDelete = async (id: string) => {
+    await makeRequest(`notifications/${id}`, { method: "DELETE" })
     setNotifications((prev) => prev.filter((n) => n.id !== id))
   }
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    await Promise.all(
+      notifications.filter((n) => !n.read).map((n) =>
+        makeRequest(`notifications/${n.id}/read`, { method: "PATCH" })
+      )
+    )
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  }
+
+  const markAsRead = async (id: string) => {
+    const notification = notifications.find((n) => n.id === id)
+    if (!notification || notification.read) return
+    await makeRequest(`notifications/${id}/read`, { method: "PATCH" })
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n))
   }
 
   const filtered = React.useMemo(() => {
@@ -90,6 +86,19 @@ export default function RiderNotificationPage() {
   }, [notifications, searchQuery, typeFilter])
 
   const unreadCount = notifications.filter((n) => !n.read).length
+
+  if (isLoading) {
+    return <section className="flex min-h-[300px] items-center justify-center text-sm font-semibold text-slate-600">Loading rider alerts...</section>
+  }
+
+  if (error) {
+    return (
+      <section className="flex min-h-[300px] flex-col items-center justify-center gap-3">
+        <p className="text-sm text-rose-600">{error}</p>
+        <Button onClick={() => void loadNotifications()} variant="outline">Try again</Button>
+      </section>
+    )
+  }
 
   return (
     <section className="flex flex-col gap-6">
@@ -193,6 +202,7 @@ export default function RiderNotificationPage() {
             return (
               <div
                 key={item.id}
+                onClick={() => void markAsRead(item.id)}
                 className={`p-4 sm:p-5 rounded-xl border bg-white transition-all hover:shadow-xs flex flex-col md:flex-row justify-between gap-4 ${
                   isUrgent
                     ? "border-red-300 ring-1 ring-red-200/70"

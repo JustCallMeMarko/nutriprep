@@ -302,6 +302,7 @@ const INITIAL_CLERK_USERS: ClerkUser[] = [
     ordersCount: 11,
   },
 ]
+void INITIAL_CLERK_USERS
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -326,7 +327,7 @@ export default function AdminUsers() {
     queryFn: () => makeRequest("users"),
     staleTime: 30_000,
   })
-  const users = usersQuery.data ?? INITIAL_CLERK_USERS
+  const users = usersQuery.data ?? []
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedRoleFilter, setSelectedRoleFilter] = React.useState<
     "all" | "admin" | "rider" | "user" | "subscribers"

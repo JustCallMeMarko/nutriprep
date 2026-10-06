@@ -4,6 +4,7 @@ import {
   MapContainer,
   TileLayer,
   Marker,
+  CircleMarker,
   Popup,
   Polyline,
   useMap,
@@ -37,6 +38,7 @@ interface DeliveryStop {
   address: string
   district: string
   mealsCount: number
+  credits: number
   mealSummary: string
   slot: string
   payout: number
@@ -95,6 +97,9 @@ export default function RiderActiveDelivery() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdating, setIsUpdating] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [isAvailable, setIsAvailable] = React.useState(false)
+  const [riderLocation, setRiderLocation] = React.useState<[number, number] | null>(null)
+  const [locationMessage, setLocationMessage] = React.useState<string | null>(null)
 
   const loadDeliveries = React.useCallback(async () => {
     setIsLoading(true)
@@ -120,6 +125,43 @@ export default function RiderActiveDelivery() {
   React.useEffect(() => {
     void loadDeliveries()
   }, [loadDeliveries])
+
+  React.useEffect(() => {
+    void makeRequest("status").then((status: { available: boolean; location?: { lat: number; lng: number } | null }) => {
+      setIsAvailable(status.available)
+      if (status.location) setRiderLocation([status.location.lat, status.location.lng])
+    }).catch(() => undefined)
+  }, [makeRequest])
+
+  React.useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationMessage("This browser does not support location tracking.")
+      return
+    }
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const location: [number, number] = [position.coords.latitude, position.coords.longitude]
+        setRiderLocation(location)
+        setLocationMessage(null)
+        void makeRequest("location", {
+          method: "PATCH",
+          body: JSON.stringify({ lat: location[0], lng: location[1] }),
+        }).catch(() => setLocationMessage("Location could not be synced with dispatch."))
+      },
+      () => setLocationMessage("Allow location access to share your live position with dispatch."),
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 },
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [makeRequest])
+
+  const toggleAvailability = async () => {
+    const nextValue = !isAvailable
+    await makeRequest("status", {
+      method: "PATCH",
+      body: JSON.stringify({ available: nextValue }),
+    })
+    setIsAvailable(nextValue)
+  }
 
   const activeStop = stops.find((s) => s.id === selectedStopId) ?? stops[0]
   const completedCount = stops.filter((s) => s.status === "delivered").length
@@ -147,13 +189,14 @@ export default function RiderActiveDelivery() {
       stop.lat !== null && stop.lng !== null
   )
   const routePoints: [number, number][] = mappedStops.map((stop) => [stop.lat, stop.lng])
+  const hasMapLocation = mappedStops.length > 0 || riderLocation !== null
 
   const activeCenter: [number, number] = activeStop?.lat !== null && activeStop?.lat !== undefined &&
     activeStop?.lng !== null && activeStop?.lng !== undefined
     ? [activeStop.lat, activeStop.lng]
     : mappedStops.length > 0
     ? [mappedStops[0].lat, mappedStops[0].lng]
-    : [0, 0]
+    : riderLocation ?? [14.5995, 120.9842]
 
   if (isLoading) {
     return (
@@ -210,8 +253,11 @@ export default function RiderActiveDelivery() {
           </Badge>
           <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 font-semibold text-sm py-1.5 px-3 rounded-full flex items-center gap-1.5">
             <Sparkles size={14} className="text-amber-600" />
-            Batch #729
+            {stops.reduce((total, stop) => total + stop.credits, 0).toLocaleString()} credits
           </Badge>
+          <Button onClick={() => void toggleAvailability()} variant="outline" className="font-bold">
+            {isAvailable ? "Available" : "Offline"}
+          </Button>
         </div>
       </div>
 
@@ -223,7 +269,7 @@ export default function RiderActiveDelivery() {
             <div className="flex items-center gap-2">
               <Navigation size={18} className="text-blue-400" />
               <span className="text-sm font-bold uppercase tracking-wider">
-                Live Route Overview (BGC Delivery Zone)
+                Live Route Overview
               </span>
             </div>
             <span className="text-xs text-slate-300 font-medium bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
@@ -245,6 +291,11 @@ export default function RiderActiveDelivery() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               <MapFocusHandler center={activeCenter} />
+              {riderLocation && (
+                <CircleMarker center={riderLocation} radius={9} pathOptions={{ color: "#0f766e", fillColor: "#14b8a6", fillOpacity: 1 }}>
+                  <Popup>Your live rider location</Popup>
+                </CircleMarker>
+              )}
 
               {/* Delivery Stop Markers */}
               {mappedStops.map((stop) => {
@@ -292,6 +343,16 @@ export default function RiderActiveDelivery() {
                 />
               )}
             </MapContainer>
+            {locationMessage && (
+              <div className="absolute top-3 left-3 right-3 z-[400] rounded-lg border border-amber-200 bg-amber-50/95 px-3 py-2 text-xs font-semibold text-amber-900">
+                {locationMessage}
+              </div>
+            )}
+            {!hasMapLocation && (
+              <div className="absolute inset-0 z-[350] flex items-center justify-center bg-slate-900/70 p-6 text-center text-sm font-semibold text-white">
+                Delivery coordinates are not available yet. The address and GPS controls remain available below.
+              </div>
+            )}
 
             {/* Map Floating Legend */}
             <div className="absolute bottom-4 left-4 z-[400] bg-white/95 backdrop-blur-xs border border-slate-200 rounded-xl p-3 shadow-md text-xs space-y-1.5 font-medium text-slate-700">
@@ -357,6 +418,9 @@ export default function RiderActiveDelivery() {
               <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 border border-slate-200 p-2.5 rounded-xl mt-2">
                 <Utensils size={16} className="text-blue-600 shrink-0" />
                 <span className="font-medium text-xs sm:text-sm">{activeStop.mealSummary}</span>
+              </div>
+              <div className="text-xs font-semibold text-slate-600">
+                {activeStop.credits.toLocaleString()} order credits · ₱30 per credit
               </div>
 
               {activeStop.notes && (

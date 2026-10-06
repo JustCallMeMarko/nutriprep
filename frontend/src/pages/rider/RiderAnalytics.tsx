@@ -3,13 +3,10 @@ import {
   Wallet,
   TrendingUp,
   PackageCheck,
-  Star,
-  Clock,
   Sparkles,
   Download,
   Search,
   CheckCircle2,
-  Award,
   RefreshCw,
   ShieldAlert,
 } from "lucide-react"
@@ -27,16 +24,14 @@ import { Button } from "@/components/ui/button"
 import { useApi } from "@/lib/api"
 
 interface CompletedOrder {
-  id: string
-  customerName: string
-  completedAt: string
-  mealsCount: number
-  mealSummary: string
-  distanceKm: number | null
-  basePay: number
-  tip: number
-  totalPayout: number
-  status: "Paid" | "Pending Transfer"
+  deliveryId: number
+  orderId: number
+  riderId: string | null
+  userId: string
+  totalCredits: number
+  orderStatus: string
+  orderCreatedAt: string | null
+  deliveredAt: string | null
 }
 
 interface AnalyticsResponse {
@@ -45,6 +40,7 @@ interface AnalyticsResponse {
   summary: {
     earnings: number
     orders: number
+    deliveredCredits: number
     tips: number
     averagePayout: number
     earningsChange: number
@@ -85,28 +81,34 @@ export default function RiderAnalytics() {
   const chartData = analytics?.chart ?? []
   const totalPeriodEarnings = analytics?.summary.earnings ?? 0
   const totalPeriodOrders = analytics?.summary.orders ?? 0
-  const totalPeriodTips = analytics?.summary.tips ?? 0
-  const averagePayout = analytics?.summary.averagePayout ?? 0
+  const totalDeliveredCredits = analytics?.summary.deliveredCredits ?? 0
   const earningsChange = analytics?.summary.earningsChange ?? 0
   const completedOrders = analytics?.orders ?? []
 
   const filteredOrders = completedOrders.filter((order) => {
+    const query = searchQuery.toLowerCase()
     return (
-      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.mealSummary.toLowerCase().includes(searchQuery.toLowerCase())
+      String(order.deliveryId).includes(query) ||
+      String(order.orderId).includes(query) ||
+      order.riderId?.toLowerCase().includes(query) ||
+      order.userId.toLowerCase().includes(query)
     )
   })
 
   const exportCsv = () => {
-    const headers = ["Order ID", "Customer", "Delivered At", "Meals", "Payout", "Status"]
+    const headers = [
+      "Delivery ID", "Order ID", "Rider ID", "User ID", "Total Credits",
+      "Order Status", "Order Created At", "Delivered At",
+    ]
     const rows = completedOrders.map((order) => [
-      order.id,
-      order.customerName,
-      order.completedAt,
-      order.mealsCount,
-      order.totalPayout,
-      order.status,
+      order.deliveryId,
+      order.orderId,
+      order.riderId,
+      order.userId,
+      order.totalCredits,
+      order.orderStatus,
+      order.orderCreatedAt,
+      order.deliveredAt,
     ])
     const csv = [headers, ...rows]
       .map((row) => row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(","))
@@ -180,9 +182,9 @@ export default function RiderAnalytics() {
       </div>
 
       {/* Top Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Total Earnings */}
-        <div className="bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+        <div className="flex min-h-48 flex-col justify-between rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Total Earnings
@@ -200,14 +202,14 @@ export default function RiderAnalytics() {
               <span>{earningsChange >= 0 ? "+" : ""}{earningsChange}% vs last period</span>
             </div>
           </div>
-          <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>Includes ₱{totalPeriodTips.toLocaleString()} in tips</span>
-            <span className="font-semibold text-blue-600">Recorded earnings</span>
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <span>₱30 per order credit</span>
+            <span className="font-semibold text-blue-600">Database total</span>
           </div>
         </div>
 
         {/* Total Completed Orders */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
+        <div className="flex min-h-48 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Completed Orders
@@ -220,66 +222,42 @@ export default function RiderAnalytics() {
             <div className="text-3xl font-extrabold text-slate-900">
               {totalPeriodOrders}
             </div>
-            <div className="flex items-center gap-1.5 mt-2 text-xs font-bold text-emerald-600">
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
               <CheckCircle2 size={14} />
-              <span>99.2% On-Time Fulfillment</span>
+              <span>Delivered records</span>
             </div>
           </div>
-          <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>Peak slot: Lunch (64%)</span>
-            <span className="font-semibold text-slate-900">0 Cancelled</span>
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <span>From deliveries table</span>
+            <span className="font-semibold text-emerald-600">Completed</span>
           </div>
         </div>
 
-        {/* Average Order Value / Payout */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
+        {/* Delivered Credits */}
+        <div className="flex min-h-48 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Avg. Payout / Drop
+              Delivered Credits
             </span>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+            <div className="rounded-xl bg-amber-50 p-2 text-amber-600">
               <Sparkles size={18} />
             </div>
           </div>
           <div>
             <div className="text-3xl font-extrabold text-slate-900">
-              ₱{averagePayout.toLocaleString()}
+              {totalDeliveredCredits.toLocaleString()}
             </div>
-            <div className="flex items-center gap-1.5 mt-2 text-xs font-bold text-blue-600">
-              <Clock size={14} />
-              <span>~21 mins avg drop time</span>
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-600">
+              <PackageCheck size={14} />
+              <span>Credits delivered</span>
             </div>
           </div>
-          <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>Distance tracking unavailable</span>
-            <span className="font-semibold text-amber-600">Tips not tracked</span>
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <span>From orders table</span>
+            <span className="font-semibold text-amber-600">Total credits</span>
           </div>
         </div>
 
-        {/* Rider Rating & Tier */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between pb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Courier Rating
-            </span>
-            <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
-              <Star size={18} className="fill-purple-600 text-purple-600" />
-            </div>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 flex items-baseline gap-1.5">
-              4.96 <span className="text-base text-slate-500 font-semibold">/ 5.0</span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-2 text-xs font-bold text-purple-600">
-              <Award size={14} />
-              <span>Diamond Tier Courier</span>
-            </div>
-          </div>
-          <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>94 customer reviews</span>
-            <span className="font-semibold text-emerald-600">100% Positive</span>
-          </div>
-        </div>
       </div>
 
       {/* Full Width Earnings & Delivery Trends Chart */}
@@ -346,7 +324,7 @@ export default function RiderAnalytics() {
                         <p className="font-extrabold text-amber-400">{data.label}</p>
                         <p className="font-semibold">Earnings: ₱{data.earnings.toLocaleString()}</p>
                         <p className="text-slate-300">Orders: {data.orders} deliveries</p>
-                        <p className="text-emerald-400">Tips: ₱{data.tips}</p>
+                        <p className="text-slate-300">Tips: Not tracked</p>
                       </div>
                     )
                   }
@@ -371,7 +349,7 @@ export default function RiderAnalytics() {
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-xs bg-emerald-500 inline-block"></span>
-              Includes Tips & Surge
+              Tips and surge are not tracked
             </span>
           </div>
           <span className="text-slate-500 font-semibold">
@@ -387,10 +365,10 @@ export default function RiderAnalytics() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-4">
           <div>
             <h2 className="text-lg font-extrabold text-slate-900">
-              Completed Orders & Payouts Log
+              Completed Delivery and Order Records
             </h2>
             <p className="text-xs font-medium text-slate-500 mt-0.5">
-              Search and review past fulfilled meal orders and transferred earnings
+              Search records from the deliveries and orders tables
             </p>
           </div>
 
@@ -403,7 +381,7 @@ export default function RiderAnalytics() {
               />
               <input
                 type="text"
-                placeholder="Search orders or meals..."
+                placeholder="Search delivery, order, rider, or user ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 text-xs font-medium border border-slate-300 rounded-xl focus:outline-none focus:border-blue-600 bg-white"
@@ -417,60 +395,37 @@ export default function RiderAnalytics() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                <th className="py-3 px-3">Delivery ID</th>
                 <th className="py-3 px-3">Order ID</th>
-                <th className="py-3 px-3">Customer</th>
-                <th className="py-3 px-3">Meal Order</th>
+                <th className="py-3 px-3">Rider ID</th>
+                <th className="py-3 px-3">User ID</th>
+                <th className="py-3 px-3">Total Credits</th>
+                <th className="py-3 px-3">Order Status</th>
+                <th className="py-3 px-3">Order Created At</th>
                 <th className="py-3 px-3">Delivered At</th>
-                <th className="py-3 px-3">Distance</th>
-                <th className="py-3 px-3">Base Pay</th>
-                <th className="py-3 px-3">Tip</th>
-                <th className="py-3 px-3 font-extrabold text-slate-900">Total Payout</th>
-                <th className="py-3 px-3 text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-3 font-mono font-bold text-slate-900">
-                      {order.id}
-                    </td>
-                    <td className="py-3.5 px-3 font-bold text-slate-900">
-                      {order.customerName}
-                    </td>
-                    <td className="py-3.5 px-3 max-w-[220px]">
-                      <p className="font-medium text-slate-800 truncate" title={order.mealSummary}>
-                        {order.mealSummary}
-                      </p>
-                      <span className="text-[11px] text-slate-500">
-                        {order.mealsCount} meal pack
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-600 font-medium">
-                      {order.completedAt}
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-600 font-medium">
-                      {order.distanceKm === null ? "—" : `${order.distanceKm} km`}
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-700">
-                      ₱{order.basePay}
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-emerald-600">
-                      +₱{order.tip}
-                    </td>
-                    <td className="py-3.5 px-3 font-extrabold text-sm text-slate-900">
-                      ₱{order.totalPayout}
-                    </td>
-                    <td className="py-3.5 px-3 text-right">
+                  <tr key={order.deliveryId} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-3 font-mono font-bold text-slate-900">{order.deliveryId}</td>
+                    <td className="py-3.5 px-3 font-mono font-bold text-slate-900">{order.orderId}</td>
+                    <td className="py-3.5 px-3 font-mono text-slate-600">{order.riderId ?? "—"}</td>
+                    <td className="py-3.5 px-3 font-mono text-slate-600">{order.userId}</td>
+                    <td className="py-3.5 px-3 font-semibold text-slate-700">{order.totalCredits}</td>
+                    <td className="py-3.5 px-3">
                       <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px] px-2 py-0.5 rounded-md">
-                        {order.status}
+                        {order.orderStatus}
                       </Badge>
                     </td>
+                    <td className="py-3.5 px-3 text-slate-600 font-medium">{order.orderCreatedAt ?? "—"}</td>
+                    <td className="py-3.5 px-3 text-slate-600 font-medium">{order.deliveredAt ?? "—"}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-500 font-medium">
+                  <td colSpan={8} className="py-8 text-center text-slate-500 font-medium">
                     No completed orders found matching your search.
                   </td>
                 </tr>

@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import os
 import enum
 from urllib.parse import quote_plus
-from sqlalchemy import Date, Enum, UniqueConstraint, create_engine, String, ForeignKey, Text, func
+from sqlalchemy import Date, Enum, UniqueConstraint, create_engine, String, ForeignKey, Text, func, inspect, text
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship, sessionmaker
 from datetime import date, datetime
 load_dotenv()
@@ -112,6 +112,9 @@ class RiderProfile(Base):
     user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     plate_number: Mapped[str | None] = mapped_column(String(50), default=None)
     is_available: Mapped[bool] = mapped_column(nullable=False, default=False, index=True)
+    current_lat: Mapped[float | None] = mapped_column(default=None)
+    current_long: Mapped[float | None] = mapped_column(default=None)
+    location_updated_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="rider_profile")
     deliveries: Mapped[list["Delivery"]] = relationship(back_populates="rider")
@@ -273,6 +276,19 @@ class BroadcastRecipient(Base):
     user: Mapped["User"] = relationship()
 
 Base.metadata.create_all(engine)
+
+# Keep deployments that predate rider location tracking compatible with the
+# declarative model. This is intentionally additive and safe to run repeatedly.
+_rider_columns = {column["name"] for column in inspect(engine).get_columns("rider_profiles")}
+_rider_column_definitions = {
+    "current_lat": "DOUBLE",
+    "current_long": "DOUBLE",
+    "location_updated_at": "DATETIME",
+}
+with engine.begin() as connection:
+    for column_name, column_type in _rider_column_definitions.items():
+        if column_name not in _rider_columns:
+            connection.execute(text(f"ALTER TABLE rider_profiles ADD COLUMN {column_name} {column_type}"))
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

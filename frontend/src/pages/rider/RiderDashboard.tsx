@@ -22,6 +22,7 @@ export interface DeliveryOrder {
   address: string
   district: string
   mealsCount: number
+  credits: number
   mealSummary: string
   slot: string
   payout: number
@@ -173,6 +174,9 @@ export default function RiderDashboard() {
                     <span className="flex items-center gap-1.5 font-semibold text-slate-800">
                       <Utensils size={15} className="text-blue-600" />
                       {delivery.mealSummary} ({delivery.mealsCount} meals)
+                    </span>
+                    <span className="font-semibold text-slate-800">
+                      {delivery.credits.toLocaleString()} credits
                     </span>
                   </div>
 
