@@ -2,12 +2,13 @@ import os
 from pathlib import Path
 from uuid import uuid4
 from datetime import date, datetime, timedelta
+from pydantic import BaseModel
 from backend.database.db import get_total_admins, get_total_riders, get_total_user_credits, get_total_users
 from backend.utils import authenticate_and_get_user_details
 import boto3
 from botocore.config import Config
 from fastapi import APIRouter, Form, Request, HTTPException, Depends, File, UploadFile, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from dotenv import load_dotenv
@@ -39,6 +40,12 @@ s3_client = boto3.client(
 )
 clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
 
+class OrderStatusUpdate(BaseModel):
+    status: models.OrderStatus
+
+class OrderRiderUpdate(BaseModel):
+    rider_id: str
+
 def _require_admin(request: Request) -> None:
     user_details = authenticate_and_get_user_details(request)
     role = (user_details.get("public_metadata") or {}).get("role")
@@ -47,6 +54,180 @@ def _require_admin(request: Request) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied. Admin privileges required.",
         )
+
+def _order_status_label(status_value: models.OrderStatus) -> str:
+    return {
+        models.OrderStatus.PENDING: "Upcoming",
+        models.OrderStatus.PREPARING: "Preparing",
+        models.OrderStatus.OUT_FOR_DELIVERY: "Out for Delivery",
+        models.OrderStatus.DELIVERED: "Delivered",
+        models.OrderStatus.CANCELLED: "Cancelled",
+    }[status_value]
+
+def _serialize_order(order: models.Order) -> dict:
+    profile = order.user.customer_profile
+    return {
+        "id": f"#ORD-{order.id:04d}",
+        "customerName": order.user.full_name,
+        "customerPhone": profile.phone_number if profile else "",
+        "customerEmail": order.user.email,
+        "items": [
+            {
+                "title": item.meal.title,
+                "quantity": item.quantity,
+                "calories": item.meal.calories,
+                "protein_g": item.meal.protein,
+                "carb": item.meal.carb,
+                "fat": item.meal.fat,
+                "credits": item.meal.credits,
+                "image_url": item.meal.image_url,
+            }
+            for item in order.items
+        ],
+        "totalAmount": order.total_credits,
+        "deliveryWave": "Lunch Wave",
+        "deliverySlot": "Scheduled",
+        "address": profile.delivery_address if profile else "No delivery address",
+        "city": "",
+        "deliveryNotes": None,
+        "status": _order_status_label(order.status),
+        "rider": (
+            {
+                "id": order.delivery.rider.user_id,
+                "name": order.delivery.rider.user.full_name,
+                "vehicle": order.delivery.rider.plate_number or "No vehicle",
+                "phone": (
+                    order.delivery.rider.user.customer_profile.phone_number
+                    if order.delivery.rider.user.customer_profile
+                    else ""
+                ),
+                "rating": "—",
+                "activeLoads": 0,
+            }
+            if order.delivery and order.delivery.rider
+            else None
+        ),
+        "placedAt": order.created_at.isoformat(),
+        "paymentMethod": "NutriPrep Credits",
+        "paymentStatus": "Paid",
+    }
+
+def _get_order(db: Session, order_id: int) -> models.Order:
+    order = (
+        db.query(models.Order)
+        .options(
+            joinedload(models.Order.user).joinedload(models.User.customer_profile),
+            joinedload(models.Order.items).joinedload(models.OrderItem.meal),
+            joinedload(models.Order.delivery)
+            .joinedload(models.Delivery.rider)
+            .joinedload(models.RiderProfile.user)
+            .joinedload(models.User.customer_profile),
+        )
+        .filter(models.Order.id == order_id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    return order
+
+@router.get("/orders", status_code=status.HTTP_200_OK)
+def get_admin_orders(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    orders = (
+        db.query(models.Order)
+        .options(
+            joinedload(models.Order.user).joinedload(models.User.customer_profile),
+            joinedload(models.Order.items).joinedload(models.OrderItem.meal),
+            joinedload(models.Order.delivery)
+            .joinedload(models.Delivery.rider)
+            .joinedload(models.RiderProfile.user)
+            .joinedload(models.User.customer_profile),
+        )
+        .order_by(models.Order.created_at.desc())
+        .all()
+    )
+    return [_serialize_order(order) for order in orders]
+
+@router.get("/riders", status_code=status.HTTP_200_OK)
+def get_admin_riders(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    riders = (
+        db.query(models.RiderProfile)
+        .options(
+            joinedload(models.RiderProfile.user).joinedload(models.User.customer_profile),
+        )
+        .join(models.RiderProfile.user)
+        .filter(models.User.role == models.Roles.RIDER)
+        .order_by(models.User.full_name.asc())
+        .all()
+    )
+    active_loads = dict(
+        db.query(models.Delivery.rider_id, func.count(models.Delivery.id))
+        .join(models.Delivery.order)
+        .filter(
+            models.Order.status.in_(
+                [models.OrderStatus.PREPARING, models.OrderStatus.OUT_FOR_DELIVERY]
+            )
+        )
+        .group_by(models.Delivery.rider_id)
+        .all()
+    )
+    return [
+        {
+            "id": rider.user_id,
+            "name": rider.user.full_name,
+            "vehicle": rider.plate_number or "No vehicle",
+            "phone": rider.user.customer_profile.phone_number
+            if rider.user.customer_profile
+            else "",
+            "rating": "—",
+            "activeLoads": active_loads.get(rider.user_id, 0),
+        }
+        for rider in riders
+    ]
+
+@router.patch("/orders/{order_id}/status", status_code=status.HTTP_200_OK)
+def update_order_status(
+    order_id: int,
+    payload: OrderStatusUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    order = _get_order(db, order_id)
+    order.status = payload.status
+    db.commit()
+    return _serialize_order(_get_order(db, order_id))
+
+@router.put("/orders/{order_id}/rider", status_code=status.HTTP_200_OK)
+def assign_order_rider(
+    order_id: int,
+    payload: OrderRiderUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    order = _get_order(db, order_id)
+    rider = (
+        db.query(models.RiderProfile)
+        .join(models.RiderProfile.user)
+        .filter(
+            models.RiderProfile.user_id == payload.rider_id,
+            models.User.role == models.Roles.RIDER,
+        )
+        .first()
+    )
+    if not rider:
+        raise HTTPException(status_code=404, detail="Rider not found.")
+
+    if order.delivery:
+        order.delivery.rider_id = rider.user_id
+    else:
+        order.delivery = models.Delivery(order_id=order.id, rider_id=rider.user_id)
+    if order.status == models.OrderStatus.PENDING:
+        order.status = models.OrderStatus.PREPARING
+    db.commit()
+    return _serialize_order(_get_order(db, order_id))
 
 @router.get("/dashboard", status_code=status.HTTP_200_OK)
 def get_dashboard_metrics(
