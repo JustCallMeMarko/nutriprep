@@ -399,7 +399,7 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
                   <Label className="text-xs font-semibold text-foreground">
                     Macronutrients *
                   </Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {/* Calories */}
                     <div className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 flex flex-col gap-1">
                       <span className="text-[11px] font-bold text-amber-700 flex items-center gap-1">
@@ -531,4 +531,3 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
     </Sheet>
   )
 }
-
