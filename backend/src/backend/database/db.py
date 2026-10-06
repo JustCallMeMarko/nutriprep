@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import datetime
 from . import models
@@ -15,6 +16,18 @@ def create_user(db: Session, user_id: str, role: str) -> models.User:
     db.commit()
     db.refresh(db_user)
     return db_user
+
+def get_total_users(db: Session) -> int:
+    return db.query(models.User).count()
+
+def get_total_admins(db: Session) -> int:
+    return db.query(models.User).filter(models.User.role == models.Roles.ADMIN).count()
+
+def get_total_riders(db: Session) -> int:
+    return db.query(models.User).filter(models.User.role == models.Roles.RIDER).count()
+
+def get_total_user_credits(db: Session) -> int:
+    return db.query(models.CustomerProfile).with_entities(func.sum(models.CustomerProfile.credits)).scalar() or 0
 
 def create_customer_profile(
         db: Session,
@@ -178,5 +191,10 @@ def unfavorite_meal(db: Session, user_id: str, meal_id: int) -> bool:
     db.commit()
     return True
 
-def get_all_favorite_meals(db: Session, user_id: str) -> list[models.FavoriteMeal]:
-    return db.query(models.FavoriteMeal).filter(models.FavoriteMeal.user_id == user_id).all()
+def get_all_favorite_meals(db: Session, user_id: str) -> list[models.Meal]:
+    return (
+        db.query(models.Meal)
+        .join(models.FavoriteMeal, models.FavoriteMeal.meal_id == models.Meal.id)
+        .filter(models.FavoriteMeal.user_id == user_id)
+        .all()
+    )
