@@ -1,263 +1,211 @@
 import * as React from "react"
+import { useNavigate } from "react-router-dom"
 import {
-  Clock,
-  Hand,
-  MapPin,
-  Utensils,
   CheckCircle2,
+  Clock,
+  MapPin,
+  Navigation,
+  Phone,
+  RefreshCw,
+  ShieldAlert,
+  Utensils,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useApi } from "@/lib/api"
 
 export interface DeliveryOrder {
   id: string
+  orderId: string
   customerName: string
   customerPhone: string
   address: string
   district: string
-  distanceKm: number
-  payout: number
-  wave: string
-  slot: string
   mealsCount: number
   mealSummary: string
-  notes?: string
-  claimed: boolean
+  slot: string
+  payout: number
+  notes?: string | null
+  status: "in_transit" | "delivered" | "pending"
 }
 
-const INITIAL_DELIVERIES: DeliveryOrder[] = [
-  {
-    id: "ORD-9401",
-    customerName: "Theo Crain",
-    customerPhone: "+63 917 555 0192",
-    address: "Unit 14B, One Serendra, 32nd St, Bonifacio Global City, Taguig",
-    district: "BGC / Taguig",
-    distanceKm: 2.4,
-    payout: 160,
-    wave: "Lunch Wave",
-    slot: "11:30 AM – 12:30 PM",
-    mealsCount: 2,
-    mealSummary: "2x Grilled Chicken Quinoa Bowl",
-    notes: "Call on arrival at the lobby entrance.",
-    claimed: false,
-  },
-  {
-    id: "ORD-9402",
-    customerName: "Elena Rodriguez",
-    customerPhone: "+63 920 555 0831",
-    address: "8th Floor, Net Park Building, 5th Ave, BGC, Taguig",
-    district: "BGC / Taguig",
-    distanceKm: 3.1,
-    payout: 180,
-    wave: "Lunch Wave",
-    slot: "12:00 PM – 1:00 PM",
-    mealsCount: 2,
-    mealSummary: "1x Avocado & Salmon Keto Bowl, 1x Chia Greek Yogurt",
-    notes: "Leave at front desk with building security.",
-    claimed: false,
-  },
-  {
-    id: "ORD-9403",
-    customerName: "Marcus Thorne",
-    customerPhone: "+63 918 555 0341",
-    address: "24th Floor, GT Tower International, Ayala Ave, Makati",
-    district: "Makati CBD",
-    distanceKm: 4.8,
-    payout: 220,
-    wave: "Lunch Wave",
-    slot: "12:00 PM – 1:00 PM",
-    mealsCount: 3,
-    mealSummary: "2x Steak & Whole Egg Skillet, 1x Veggie Omelette",
-    notes: "Deliver before 12:30 PM. Use service elevator.",
-    claimed: false,
-  },
-  {
-    id: "ORD-9404",
-    customerName: "Shirley Crain",
-    customerPhone: "+63 919 555 0284",
-    address: "12 Palm Avenue, Dasmariñas Village, Makati",
-    district: "Makati",
-    distanceKm: 5.2,
-    payout: 250,
-    wave: "Lunch Wave",
-    slot: "12:30 PM – 1:30 PM",
-    mealsCount: 2,
-    mealSummary: "2x Diabetic-Friendly Beef Tapa",
-    notes: "Security guard will receive at the main village gate.",
-    claimed: false,
-  },
-  {
-    id: "ORD-9405",
-    customerName: "Luke Crain",
-    customerPhone: "+63 917 555 0491",
-    address: "Unit 201, Two Palm Grove, Rockwell Center, Makati",
-    district: "Rockwell / Makati",
-    distanceKm: 3.8,
-    payout: 190,
-    wave: "Lunch Wave",
-    slot: "11:45 AM – 12:45 PM",
-    mealsCount: 1,
-    mealSummary: "1x Turkey & Cheese Frittata",
-    notes: "Drop package inside the mailbox container.",
-    claimed: false,
-  },
-  {
-    id: "ORD-9406",
-    customerName: "Steven Crain",
-    customerPhone: "+63 922 555 0928",
-    address: "Penthouse 3, The Residences at Greenbelt, Makati",
-    district: "Legaspi Village, Makati",
-    distanceKm: 4.5,
-    payout: 210,
-    wave: "Lunch Wave",
-    slot: "1:00 PM – 2:00 PM",
-    mealsCount: 2,
-    mealSummary: "2x Salmon Teriyaki & Broccoli",
-    notes: "Friendly golden retriever in front yard, gate is unlocked.",
-    claimed: false,
-  },
-  {
-    id: "ORD-9407",
-    customerName: "Arthur Parris",
-    customerPhone: "+63 917 555 0712",
-    address: "Unit 1904, Arthaland Century Pacific Tower, 5th Ave, BGC",
-    district: "BGC / Taguig",
-    distanceKm: 2.8,
-    payout: 175,
-    wave: "Lunch Wave",
-    slot: "12:15 PM – 1:15 PM",
-    mealsCount: 1,
-    mealSummary: "1x Beef & Greens Stir-Fry",
-    notes: "Deliver to receptionist at level 19.",
-    claimed: false,
-  },
-  {
-    id: "ORD-9408",
-    customerName: "Eleanor Vance",
-    customerPhone: "+63 918 555 0643",
-    address: "Villa 7, Forbes Park North, Makati",
-    district: "Makati",
-    distanceKm: 4.9,
-    payout: 240,
-    wave: "Lunch Wave",
-    slot: "12:00 PM – 1:00 PM",
-    mealsCount: 3,
-    mealSummary: "2x High-Protein Chicken Bowls, 1x Chia Parfait",
-    notes: "Ring bell at side gate.",
-    claimed: false,
-  },
-]
+function statusLabel(status: DeliveryOrder["status"]) {
+  return status === "delivered"
+    ? "Delivered"
+    : status === "in_transit"
+      ? "In transit"
+      : "Assigned"
+}
 
 export default function RiderDashboard() {
-  const [deliveries, setDeliveries] = React.useState<DeliveryOrder[]>(INITIAL_DELIVERIES)
+  const { makeRequest } = useApi()
+  const navigate = useNavigate()
+  const [deliveries, setDeliveries] = React.useState<DeliveryOrder[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
 
-  const handleClaim = (id: string) => {
-    setDeliveries((prev) =>
-      prev.map((order) =>
-        order.id === id ? { ...order, claimed: true } : order
+  const loadDeliveries = React.useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await makeRequest("deliveries")
+      setDeliveries(response as DeliveryOrder[])
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to load your assigned deliveries."
       )
+    } finally {
+      setIsLoading(false)
+    }
+  }, [makeRequest])
+
+  React.useEffect(() => {
+    void loadDeliveries()
+  }, [loadDeliveries])
+
+  const activeCount = deliveries.filter((delivery) => delivery.status !== "delivered").length
+
+  if (isLoading) {
+    return (
+      <section className="flex min-h-[420px] items-center justify-center">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+          <RefreshCw size={16} className="animate-spin" />
+          Loading your deliveries...
+        </div>
+      </section>
     )
   }
 
-  const availableCount = deliveries.filter((d) => !d.claimed).length
+  if (error) {
+    return (
+      <section className="flex min-h-[420px] flex-col items-center justify-center gap-4 text-center">
+        <ShieldAlert size={34} className="text-rose-600" />
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900">Could not load deliveries</h1>
+          <p className="mt-1 max-w-md text-sm text-slate-600">{error}</p>
+        </div>
+        <Button onClick={() => void loadDeliveries()} className="bg-blue-600 font-bold text-white hover:bg-blue-700">
+          Try again
+        </Button>
+      </section>
+    )
+  }
 
   return (
-    <section className="flex flex-col gap-6 w-full pb-16">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b-2 border-slate-900 pb-4">
+    <section className="flex w-full flex-col gap-6 pb-16">
+      <div className="flex flex-col items-start justify-between gap-4 border-b-2 border-slate-900 pb-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-            Available Deliveries
+            Assigned Deliveries
           </h1>
-          <p className="text-base font-medium text-slate-600 mt-1">
-            Browse open meal dispatches and claim delivery stops on your route.
+          <p className="mt-1 text-base font-medium text-slate-600">
+            Review your dispatches and manage every stop from the active route.
           </p>
         </div>
-
-        {availableCount > 0 && (
-          <Badge className="bg-blue-600 text-white font-bold text-sm py-1.5 px-4 rounded-full shrink-0 shadow-xs">
-            {availableCount} Available
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => void loadDeliveries()}
+            className="gap-2 rounded-xl border-slate-300 font-bold"
+          >
+            <RefreshCw size={15} />
+            Refresh
+          </Button>
+          <Badge className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-bold text-white">
+            {activeCount} Active
           </Badge>
-        )}
+        </div>
       </div>
 
-      {/* Scrollable list of cards */}
-      <div className="flex flex-col gap-4">
-        {deliveries.map((order) => {
-          const isClaimed = order.claimed
+      {deliveries.length === 0 ? (
+        <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 text-center">
+          <CheckCircle2 size={38} className="text-emerald-600" />
+          <h2 className="mt-3 text-xl font-extrabold text-slate-900">You’re all caught up</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            New deliveries assigned by dispatch will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {deliveries.map((delivery) => {
+            const isDelivered = delivery.status === "delivered"
+            return (
+              <div
+                key={delivery.id}
+                className={`flex flex-col items-start justify-between gap-5 rounded-2xl border bg-white p-6 shadow-xs transition-colors sm:flex-row sm:items-center ${
+                  isDelivered
+                    ? "border-emerald-300 bg-emerald-50/20"
+                    : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <Badge variant="outline" className="border-slate-300 bg-slate-50 px-2.5 py-1 font-mono text-sm font-bold">
+                      {delivery.orderId}
+                    </Badge>
+                    <span className="text-lg font-bold text-slate-900">{delivery.customerName}</span>
+                    <Badge
+                      className={
+                        isDelivered
+                          ? "bg-emerald-600 font-bold text-white"
+                          : "bg-blue-100 font-bold text-blue-700"
+                      }
+                    >
+                      {statusLabel(delivery.status)}
+                    </Badge>
+                    <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-base font-extrabold text-emerald-600">
+                      +₱{delivery.payout.toLocaleString()}
+                    </span>
+                  </div>
 
-          return (
-            <div
-              key={order.id}
-              className={`rounded-2xl border bg-white p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 transition-all shadow-xs ${
-                isClaimed ? "border-emerald-300 bg-emerald-50/20" : "border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              {/* Order Info */}
-              <div className="space-y-3 flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <Badge variant="outline" className="font-mono text-sm font-bold px-2.5 py-1 bg-slate-50 border-slate-300">
-                    {order.id}
-                  </Badge>
-                  <span className="font-bold text-lg text-slate-900">
-                    {order.customerName}
-                  </span>
-                  <span className="text-sm font-semibold text-slate-500">
-                    • {order.district}
-                  </span>
-                  <span className="text-base font-extrabold text-emerald-600 ml-auto sm:ml-0 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
-                    +₱{order.payout}
-                  </span>
-                </div>
-
-                <p className="text-sm text-slate-700 flex items-start gap-2 leading-relaxed">
-                  <MapPin size={16} className="text-blue-600 shrink-0 mt-0.5" />
-                  <span className="font-medium">{order.address}</span>
-                </p>
-
-                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 pt-0.5">
-                  <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                    <Clock size={15} className="text-slate-500" />
-                    {order.slot}
-                  </span>
-                  <span className="text-slate-300">•</span>
-                  <span className="font-medium text-slate-700">{order.distanceKm} km away</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="flex items-center gap-1.5 font-semibold text-slate-800">
-                    <Utensils size={15} className="text-blue-600" />
-                    {order.mealSummary}
-                  </span>
-                </div>
-
-                {order.notes && (
-                  <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg italic">
-                    "{order.notes}"
+                  <p className="flex items-start gap-2 text-sm leading-relaxed text-slate-700">
+                    <MapPin size={16} className="mt-0.5 shrink-0 text-blue-600" />
+                    <span className="font-medium">{delivery.address}</span>
                   </p>
-                )}
-              </div>
 
-              {/* Claim Button */}
-              <div className="w-full sm:w-auto shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex justify-end">
-                {isClaimed ? (
-                  <Badge className="bg-emerald-600 text-white font-bold text-sm py-2.5 px-5 rounded-xl flex items-center gap-2 shadow-xs">
-                    <CheckCircle2 size={16} />
-                    Claimed
-                  </Badge>
-                ) : (
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                    <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                      <Clock size={15} className="text-slate-500" />
+                      {delivery.slot}
+                    </span>
+                    <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+                      <Utensils size={15} className="text-blue-600" />
+                      {delivery.mealSummary} ({delivery.mealsCount} meals)
+                    </span>
+                  </div>
+
+                  {delivery.notes && (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs italic text-amber-900">
+                      “{delivery.notes}”
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex w-full shrink-0 flex-col gap-2 border-t border-slate-100 pt-3 sm:w-auto sm:border-t-0 sm:pt-0">
+                  {delivery.customerPhone && (
+                    <a
+                      href={`tel:${delivery.customerPhone}`}
+                      className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-background px-4 text-sm font-bold shadow-xs transition-colors hover:bg-slate-50 sm:w-auto"
+                    >
+                      <Phone size={15} />
+                      Call customer
+                    </a>
+                  )}
                   <Button
-                    onClick={() => handleClaim(order.id)}
-                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-6 gap-2 cursor-pointer shadow-sm rounded-xl transition-all"
+                    onClick={() => navigate(`/rider/active?stop=${encodeURIComponent(delivery.id)}`)}
+                    className="w-full gap-2 rounded-xl bg-blue-600 font-bold text-white shadow-sm hover:bg-blue-700 sm:w-auto"
                   >
-                    <Hand size={16} />
-                    Claim
+                    <Navigation size={15} />
+                    {isDelivered ? "View delivery" : "Open route"}
                   </Button>
-                )}
+                </div>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </section>
   )
 }
-
