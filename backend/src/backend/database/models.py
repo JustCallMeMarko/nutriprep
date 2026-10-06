@@ -2,9 +2,9 @@ from dotenv import load_dotenv
 import os
 import enum
 from urllib.parse import quote_plus
-from sqlalchemy import Enum, UniqueConstraint, create_engine, String, ForeignKey, Text, func
+from sqlalchemy import Date, Enum, UniqueConstraint, create_engine, String, ForeignKey, Text, func
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship, sessionmaker
-from datetime import datetime 
+from datetime import date, datetime
 load_dotenv()
 
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
@@ -35,6 +35,11 @@ class MealStatus(str, enum.Enum):
     ACTIVE = "active"
     ARCHIVED = "archived"
     USER_OWNED = "user_owned"
+
+class PlanSlot(str, enum.Enum):
+    BREAKFAST = "breakfast"
+    LUNCH = "lunch"
+    DINNER = "dinner"
 
 class OrderStatus(str, enum.Enum):
     PENDING = "pending"
@@ -127,6 +132,22 @@ class MealLog(Base):
 
     user: Mapped["User"] = relationship(back_populates="meal_logs")
     meal: Mapped["Meal"] = relationship(back_populates="meal_logs")
+
+class PlanEntry(Base):
+    __tablename__ = "plan_entries"
+    __table_args__ = (
+        UniqueConstraint("user_id", "plan_date", "slot", name="uq_user_plan_date_slot"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    plan_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    slot: Mapped[PlanSlot] = mapped_column(Enum(PlanSlot, native_enum=False), nullable=False)
+    meal_id: Mapped[int | None] = mapped_column(ForeignKey("meals.id", ondelete="SET NULL"), nullable=True)
+    custom_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    kcal: Mapped[int] = mapped_column(nullable=False, default=0)
+
+    meal: Mapped["Meal | None"] = relationship()
 
 class FavoriteMeal(Base):
     __tablename__ = "favorite_meals"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Lock, LockOpen, Plus, X } from "lucide-react"
+import { useApi } from "@/lib/api"
 
 // ---------- Types ----------
 
@@ -31,14 +32,6 @@ const SLOTS: { key: SlotKey; label: string; window: string }[] = [
     { key: "breakfast", label: "Breakfast", window: "7:00 – 9:00 AM" },
     { key: "lunch", label: "Lunch", window: "12:00 – 2:00 PM" },
     { key: "dinner", label: "Dinner", window: "6:00 – 8:00 PM" },
-]
-
-const FAVORITE_MEALS: Meal[] = [
-    { id: "f1", name: "Grilled Chicken & Quinoa Bowl", kcal: 480, tag: "Favorite" },
-    { id: "f2", name: "Salmon, Greens & Brown Rice", kcal: 520, tag: "Favorite" },
-    { id: "f3", name: "Tofu Veggie Stir-fry", kcal: 410, tag: "Favorite" },
-    { id: "f4", name: "Oatmeal, Banana & Peanut Butter", kcal: 350, tag: "Favorite" },
-    { id: "f5", name: "Turkey Wrap & Side Salad", kcal: 440, tag: "Favorite" },
 ]
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -103,12 +96,16 @@ function formatRange(start: Date, end: Date) {
 type PlannerState = Record<string, Partial<Record<SlotKey, Meal>>> // keyed by ISO date
 
 export default function UserPlan() {
+    const { makeRequest } = useApi()
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [view, setView] = useState<ViewMode>("weeks")
     const [plan, setPlan] = useState<PlannerState>({})
     const [locked, setLocked] = useState(false)
     const [pickerFor, setPickerFor] = useState<{ dateKey: string; slot: SlotKey } | null>(null)
     const [customName, setCustomName] = useState("")
+    const [favoriteMeals, setFavoriteMeals] = useState<Meal[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
     const activeDate = date ?? new Date()
     const unlockDate = useMemo(() => unlockDateFor(new Date()), [])
@@ -119,6 +116,28 @@ export default function UserPlan() {
         return Array.from({ length: 7 }, (_, i) => addDays(start, i))
     }, [view, activeDate])
 
+    useEffect(() => {
+        let active = true
+        Promise.all([makeRequest("plan"), makeRequest("fav-meal")])
+            .then(([savedPlan, favorites]) => {
+                if (!active) return
+                const nextPlan: PlannerState = {}
+                savedPlan.forEach((entry: { date: string; slot: SlotKey; meal: Meal }) => {
+                    nextPlan[entry.date] = { ...nextPlan[entry.date], [entry.slot]: entry.meal }
+                })
+                setPlan(nextPlan)
+                setFavoriteMeals(favorites.map((meal: { id: string | number; title: string; calories: number }) => ({
+                    id: String(meal.id),
+                    name: meal.title,
+                    kcal: meal.calories,
+                    tag: "Favorite",
+                })))
+            })
+            .catch(() => active && setError("Unable to load your meal plan. Please try again."))
+            .finally(() => active && setLoading(false))
+        return () => { active = false }
+    }, [makeRequest])
+
     function openPicker(key: string, slot: SlotKey) {
         const day = days.find((d) => dateKeyOf(d) === key)
         if (locked || (day && isBlocked(day, unlockDate))) return
@@ -126,13 +145,29 @@ export default function UserPlan() {
         setPickerFor({ dateKey: key, slot })
     }
 
-    function assignMeal(meal: Meal) {
+    async function assignMeal(meal: Meal) {
         if (!pickerFor) return
-        setPlan((prev) => ({
-            ...prev,
-            [pickerFor.dateKey]: { ...prev[pickerFor.dateKey], [pickerFor.slot]: meal },
-        }))
-        setPickerFor(null)
+        const target = pickerFor
+        try {
+            await makeRequest("plan", {
+                method: "PUT",
+                body: JSON.stringify({
+                    plan_date: target.dateKey,
+                    slot: target.slot,
+                    meal_id: meal.tag === "Favorite" ? Number(meal.id) : null,
+                    custom_name: meal.tag === "Custom" ? meal.name : null,
+                    kcal: meal.kcal,
+                }),
+            })
+            setPlan((prev) => ({
+                ...prev,
+                [target.dateKey]: { ...prev[target.dateKey], [target.slot]: meal },
+            }))
+            setPickerFor(null)
+            setError(null)
+        } catch {
+            setError("Unable to save this meal. Please try again.")
+        }
     }
 
     function addCustomMeal() {
@@ -140,8 +175,18 @@ export default function UserPlan() {
         assignMeal({ id: `custom-${Date.now()}`, name: customName.trim(), kcal: 0, tag: "Custom" })
     }
 
-    function removeMeal(key: string, slot: SlotKey) {
-        if (locked) return
+    async function removeMeal(key: string, slot: SlotKey) {
+        if (locked || isBlocked(new Date(`${key}T00:00:00`), unlockDate)) return
+        try {
+            await makeRequest(`plan/${key}/${slot}`, { method: "DELETE" })
+            setPlan((prev) => {
+                const dayMeals = { ...prev[key] }
+                delete dayMeals[slot]
+                return { ...prev, [key]: dayMeals }
+            })
+        } catch {
+            setError("Unable to remove this meal. Please try again.")
+        }
         setPlan((prev) => {
             const dayMeals = { ...prev[key] }
             delete dayMeals[slot]
@@ -172,6 +217,11 @@ export default function UserPlan() {
                     </ButtonGroup>
                 </div>
 
+                {loading ? (
+                    <p className="text-sm text-muted-foreground">Loading your plan…</p>
+                ) : error ? (
+                    <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+                ) : null}
                 <div className="min-w-0">
                     <div className="mb-2 flex items-center justify-between text-sm font-medium text-muted-foreground">
                         <span>{formatRange(days[0], days[days.length - 1])}</span>
@@ -275,7 +325,7 @@ export default function UserPlan() {
                     </DialogHeader>
 
                     <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
-                        {FAVORITE_MEALS.map((meal) => (
+                        {favoriteMeals.map((meal) => (
                             <button
                                 key={meal.id}
                                 onClick={() => assignMeal(meal)}

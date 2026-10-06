@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from backend.utils import authenticate_and_get_user_details
 import boto3
 from botocore.config import Config
@@ -29,6 +29,112 @@ if not CLERK_SECRET_KEY:
 logger = logging.getLogger(__name__)
 router = APIRouter()
 clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
+
+DELIVERY_DAYS = {0, 3}
+VALID_PLAN_SLOTS = {slot.value for slot in models.PlanSlot}
+
+def _plan_unlock_date(today: date) -> date:
+    """Return the next Sunday or Wednesday after the current delivery cycle."""
+    current = today
+    while current.weekday() not in {6, 2}:  # Sunday, Wednesday
+        current -= timedelta(days=1)
+    unlock = current + timedelta(days=1)
+    while unlock.weekday() not in {6, 2}:
+        unlock += timedelta(days=1)
+    return unlock
+
+def _validate_plan_date(plan_date: date, slot: str) -> None:
+    if slot not in VALID_PLAN_SLOTS:
+        raise HTTPException(status_code=422, detail="Invalid meal slot")
+    if plan_date < _plan_unlock_date(datetime.now().date()):
+        raise HTTPException(status_code=409, detail="This date is no longer editable")
+
+@router.get("/plan", status_code=status.HTTP_200_OK)
+def get_plan(request: Request, db: Session = Depends(get_db)):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    entries = (
+        db.query(models.PlanEntry)
+        .options(joinedload(models.PlanEntry.meal))
+        .filter(models.PlanEntry.user_id == user_id)
+        .order_by(models.PlanEntry.plan_date, models.PlanEntry.slot)
+        .all()
+    )
+    return [
+        {
+            "date": entry.plan_date.isoformat(),
+            "slot": entry.slot.value,
+            "meal": {
+                "id": str(entry.meal.id),
+                "name": entry.meal.title,
+                "kcal": entry.meal.calories,
+                "tag": "Favorite",
+            } if entry.meal else {
+                "id": f"custom-{entry.id}",
+                "name": entry.custom_name,
+                "kcal": entry.kcal,
+                "tag": "Custom",
+            },
+        }
+        for entry in entries
+    ]
+
+@router.put("/plan", status_code=status.HTTP_200_OK)
+def upsert_plan_entry(
+    request: Request,
+    payload: user.PlanEntryUpsert,
+    db: Session = Depends(get_db),
+):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    _validate_plan_date(payload.plan_date, payload.slot)
+
+    if payload.meal_id is None and not payload.custom_name:
+        raise HTTPException(status_code=422, detail="A meal or custom meal name is required")
+    meal = None
+    if payload.meal_id is not None:
+        meal = db.query(models.Meal).filter(
+            models.Meal.id == payload.meal_id,
+            models.Meal.status == models.MealStatus.ACTIVE,
+        ).first()
+        if not meal:
+            raise HTTPException(status_code=404, detail="Meal does not exist")
+
+    entry = db.query(models.PlanEntry).filter(
+        models.PlanEntry.user_id == user_id,
+        models.PlanEntry.plan_date == payload.plan_date,
+        models.PlanEntry.slot == payload.slot,
+    ).first()
+    if not entry:
+        entry = models.PlanEntry(
+            user_id=user_id,
+            plan_date=payload.plan_date,
+            slot=payload.slot,
+        )
+        db.add(entry)
+
+    entry.meal_id = payload.meal_id
+    entry.custom_name = None if meal else payload.custom_name.strip()
+    entry.kcal = meal.calories if meal else max(0, payload.kcal)
+    db.commit()
+    db.refresh(entry)
+    return {"date": payload.plan_date.isoformat(), "slot": payload.slot}
+
+@router.delete("/plan/{plan_date}/{slot}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_plan_entry(
+    plan_date: date,
+    slot: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    _validate_plan_date(plan_date, slot)
+    entry = db.query(models.PlanEntry).filter(
+        models.PlanEntry.user_id == user_id,
+        models.PlanEntry.plan_date == plan_date,
+        models.PlanEntry.slot == slot,
+    ).first()
+    if entry:
+        db.delete(entry)
+        db.commit()
 
 @router.post("/profile", status_code=status.HTTP_201_CREATED)
 def create_profile(

@@ -32,6 +32,10 @@ export const useApi = () => {
       throw new Error(errorData?.detail || "An error occurred while making the API request.")
     }
 
+    if (response.status === 204) {
+      return null
+    }
+
     return response.json()
   }, [getToken, role])
 

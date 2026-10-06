@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import date
 from typing import Optional
 from ..database.models import Goals
 
@@ -14,3 +15,10 @@ class ProfileCreate(BaseModel):
 
 class MealLogCreate(BaseModel):
     meal_id: int
+
+class PlanEntryUpsert(BaseModel):
+    plan_date: date
+    slot: str
+    meal_id: Optional[int] = None
+    custom_name: Optional[str] = None
+    kcal: int = 0
