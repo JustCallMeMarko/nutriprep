@@ -1,5 +1,5 @@
-from datetime import datetime
-from fastapi import APIRouter, Request, HTTPException, Depends, status
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Request, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session, joinedload
 from backend.utils import authenticate_and_get_user_details
 from ..database import models
@@ -49,6 +49,118 @@ def _serialize_delivery(delivery: models.Delivery) -> dict:
         "lng": profile.delivery_long if profile else None,
         "status": stop_status,
         "orderStatus": status_value,
+    }
+
+
+def _serialize_completed_delivery(delivery: models.Delivery) -> dict:
+    order = delivery.order
+    profile = order.user.customer_profile
+    items = order.items
+    payout = order.total_credits
+    return {
+        "id": f"ORD-{order.id:04d}",
+        "customerName": order.user.full_name,
+        "completedAt": delivery.delivered_at.isoformat() if delivery.delivered_at else None,
+        "mealsCount": sum(item.quantity for item in items),
+        "mealSummary": ", ".join(
+            f"{item.quantity}x {item.meal.title}" for item in items
+        ) or "Meal order",
+        "distanceKm": None,
+        "basePay": payout,
+        "tip": 0,
+        "totalPayout": payout,
+        "status": "Paid",
+        "customerAddress": profile.delivery_address if profile else None,
+    }
+
+
+@router.get("/analytics", status_code=status.HTTP_200_OK)
+def get_analytics(
+    request: Request,
+    timeframe: str = Query("weekly", pattern="^(weekly|monthly)$"),
+    db: Session = Depends(get_db),
+):
+    rider_id = _rider_id(request)
+    now = datetime.now()
+    period_days = 7 if timeframe == "weekly" else 28
+    start = now - timedelta(days=period_days)
+    previous_start = start - timedelta(days=period_days)
+
+    deliveries = (
+        db.query(models.Delivery)
+        .options(
+            joinedload(models.Delivery.order)
+            .joinedload(models.Order.user)
+            .joinedload(models.User.customer_profile),
+            joinedload(models.Delivery.order)
+            .joinedload(models.Order.items)
+            .joinedload(models.OrderItem.meal),
+        )
+        .filter(
+            models.Delivery.rider_id == rider_id,
+            models.Delivery.delivered_at >= previous_start,
+            models.Order.status == models.OrderStatus.DELIVERED,
+        )
+        .join(models.Delivery.order)
+        .order_by(models.Delivery.delivered_at.desc())
+        .all()
+    )
+
+    current = [delivery for delivery in deliveries if delivery.delivered_at >= start]
+    previous = [delivery for delivery in deliveries if delivery.delivered_at < start]
+
+    def payout(delivery: models.Delivery) -> int:
+        return delivery.order.total_credits
+
+    def period_change(current_value: int, previous_value: int) -> float:
+        if previous_value == 0:
+            return 100.0 if current_value else 0.0
+        return round((current_value - previous_value) / previous_value * 100, 1)
+
+    if timeframe == "weekly":
+        bucket_count = 7
+        bucket_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        def bucket_index(delivery: models.Delivery) -> int:
+            return delivery.delivered_at.weekday()
+    else:
+        bucket_count = 4
+        bucket_labels = ["Week 1", "Week 2", "Week 3", "Week 4"]
+        def bucket_index(delivery: models.Delivery) -> int:
+            return min((delivery.delivered_at.date() - start.date()).days // 7, 3)
+
+    chart = [
+        {"label": label, "earnings": 0, "orders": 0, "tips": 0}
+        for label in bucket_labels[:bucket_count]
+    ]
+    for delivery in current:
+        index = bucket_index(delivery)
+        if 0 <= index < len(chart):
+            chart[index]["earnings"] += payout(delivery)
+            chart[index]["orders"] += 1
+
+    earnings = sum(payout(delivery) for delivery in current)
+    previous_earnings = sum(payout(delivery) for delivery in previous)
+    orders = len(current)
+    previous_orders = len(previous)
+    completed_orders = [_serialize_completed_delivery(delivery) for delivery in current]
+
+    return {
+        "timeframe": timeframe,
+        "chart": chart,
+        "orders": completed_orders,
+        "summary": {
+            "earnings": earnings,
+            "orders": orders,
+            "tips": 0,
+            "averagePayout": round(earnings / orders) if orders else 0,
+            "earningsChange": period_change(earnings, previous_earnings),
+            "ordersChange": period_change(orders, previous_orders),
+        },
+        "capabilities": {
+            "cashOut": False,
+            "distanceTracking": False,
+            "tipsTracking": False,
+        },
     }
 
 @router.get("/deliveries", status_code=status.HTTP_200_OK)
