@@ -2,6 +2,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import datetime
 from . import models
+from .models import Goals
 
 def create_user(db: Session, user_id: str, full_name: str, email: str, role: str) -> models.User:
     """Creates only the base user record without provisioning profiles."""

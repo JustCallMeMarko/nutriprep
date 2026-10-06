@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from uuid import uuid4
+from datetime import date, datetime, timedelta
 from backend.database.db import get_total_admins, get_total_riders, get_total_user_credits, get_total_users
 from backend.utils import authenticate_and_get_user_details
 import boto3
@@ -8,6 +9,7 @@ from botocore.config import Config
 from fastapi import APIRouter, Form, Request, HTTPException, Depends, File, UploadFile, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from dotenv import load_dotenv
 from ..database import models
 from ..schemas import user
@@ -36,6 +38,95 @@ s3_client = boto3.client(
     region_name="us-east-1",
 )
 clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
+
+def _require_admin(request: Request) -> None:
+    user_details = authenticate_and_get_user_details(request)
+    role = (user_details.get("public_metadata") or {}).get("role")
+    if role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Admin privileges required.",
+        )
+
+@router.get("/dashboard", status_code=status.HTTP_200_OK)
+def get_dashboard_metrics(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Return the metrics used by the admin dashboard for the last seven days."""
+    _require_admin(request)
+
+    today = date.today()
+    start_date = today - timedelta(days=6)
+    previous_start = start_date - timedelta(days=7)
+
+    acquisition_rows = (
+        db.query(func.date(models.User.created_at), func.count(models.User.id))
+        .filter(models.User.created_at >= datetime.combine(start_date, datetime.min.time()))
+        .group_by(func.date(models.User.created_at))
+        .all()
+    )
+    acquisition_by_day = {str(day): count for day, count in acquisition_rows}
+    acquisition = [
+        {
+            "day": (start_date + timedelta(days=offset)).strftime("%a"),
+            "date": str(start_date + timedelta(days=offset)),
+            "users": acquisition_by_day.get(str(start_date + timedelta(days=offset)), 0),
+        }
+        for offset in range(7)
+    ]
+
+    today_start = datetime.combine(today, datetime.min.time())
+    tomorrow_start = today_start + timedelta(days=1)
+    daily_credits = (
+        db.query(func.coalesce(func.sum(models.Order.total_credits), 0))
+        .filter(
+            models.Order.created_at >= today_start,
+            models.Order.created_at < tomorrow_start,
+            models.Order.status != models.OrderStatus.CANCELLED,
+        )
+        .scalar()
+    )
+    active_deliveries = (
+        db.query(models.Order)
+        .filter(
+            models.Order.status.in_(
+                [models.OrderStatus.PREPARING, models.OrderStatus.OUT_FOR_DELIVERY]
+            )
+        )
+        .count()
+    )
+    total_orders = db.query(models.Order).count()
+    current_users = db.query(models.User).count()
+    previous_users = (
+        db.query(models.User)
+        .filter(
+            models.User.created_at >= datetime.combine(previous_start, datetime.min.time()),
+            models.User.created_at < datetime.combine(start_date, datetime.min.time()),
+        )
+        .count()
+    )
+    current_period_users = (
+        db.query(models.User)
+        .filter(models.User.created_at >= datetime.combine(start_date, datetime.min.time()))
+        .count()
+    )
+    user_change = (
+        ((current_period_users - previous_users) / previous_users) * 100
+        if previous_users
+        else (100.0 if current_period_users else 0.0)
+    )
+
+    return {
+        "total_users": current_users,
+        "daily_credits": int(daily_credits or 0),
+        "active_deliveries": active_deliveries,
+        "active_delivery_rate": round((active_deliveries / total_orders) * 100)
+        if total_orders
+        else 0,
+        "user_change_percent": round(user_change, 1),
+        "acquisition": acquisition,
+    }
 
 @router.post("/meals")
 async def create_meal(
