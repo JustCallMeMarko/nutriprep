@@ -46,6 +46,16 @@ class OrderStatusUpdate(BaseModel):
 class OrderRiderUpdate(BaseModel):
     rider_id: str
 
+class UserRoleUpdate(BaseModel):
+    role: models.Roles
+
+class UserCreditsUpdate(BaseModel):
+    amount: int
+    operation: str
+
+class UserSubscriptionUpdate(BaseModel):
+    plan: str
+
 def _require_admin(request: Request) -> None:
     user_details = authenticate_and_get_user_details(request)
     role = (user_details.get("public_metadata") or {}).get("role")
@@ -54,6 +64,183 @@ def _require_admin(request: Request) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied. Admin privileges required.",
         )
+
+def _clerk_metadata(clerk_user) -> dict:
+    return dict(getattr(clerk_user, "public_metadata", None) or {})
+
+def _format_clerk_date(value) -> str:
+    if not value:
+        return ""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value / 1000).isoformat()
+    return str(value)
+
+def _serialize_admin_user(clerk_user, db: Session) -> dict:
+    user_id = clerk_user.id
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    profile = db_user.customer_profile if db_user else None
+    metadata = _clerk_metadata(clerk_user)
+    email_addresses = getattr(clerk_user, "email_addresses", []) or []
+    primary_email_id = getattr(clerk_user, "primary_email_address_id", None)
+    email = next(
+        (
+            getattr(address, "email_address", "")
+            for address in email_addresses
+            if getattr(address, "id", None) == primary_email_id
+        ),
+        getattr(email_addresses[0], "email_address", "") if email_addresses else "",
+    )
+    role = (db_user.role.value if db_user else metadata.get("role", "user"))
+    plan = metadata.get("subscription_plan", "None")
+    if role == "admin":
+        plan = "None"
+    return {
+        "id": user_id,
+        "name": " ".join(
+            part for part in [getattr(clerk_user, "first_name", ""), getattr(clerk_user, "last_name", "")]
+            if part
+        ) or getattr(clerk_user, "username", None) or email.split("@")[0],
+        "email": email,
+        "emailVerified": bool(
+            next(
+                (
+                    getattr(address, "verification", None)
+                    for address in email_addresses
+                    if getattr(address, "id", None) == primary_email_id
+                ),
+                None,
+            )
+        ),
+        "avatarUrl": getattr(clerk_user, "image_url", "") or "",
+        "role": role,
+        "subscriptionPlan": plan,
+        "subscriptionStatus": metadata.get("subscription_status", "None") if plan != "None" else "None",
+        "credits": profile.credits if profile and role == "user" else 0,
+        "joinedAt": _format_clerk_date(getattr(clerk_user, "created_at", None)),
+        "lastActiveAt": _format_clerk_date(getattr(clerk_user, "last_active_at", None)),
+        "status": "suspended" if getattr(clerk_user, "banned", False) else "active",
+        "ordersCount": len(db_user.orders) if db_user else 0,
+    }
+
+def _get_clerk_user(user_id: str):
+    try:
+        return clerk.users.get(user_id=user_id)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="User not found in Clerk.") from exc
+
+def _update_clerk_metadata(clerk_user, updates: dict) -> None:
+    metadata = _clerk_metadata(clerk_user)
+    metadata.update(updates)
+    clerk.users.update_metadata(user_id=clerk_user.id, public_metadata=metadata)
+
+@router.get("/users", status_code=status.HTTP_200_OK)
+def get_admin_users(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    clerk_users = clerk.users.list(request={"limit": 500})
+    return [_serialize_admin_user(clerk_user, db) for clerk_user in clerk_users]
+
+@router.patch("/users/{user_id}/role", status_code=status.HTTP_200_OK)
+def update_admin_user_role(
+    user_id: str,
+    payload: UserRoleUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    clerk_user = _get_clerk_user(user_id)
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User is not provisioned in the database.")
+    db_user.role = payload.role
+    if payload.role == models.Roles.RIDER and not db_user.rider_profile:
+        db_user.rider_profile = models.RiderProfile(user_id=user_id)
+    elif payload.role != models.Roles.RIDER and db_user.rider_profile:
+        db.delete(db_user.rider_profile)
+    if payload.role == models.Roles.ADMIN and db_user.customer_profile:
+        db_user.customer_profile.credits = 0
+    db.commit()
+    _update_clerk_metadata(
+        clerk_user,
+        {
+            "role": payload.role.value,
+            **(
+                {"subscription_plan": "None", "subscription_status": "None"}
+                if payload.role == models.Roles.ADMIN
+                else {}
+            ),
+        },
+    )
+    return _serialize_admin_user(clerk_user, db)
+
+@router.patch("/users/{user_id}/credits", status_code=status.HTTP_200_OK)
+def update_admin_user_credits(
+    user_id: str,
+    payload: UserCreditsUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    if payload.amount <= 0 or payload.operation not in {"add", "deduct"}:
+        raise HTTPException(status_code=422, detail="Amount must be positive and operation must be add or deduct.")
+    clerk_user = _get_clerk_user(user_id)
+    profile = db.query(models.CustomerProfile).filter(models.CustomerProfile.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=400, detail="This user does not have a customer profile.")
+    profile.credits = (
+        profile.credits + payload.amount
+        if payload.operation == "add"
+        else max(0, profile.credits - payload.amount)
+    )
+    db.commit()
+    return _serialize_admin_user(clerk_user, db)
+
+@router.patch("/users/{user_id}/subscription", status_code=status.HTTP_200_OK)
+def update_admin_user_subscription(
+    user_id: str,
+    payload: UserSubscriptionUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    if payload.plan not in {"Bronze", "Silver", "Gold", "Free", "None"}:
+        raise HTTPException(status_code=422, detail="Unsupported subscription plan.")
+    clerk_user = _get_clerk_user(user_id)
+    status_value = "Active" if payload.plan not in {"Free", "None"} else "None"
+    _update_clerk_metadata(
+        clerk_user,
+        {"subscription_plan": payload.plan, "subscription_status": status_value},
+    )
+    return _serialize_admin_user(clerk_user, db)
+
+@router.patch("/users/{user_id}/status", status_code=status.HTTP_200_OK)
+def update_admin_user_status(
+    user_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    clerk_user = _get_clerk_user(user_id)
+    if getattr(clerk_user, "banned", False):
+        clerk.users.unban(user_id=user_id)
+    else:
+        clerk.users.ban(user_id=user_id)
+    return _serialize_admin_user(_get_clerk_user(user_id), db)
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_user(user_id: str, request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    current_user = authenticate_and_get_user_details(request).get("user_id")
+    if current_user == user_id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own admin account.")
+    _get_clerk_user(user_id)
+    clerk.users.delete(user_id=user_id)
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user:
+        db.delete(db_user)
+        db.commit()
+    return None
 
 def _order_status_label(status_value: models.OrderStatus) -> str:
     return {
