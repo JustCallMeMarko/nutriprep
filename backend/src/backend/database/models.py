@@ -10,14 +10,17 @@ load_dotenv()
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
 MYSQL_USER = os.getenv("MYSQL_USER")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not all([MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD]):
     raise ValueError("Missing required database environment variables in .env file.")
 
-encoded_user = quote_plus(MYSQL_USER)
-encoded_password = quote_plus(MYSQL_PASSWORD)
+if not DATABASE_URL:
+    encoded_user = quote_plus(MYSQL_USER)
+    encoded_password = quote_plus(MYSQL_PASSWORD)
+    DATABASE_URL = f"mysql+pymysql://{encoded_user}:{encoded_password}@localhost:3306/{MYSQL_DATABASE}"
 
-DB_URL = f"mysql+pymysql://{encoded_user}:{encoded_password}@localhost:3306/{MYSQL_DATABASE}"
+DB_URL = DATABASE_URL
 engine = create_engine(DB_URL, echo=True, pool_pre_ping=True)
 
 # Enums
