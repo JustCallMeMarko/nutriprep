@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 from ..database import models
-from ..database.db import favorite_meal, unfavorite_meal
+from ..database.db import favorite_meal, get_all_favorite_meals, unfavorite_meal
 from ..schemas import user
 from ..database.models import get_db
 from clerk_backend_api import Clerk
@@ -100,6 +100,14 @@ async def get_profile(
 
     return profile
 
+@router.get("/meals/{id}", status_code=status.HTTP_200_OK)
+async def get_meal(
+    id: int,
+    db: Session = Depends(get_db),
+):
+    """Retrieves a specific meal from the database."""
+    return db.query(models.Meal).filter(models.Meal.id == id).first()
+
 @router.get("/meals", status_code=status.HTTP_200_OK)
 async def get_meals(
     db: Session = Depends(get_db),
@@ -166,11 +174,7 @@ def get_favorite_meals(
     user_details = authenticate_and_get_user_details(request)
     user_id = user_details.get("user_id")
 
-    favorites = (
-        db.query(models.FavoriteMeal)
-        .filter(models.FavoriteMeal.user_id == user_id)
-        .all()
-    )
+    favorites = get_all_favorite_meals(db, user_id)
     return favorites
 # @router.put("/meal-logs", status_code=status.HTTP_200_OK)
 # async def log_meal(
