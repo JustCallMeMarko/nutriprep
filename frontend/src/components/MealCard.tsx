@@ -2,6 +2,7 @@ import favorite from "@/assets/icons/favorite.svg"
 import active_favorite from "@/assets/icons/active_favorite.svg"
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useApi } from "@/lib/api";
 
 function FigmaStar() {
   return (
@@ -26,26 +27,35 @@ type Meal = {
   description: string;
   image_url: string;
   calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
+  protein: number;
+  carb: number;
+  fat: number;
   tags?: string[];
   stocks?: number;
   credits: number;
   isFavorite?: boolean;
 };
 
-export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' | 'user' }) {
+export function MealCard({
+  meal,
+  type = 'user',
+  onFavoriteChange,
+}: {
+  meal: Meal;
+  type?: 'admin' | 'user';
+  onFavoriteChange?: (isFavorite: boolean) => void;
+}) {
   const navigate = useNavigate();
+  const {makeRequest} = useApi()
   const {
     id,
     title,
     description,
     image_url,
     calories,
-    protein_g,
-    carbs_g,
-    fat_g,
+    protein,
+    carb,
+    fat,
     tags = [],
     stocks = 0,
     credits,
@@ -58,6 +68,22 @@ export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' |
       navigate(`/user/meal/${id}`);
     }
   };
+
+  const handleFavoriteClick = async (e: React.MouseEvent<HTMLImageElement, MouseEvent>) => {
+    e.stopPropagation();
+    if (id === undefined) return;
+
+    try {
+      await makeRequest(`fav-meal?meal_id=${encodeURIComponent(id)}`, {
+        method: isFav ? 'DELETE' : 'POST',
+      });
+      const nextIsFavorite = !isFav;
+      setIsFav(nextIsFavorite);
+      onFavoriteChange?.(nextIsFavorite);
+    } catch (error) {
+      console.error('Failed to update favorite meal:', error);
+    }
+  }
 
   return (
     <div
@@ -102,13 +128,13 @@ export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' |
         {/* Macro Badges */}
         <div className="mt-auto flex flex-wrap gap-1.5 mb-3">
           <span className="flex h-5.75 w-fit px-2 items-center justify-center rounded-[7px] border border-[rgba(174,174,178,0.5)] bg-white text-xs font-bold leading-2.5 opacity-70">
-            {protein_g}g Protein
+            {protein}g Protein
           </span>
           <span className="flex h-5.75 w-fit px-2 items-center justify-center rounded-[7px] border border-[rgba(174,174,178,0.5)] bg-white text-xs font-bold leading-2.5 opacity-70">
-            {carbs_g}g Carbs
+            {carb}g Carbs
           </span>
           <span className="flex h-5.75 w-fit px-2 items-center justify-center rounded-[7px] border border-[rgba(174,174,178,0.5)] bg-white text-xs font-bold leading-2.5 opacity-70">
-            {fat_g}g Fat
+            {fat}g Fat
           </span>
         </div>
 
@@ -123,10 +149,7 @@ export function MealCard({ meal, type = 'user' }: { meal: Meal; type?: 'admin' |
               src={isFav ? active_favorite : favorite}
               alt="Favorite"
               className="size-6 cursor-pointer hover:scale-110 transition-transform"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsFav(!isFav);
-              }}
+              onClick={handleFavoriteClick}
             />
           ) : (
             <span className="text-sm font-semibold">
