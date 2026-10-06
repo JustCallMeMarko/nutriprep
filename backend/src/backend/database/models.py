@@ -103,7 +103,6 @@ class Meal(Base):
 
     creator: Mapped["User"] = relationship(back_populates="meals")
     favorited_by: Mapped[list["FavoriteMeal"]] = relationship(back_populates="meal", cascade="all, delete-orphan")
-    tags: Mapped[list["Tag"]] = relationship(secondary="meal_tags", back_populates="meals")
     meal_logs: Mapped[list["MealLog"]] = relationship(back_populates="meal", cascade="all, delete-orphan")
 
 class MealLog(Base):
@@ -129,24 +128,6 @@ class FavoriteMeal(Base):
 
     user: Mapped["User"] = relationship(back_populates="favorites")
     meal: Mapped["Meal"] = relationship(back_populates="favorited_by")
-
-class Tag(Base):
-    __tablename__ = "tags"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-
-    meals: Mapped[list["Meal"]] = relationship(secondary="meal_tags", back_populates="tags")
-
-class MealTag(Base):
-    __tablename__ = "meal_tags"
-    __table_args__ = (
-        UniqueConstraint("meal_id", "tag_id", name="uq_meal_tag"),
-    )
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    meal_id: Mapped[int] = mapped_column(ForeignKey("meals.id", ondelete="CASCADE"), nullable=False)
-    tag_id: Mapped[int] = mapped_column(ForeignKey("tags.id", ondelete="CASCADE"), nullable=False)
 
 class Broadcast(Base):
     __tablename__ = "broadcasts"
