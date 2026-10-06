@@ -223,6 +223,54 @@ class Broadcast(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="broadcasts")
+    priority: Mapped["BroadcastPriority | None"] = relationship(
+        back_populates="broadcast", uselist=False, cascade="all, delete-orphan"
+    )
+    audience_details: Mapped["BroadcastAudience | None"] = relationship(
+        back_populates="broadcast", uselist=False, cascade="all, delete-orphan"
+    )
+    recipients: Mapped[list["BroadcastRecipient"]] = relationship(
+        back_populates="broadcast", cascade="all, delete-orphan"
+    )
+
+class BroadcastPriority(Base):
+    __tablename__ = "broadcast_priorities"
+
+    broadcast_id: Mapped[int] = mapped_column(
+        ForeignKey("broadcasts.id", ondelete="CASCADE"), primary_key=True
+    )
+    value: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
+
+    broadcast: Mapped["Broadcast"] = relationship(back_populates="priority")
+
+class BroadcastAudience(Base):
+    __tablename__ = "broadcast_audiences"
+
+    broadcast_id: Mapped[int] = mapped_column(
+        ForeignKey("broadcasts.id", ondelete="CASCADE"), primary_key=True
+    )
+    value: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    broadcast: Mapped["Broadcast"] = relationship(back_populates="audience_details")
+
+class BroadcastRecipient(Base):
+    __tablename__ = "broadcast_recipients"
+    __table_args__ = (
+        UniqueConstraint("broadcast_id", "user_id", name="uq_broadcast_recipient"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    broadcast_id: Mapped[int] = mapped_column(
+        ForeignKey("broadcasts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    read_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    dismissed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    broadcast: Mapped["Broadcast"] = relationship(back_populates="recipients")
+    user: Mapped["User"] = relationship()
 
 Base.metadata.create_all(engine)
 

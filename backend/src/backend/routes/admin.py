@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from uuid import uuid4
 from datetime import date, datetime, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from backend.database.db import get_total_admins, get_total_riders, get_total_user_credits, get_total_users
 from backend.utils import authenticate_and_get_user_details
 import boto3
@@ -55,6 +55,31 @@ class UserCreditsUpdate(BaseModel):
 
 class UserSubscriptionUpdate(BaseModel):
     plan: str
+
+class BroadcastCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+    message: str = Field(min_length=1)
+    audience: str
+    priority: str = "normal"
+
+def _serialize_broadcast(broadcast: models.Broadcast) -> dict:
+    priority = broadcast.priority.value if broadcast.priority else "normal"
+    recipients = broadcast.recipients
+    return {
+        "id": str(broadcast.id),
+        "title": broadcast.title,
+        "message": broadcast.message,
+        "audience": (
+            broadcast.audience_details.value
+            if broadcast.audience_details
+            else broadcast.audience.value
+        ),
+        "priority": priority,
+        "sentAt": broadcast.created_at.isoformat(),
+        "sentBy": broadcast.user.full_name,
+        "recipientCount": len(recipients),
+        "readCount": sum(1 for recipient in recipients if recipient.read_at is not None),
+    }
 
 def _require_admin(request: Request) -> None:
     user_details = authenticate_and_get_user_details(request)
@@ -134,6 +159,81 @@ def _update_clerk_metadata(clerk_user, updates: dict) -> None:
     metadata = _clerk_metadata(clerk_user)
     metadata.update(updates)
     clerk.users.update_metadata(user_id=clerk_user.id, public_metadata=metadata)
+
+@router.get("/broadcasts", status_code=status.HTTP_200_OK)
+def get_broadcasts(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    broadcasts = (
+        db.query(models.Broadcast)
+        .options(
+            joinedload(models.Broadcast.user),
+            joinedload(models.Broadcast.priority),
+            joinedload(models.Broadcast.audience_details),
+            joinedload(models.Broadcast.recipients),
+        )
+        .order_by(models.Broadcast.created_at.desc())
+        .all()
+    )
+    return [_serialize_broadcast(broadcast) for broadcast in broadcasts]
+
+@router.post("/broadcasts", status_code=status.HTTP_201_CREATED)
+def create_broadcast(
+    payload: BroadcastCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_details = authenticate_and_get_user_details(request)
+    if (user_details.get("public_metadata") or {}).get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Access denied. Admin privileges required.")
+    if payload.audience not in {"all", "users", "riders", "admins"}:
+        raise HTTPException(status_code=422, detail="Unsupported broadcast audience.")
+    if payload.priority not in {"normal", "urgent"}:
+        raise HTTPException(status_code=422, detail="Unsupported broadcast priority.")
+
+    audience_roles = {
+        "users": [models.Roles.USER],
+        "riders": [models.Roles.RIDER],
+        "admins": [models.Roles.ADMIN],
+        "all": list(models.Roles),
+    }[payload.audience]
+    sender_id = user_details.get("user_id")
+    sender = db.query(models.User).filter(models.User.id == sender_id).first()
+    if not sender:
+        raise HTTPException(status_code=404, detail="Admin is not provisioned in the database.")
+
+    broadcast = models.Broadcast(
+        user_id=sender_id,
+        title=payload.title.strip(),
+        message=payload.message.strip(),
+        audience=models.Roles.ADMIN if payload.audience == "all" else audience_roles[0],
+        priority=models.BroadcastPriority(value=payload.priority),
+        audience_details=models.BroadcastAudience(value=payload.audience),
+    )
+    recipients = (
+        db.query(models.User)
+        .filter(models.User.role.in_(audience_roles))
+        .all()
+    )
+    broadcast.recipients = [
+        models.BroadcastRecipient(user_id=recipient.id) for recipient in recipients
+    ]
+    db.add(broadcast)
+    db.commit()
+    db.refresh(broadcast)
+    return _serialize_broadcast(broadcast)
+
+@router.delete("/broadcasts/{broadcast_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_broadcast(
+    broadcast_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    broadcast = db.query(models.Broadcast).filter(models.Broadcast.id == broadcast_id).first()
+    if not broadcast:
+        raise HTTPException(status_code=404, detail="Broadcast not found.")
+    db.delete(broadcast)
+    db.commit()
 
 @router.get("/users", status_code=status.HTTP_200_OK)
 def get_admin_users(request: Request, db: Session = Depends(get_db)):

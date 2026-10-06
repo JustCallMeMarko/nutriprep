@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Input } from "@/components/ui/input"
+import { useApi } from "@/lib/api"
 
 export type BroadcastAudience = "all" | "users" | "riders" | "admins"
 export type BroadcastPriority = "normal" | "urgent"
@@ -29,58 +30,39 @@ export interface NotificationItem {
   readCount: number
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "bc-101",
-    title: "Severe Weather & Delivery Delay Advisory",
-    message: "Tropical storm conditions are currently impacting Metro Manila routes. Afternoon dispatch slots may experience an estimated 30-45 minute delay. Stay safe!",
-    audience: "all",
-    priority: "urgent",
-    sentAt: "Today, 1:15 PM",
-    sentBy: "Eleanor Vance (Admin)",
-    recipientCount: 12482,
-    readCount: 8920,
-  },
-  {
-    id: "bc-102",
-    title: "Weekend Meal Prep Menu Drop is LIVE!",
-    message: "Our High-Protein and Low-Carb special selections for the upcoming week have been updated. Customize your weekly delivery slots before Friday 8 PM.",
-    audience: "users",
-    priority: "normal",
-    sentAt: "Yesterday, 10:00 AM",
-    sentBy: "Admin System",
-    recipientCount: 11820,
-    readCount: 9410,
-  },
-  {
-    id: "bc-103",
-    title: "BGC & Makati Hub Route Re-Optimization",
-    message: "New designated pickup points for high-density business hubs are now active in the rider app. Please review your updated route sequences before beginning lunch runs.",
-    audience: "riders",
-    priority: "normal",
-    sentAt: "Sep 25, 2026, 8:30 AM",
-    sentBy: "Carlos Mendoza (Operations)",
-    recipientCount: 124,
-    readCount: 120,
-  },
-  {
-    id: "bc-104",
-    title: "System Maintenance Scheduled for Sunday 2 AM - 4 AM",
-    message: "Clerk authentication and database optimization maintenance window. Portal access will be temporarily in read-only mode during this brief 2-hour update.",
-    audience: "admins",
-    priority: "normal",
-    sentAt: "Sep 24, 2026, 4:00 PM",
-    sentBy: "Steven Crain (Admin)",
-    recipientCount: 8,
-    readCount: 8,
-  },
-]
-
 export default function AdminNotification() {
-  const [notifications, setNotifications] = React.useState<NotificationItem[]>(INITIAL_NOTIFICATIONS)
+  const [notifications, setNotifications] = React.useState<NotificationItem[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [audienceFilter, setAudienceFilter] = React.useState<"all" | BroadcastAudience>("all")
   const [toastMessage, setToastMessage] = React.useState<string | null>(null)
+  const { makeRequest } = useApi()
+
+  const loadNotifications = React.useCallback(() => {
+    let active = true
+    void makeRequest("broadcasts")
+      .then((data) => {
+        if (active) setNotifications(data as NotificationItem[])
+      })
+      .catch((error: Error) => {
+        if (active) setToastMessage(error.message)
+      })
+    return () => {
+      active = false
+    }
+  }, [makeRequest])
+
+  React.useEffect(() => {
+    const cleanup = loadNotifications()
+    const handleBroadcastCreated = () => {
+      cleanup?.()
+      loadNotifications()
+    }
+    window.addEventListener("broadcast-created", handleBroadcastCreated)
+    return () => {
+      cleanup?.()
+      window.removeEventListener("broadcast-created", handleBroadcastCreated)
+    }
+  }, [loadNotifications])
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -88,8 +70,12 @@ export default function AdminNotification() {
   }
 
   const handleDeleteNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
-    showToast("Notification removed.")
+    void makeRequest(`broadcasts/${id}`, { method: "DELETE" })
+      .then(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== id))
+        showToast("Notification removed.")
+      })
+      .catch((error: Error) => showToast(error.message))
   }
 
   const filteredNotifications = React.useMemo(() => {

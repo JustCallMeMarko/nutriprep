@@ -33,6 +33,56 @@ clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
 DELIVERY_DAYS = {0, 3}
 VALID_PLAN_SLOTS = {slot.value for slot in models.PlanSlot}
 
+def _notification_payload(recipient: models.BroadcastRecipient) -> dict:
+    broadcast = recipient.broadcast
+    return {
+        "id": str(broadcast.id),
+        "title": broadcast.title,
+        "message": broadcast.message,
+        "priority": broadcast.priority.value if broadcast.priority else "normal",
+        "time": broadcast.created_at.isoformat(),
+        "read": recipient.read_at is not None,
+    }
+
+@router.get("/notifications", status_code=status.HTTP_200_OK)
+def get_notifications(request: Request, db: Session = Depends(get_db)):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    recipients = (
+        db.query(models.BroadcastRecipient)
+        .options(joinedload(models.BroadcastRecipient.broadcast).joinedload(models.Broadcast.priority))
+        .filter(
+            models.BroadcastRecipient.user_id == user_id,
+            models.BroadcastRecipient.dismissed_at.is_(None),
+        )
+        .order_by(models.BroadcastRecipient.id.desc())
+        .all()
+    )
+    return [_notification_payload(recipient) for recipient in recipients]
+
+@router.patch("/notifications/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
+def mark_notification_read(notification_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    recipient = db.query(models.BroadcastRecipient).filter(
+        models.BroadcastRecipient.broadcast_id == notification_id,
+        models.BroadcastRecipient.user_id == user_id,
+    ).first()
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+    recipient.read_at = datetime.now()
+    db.commit()
+
+@router.delete("/notifications/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+def dismiss_notification(notification_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    recipient = db.query(models.BroadcastRecipient).filter(
+        models.BroadcastRecipient.broadcast_id == notification_id,
+        models.BroadcastRecipient.user_id == user_id,
+    ).first()
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+    recipient.dismissed_at = datetime.now()
+    db.commit()
+
 def _plan_unlock_date(today: date) -> date:
     """Return the next Sunday or Wednesday after the current delivery cycle."""
     current = today
