@@ -36,6 +36,13 @@ class MealStatus(str, enum.Enum):
     ARCHIVED = "archived"
     USER_OWNED = "user_owned"
 
+class OrderStatus(str, enum.Enum):
+    PENDING = "pending"
+    PREPARING = "preparing"
+    OUT_FOR_DELIVERY = "out_for_delivery"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
 # Base class
 class Base(DeclarativeBase):
     pass
@@ -45,6 +52,8 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    full_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     role: Mapped[Roles] = mapped_column(Enum(Roles, native_enum=False), nullable=False, default=Roles.USER, index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
@@ -55,6 +64,7 @@ class User(Base):
     favorites: Mapped[list["FavoriteMeal"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     broadcasts: Mapped[list["Broadcast"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     meal_logs: Mapped[list["MealLog"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    orders: Mapped[list["Order"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 class CustomerProfile(Base):
     __tablename__ = "customer_profiles"
@@ -84,6 +94,7 @@ class RiderProfile(Base):
     is_available: Mapped[bool] = mapped_column(nullable=False, default=False, index=True)
 
     user: Mapped["User"] = relationship(back_populates="rider_profile")
+    deliveries: Mapped[list["Delivery"]] = relationship(back_populates="rider")
 
 class Meal(Base):
     __tablename__ = "meals"
@@ -104,6 +115,7 @@ class Meal(Base):
     creator: Mapped["User"] = relationship(back_populates="meals")
     favorited_by: Mapped[list["FavoriteMeal"]] = relationship(back_populates="meal", cascade="all, delete-orphan")
     meal_logs: Mapped[list["MealLog"]] = relationship(back_populates="meal", cascade="all, delete-orphan")
+    order_items: Mapped[list["OrderItem"]] = relationship(back_populates="meal")
 
 class MealLog(Base):
     __tablename__ = "meal_logs"
@@ -128,6 +140,41 @@ class FavoriteMeal(Base):
 
     user: Mapped["User"] = relationship(back_populates="favorites")
     meal: Mapped["Meal"] = relationship(back_populates="favorited_by")
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    total_credits: Mapped[int] = mapped_column(nullable=False)
+    status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus, native_enum=False), nullable=False, default=OrderStatus.PENDING)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="orders")
+    items: Mapped[list["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
+    delivery: Mapped["Delivery | None"] = relationship(back_populates="order", uselist=False)
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    meal_id: Mapped[int] = mapped_column(ForeignKey("meals.id", ondelete="CASCADE"), nullable=False)
+    quantity: Mapped[int] = mapped_column(nullable=False)
+
+    order: Mapped["Order"] = relationship(back_populates="items")
+    meal: Mapped["Meal"] = relationship(back_populates="order_items")
+
+class Delivery(Base):
+    __tablename__ = "deliveries"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    rider_id: Mapped[str | None] = mapped_column(String(255), ForeignKey("rider_profiles.user_id", ondelete="SET NULL"), nullable=True)
+    delivered_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    order: Mapped["Order"] = relationship(back_populates="delivery")
+    rider: Mapped["RiderProfile"] = relationship(back_populates="deliveries")
 
 class Broadcast(Base):
     __tablename__ = "broadcasts"

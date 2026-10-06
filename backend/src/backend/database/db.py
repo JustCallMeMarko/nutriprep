@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from . import models
 
-def create_user(db: Session, user_id: str, role: str) -> models.User:
+def create_user(db: Session, user_id: str, full_name: str, email: str, role: str) -> models.User:
     """Creates only the base user record without provisioning profiles."""
     existing = db.query(models.User).filter(models.User.id == user_id).first()
     if existing:
@@ -11,7 +11,7 @@ def create_user(db: Session, user_id: str, role: str) -> models.User:
 
     assigned_role = models.Roles.RIDER if role == "rider" else models.Roles.USER
 
-    db_user = models.User(id=user_id, role=assigned_role)
+    db_user = models.User(id=user_id, full_name=full_name, email=email, role=assigned_role)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -62,7 +62,7 @@ def create_customer_profile(
     db.refresh(profile)
     return profile
 
-def sync_role_from_metadata(db: Session, user_id: str, new_role_str: str) -> models.User | None:
+def sync_role_from_metadata(db: Session, user_id: str, full_name: str, email: str, new_role_str: str) -> models.User | None:
     """Syncs manual role promotions (e.g. promoting to admin in Clerk dashboard)."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
@@ -74,12 +74,24 @@ def sync_role_from_metadata(db: Session, user_id: str, new_role_str: str) -> mod
         "user": models.Roles.USER
     }
     target_role = role_map.get(new_role_str.lower())
-    if not target_role or user.role == target_role:
+    if not target_role:
         return user
 
-    user.role = target_role
-    db.commit()
-    db.refresh(user)
+    changed = False
+    if user.role != target_role:
+        user.role = target_role
+        changed = True
+    if user.full_name != full_name:
+        user.full_name = full_name
+        changed = True
+    if user.email != email:
+        user.email = email
+        changed = True
+
+    if changed:
+        db.commit()
+        db.refresh(user)
+
     return user
 
 def create_meal(
