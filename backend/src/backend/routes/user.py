@@ -100,6 +100,40 @@ async def get_profile(
 
     return profile
 
+@router.put("/profile", status_code=status.HTTP_200_OK)
+def update_profile(
+    request: Request,
+    payload: user.ProfileCreate,
+    db: Session = Depends(get_db),
+):
+    """Updates the authenticated user's customer profile."""
+    user_details = authenticate_and_get_user_details(request)
+    user_id = user_details.get("user_id")
+
+    profile = (
+        db.query(models.CustomerProfile)
+        .filter(models.CustomerProfile.user_id == user_id)
+        .first()
+    )
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile does not exist",
+        )
+
+    profile.phone_number = payload.phone_number
+    profile.height = payload.height
+    profile.weight = payload.weight
+    profile.target_weight = payload.target_weight
+    profile.goal = payload.goal
+    profile.delivery_address = payload.delivery_address
+    profile.delivery_lat = payload.delivery_lat
+    profile.delivery_long = payload.delivery_long
+
+    db.commit()
+    db.refresh(profile)
+    return profile
+
 @router.get("/meals/{id}", status_code=status.HTTP_200_OK)
 async def get_meal(
     id: int,
@@ -207,4 +241,3 @@ def get_favorite_meals(
 #     db.refresh(new_meal_log)
 
 #     return new_meal_log
-
