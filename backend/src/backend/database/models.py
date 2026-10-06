@@ -91,6 +91,21 @@ class CustomerProfile(Base):
 
     user: Mapped["User"] = relationship(back_populates="customer_profile")
 
+class SubscriptionCreditGrant(Base):
+    __tablename__ = "subscription_credit_grants"
+    __table_args__ = (
+        UniqueConstraint("subscription_id", "period_key", name="uq_subscription_credit_period"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    subscription_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    period_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    plan_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    credits: Mapped[int] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
 class RiderProfile(Base):
     __tablename__ = "rider_profiles"
 
