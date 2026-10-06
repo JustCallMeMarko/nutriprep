@@ -1,14 +1,20 @@
 import os
 import logging
+from datetime import datetime, timedelta
 from backend.utils import authenticate_and_get_user_details
 import boto3
 from botocore.config import Config
 from fastapi import APIRouter, Request, HTTPException, Depends, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 from ..database import models
-from ..database.db import favorite_meal, get_all_favorite_meals, unfavorite_meal
+from ..database.db import (
+    favorite_meal,
+    get_all_favorite_meals,
+    log_meal_consumption,
+    unfavorite_meal,
+)
 from ..schemas import user
 from ..database.models import get_db
 from clerk_backend_api import Clerk
@@ -100,6 +106,96 @@ async def get_profile(
 
     return profile
 
+@router.get("/dashboard", status_code=status.HTTP_200_OK)
+def get_dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Returns the authenticated user's nutrition totals and recent meal logs."""
+    user_details = authenticate_and_get_user_details(request)
+    user_id = user_details.get("user_id")
+    profile = (
+        db.query(models.CustomerProfile)
+        .filter(models.CustomerProfile.user_id == user_id)
+        .first()
+    )
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile does not exist",
+        )
+
+    today = datetime.now().date()
+    week_start = today - timedelta(days=6)
+
+    logs = (
+        db.query(models.MealLog)
+        .options(joinedload(models.MealLog.meal))
+        .filter(
+            models.MealLog.user_id == user_id,
+            models.MealLog.consumed_at >= datetime.combine(week_start, datetime.min.time()),
+        )
+        .order_by(models.MealLog.consumed_at.desc())
+        .all()
+    )
+
+    # Profile data does not include age, sex, or activity level, so use a
+    # conservative weight-based estimate until those inputs are available.
+    calorie_adjustment = {
+        models.Goals.LOSE_WEIGHT: -300,
+        models.Goals.MAINTAIN_WEIGHT: 0,
+        models.Goals.GAIN_WEIGHT: 300,
+    }[profile.goal]
+    calorie_target = max(1200, round(profile.weight * 30 + calorie_adjustment))
+    protein_target = max(1, round(profile.target_weight * 1.6))
+    fat_target = max(1, round((calorie_target * 0.25) / 9))
+    carbs_target = max(1, round((calorie_target - protein_target * 4 - fat_target * 9) / 4))
+    daily_target = {
+        "calories": calorie_target,
+        "protein": protein_target,
+        "carbs": carbs_target,
+        "fat": fat_target,
+    }
+    daily_logs = [log for log in logs if log.consumed_at.date() == today]
+    totals = {
+        "calories": sum(log.meal.calories for log in daily_logs),
+        "protein": sum(log.meal.protein for log in daily_logs),
+        "carbs": sum(log.meal.carb for log in daily_logs),
+        "fat": sum(log.meal.fat for log in daily_logs),
+    }
+
+    weekly = []
+    for offset in range(6, -1, -1):
+        day = today - timedelta(days=offset)
+        day_logs = [log for log in logs if log.consumed_at.date() == day]
+        weekly.append({
+            "date": day.isoformat(),
+            "day": day.strftime("%a"),
+            "calories": sum(log.meal.calories for log in day_logs),
+            "target": daily_target["calories"],
+        })
+
+    recent = []
+    for log in logs[:5]:
+        recent.append({
+            "id": log.id,
+            "meal_id": log.meal_id,
+            "name": log.meal.title,
+            "consumed_at": log.consumed_at.isoformat(),
+            "calories": log.meal.calories,
+            "protein": log.meal.protein,
+            "carbs": log.meal.carb,
+            "fat": log.meal.fat,
+        })
+
+    return {
+        "date": today.isoformat(),
+        "totals": totals,
+        "targets": daily_target,
+        "weekly": weekly,
+        "recent_meals": recent,
+    }
+
 @router.put("/profile", status_code=status.HTTP_200_OK)
 def update_profile(
     request: Request,
@@ -148,6 +244,26 @@ async def get_meals(
 ):
     """Retrieves all meals from the database."""
     return db.query(models.Meal).all()
+
+@router.post("/meal-logs", status_code=status.HTTP_201_CREATED)
+def create_meal_log(
+    request: Request,
+    payload: user.MealLogCreate,
+    db: Session = Depends(get_db),
+):
+    """Logs one serving of a meal for the authenticated user."""
+    user_details = authenticate_and_get_user_details(request)
+    user_id = user_details.get("user_id")
+    meal = db.query(models.Meal).filter(models.Meal.id == payload.meal_id).first()
+    if not meal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal does not exist")
+
+    log = log_meal_consumption(db, user_id, meal.id)
+    return {
+        "id": log.id,
+        "meal_id": log.meal_id,
+        "consumed_at": log.consumed_at.isoformat(),
+    }
 
 @router.post("/fav-meal", status_code=status.HTTP_201_CREATED)
 def add_favorite_meal(

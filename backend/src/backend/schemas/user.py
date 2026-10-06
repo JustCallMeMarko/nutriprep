@@ -11,3 +11,6 @@ class ProfileCreate(BaseModel):
     delivery_address: str
     delivery_lat: Optional[float] = None
     delivery_long: Optional[float] = None
+
+class MealLogCreate(BaseModel):
+    meal_id: int

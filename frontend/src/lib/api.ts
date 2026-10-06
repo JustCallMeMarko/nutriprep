@@ -13,7 +13,7 @@ export const useApi = () => {
     const { headers: customHeaders, body, ...restOptions } = options
     const isFormData = body instanceof FormData
     const headers: Record<string, string> = {
-      Authorization: token ? `Bearer ${token}` : "",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(customHeaders as Record<string, string> | undefined),
     }
 

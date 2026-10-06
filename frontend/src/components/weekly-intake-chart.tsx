@@ -13,26 +13,22 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-const weeklyIntakeData = [
-  { day: "Mon", calories: 1750, target: 2000 },
-  { day: "Tue", calories: 1920, target: 2000 },
-  { day: "Wed", calories: 1450, target: 2000 },
-  { day: "Thu", calories: 2100, target: 2000 },
-  { day: "Fri", calories: 1680, target: 2000 },
-  { day: "Sat", calories: 1850, target: 2000 },
-  { day: "Sun", calories: 1500, target: 2000 },
-];
+export type WeeklyIntakePoint = {
+  day: string;
+  calories: number;
+  target: number;
+};
 
 const weeklyIntakeConfig = {
   calories: { label: "Calories", color: "#306FE6" },
   target: { label: "Target", color: "#B0B0B0" },
 } satisfies ChartConfig;
 
-export function WeeklyIntakeChart() {
+export function WeeklyIntakeChart({ data }: { data: WeeklyIntakePoint[] }) {
   return (
     <>
       <ChartContainer config={weeklyIntakeConfig} className="h-[280px] w-full">
-        <BarChart accessibilityLayer data={weeklyIntakeData}>
+        <BarChart accessibilityLayer data={data}>
           <CartesianGrid vertical={false} />
           <XAxis
             dataKey="day"
