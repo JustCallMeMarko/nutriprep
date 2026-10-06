@@ -1,21 +1,32 @@
-import { useAuth } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export const useApi = () => {
     const { getToken } = useAuth();
+    const { user } = useUser();
+    const role = user?.publicMetadata?.role;
 
-    const makeRequest = async (endpoint: string, options = {}) => {
+    const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
         const token = await getToken();
-        const defaultOptions = {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`,
-            },
+        
+        const { headers: customHeaders, body, ...restOptions } = options;
+
+        const isFormData = body instanceof FormData;
+
+        const headers: Record<string, string> = {
+            "Authorization": `Bearer ${token}`,
+            ...(customHeaders as Record<string, string>),
         };
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...defaultOptions,
-            ...options
+        if (!isFormData && !headers["Content-Type"]) {
+            headers["Content-Type"] = "application/json";
+        }
+
+        const response = await fetch(`${API_BASE_URL}/${role}/${endpoint}`, {
+            body,
+            headers,
+            ...restOptions,
         });
 
         if (!response.ok) {
@@ -24,6 +35,7 @@ export const useApi = () => {
         }
 
         return response.json();
-    }
+    };
+
     return { makeRequest };
-}
+};
