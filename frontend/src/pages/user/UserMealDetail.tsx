@@ -1,6 +1,5 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { dummyMeals } from "@/lib/dummyMeals"
 import { ROUTES } from "@/constants/routes"
 import {
   ArrowLeft,
@@ -13,6 +12,8 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useApi } from "@/lib/api"
+import type { Meal } from "@/components/MealDataTable"
 
 function FigmaStar() {
   return (
@@ -35,16 +36,58 @@ function FigmaStar() {
 export default function UserMealDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [meal, setMeal] = useState<Meal>()
   const [quantity, setQuantity] = useState(1)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [isFavoriteUpdating, setIsFavoriteUpdating] = useState(false)
   const [addedToast, setAddedToast] = useState(false)
+  const {makeRequest} = useApi()
 
-  // Find meal by matching numeric id or string slug/id
-  const meal = dummyMeals.find(
-    (m) => String(m.id).toLowerCase() === String(id).toLowerCase()
-  ) || dummyMeals[0]
+  useEffect(() => {
+    // Fetch meal details from the API using the id
+    const fetchMealDetails = async () => {
+      try {
+        const [mealResponse, favoritesResponse] = await Promise.all([
+          makeRequest(`meals/${id}`, { method: "GET" }),
+          makeRequest("fav-meal"),
+        ])
+        if (mealResponse) {
+          setMeal(mealResponse)
+          setIsFavorite(
+            favoritesResponse.some(
+              (favoriteMeal: Meal) => String(favoriteMeal.id) === String(id)
+            )
+          )
+        }
+      } catch (error) {
+        console.error("Error fetching meal details:", error);
+      }
+    };
+
+    fetchMealDetails();
+  }, [id]);
+
+  if (!meal) {
+    return <div className="flex items-center justify-center h-full">Loading...</div>;
+  }
 
   const totalCredits = meal.credits * quantity
+
+  const handleFavoriteClick = async () => {
+    if (!meal?.id || isFavoriteUpdating) return
+
+    setIsFavoriteUpdating(true)
+    try {
+      await makeRequest(`fav-meal?meal_id=${encodeURIComponent(meal.id)}`, {
+        method: isFavorite ? "DELETE" : "POST",
+      })
+      setIsFavorite((current) => !current)
+    } catch (error) {
+      console.error("Failed to update favorite meal:", error)
+    } finally {
+      setIsFavoriteUpdating(false)
+    }
+  }
 
   const handleAddToCart = () => {
     setAddedToast(true)
@@ -69,14 +112,17 @@ export default function UserMealDetail() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setIsFavorite(!isFavorite)}
+            onClick={handleFavoriteClick}
+            disabled={isFavoriteUpdating}
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? "Remove meal from favorites" : "Add meal to favorites"}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
               isFavorite
-                ? "border-red-200 bg-red-50 text-red-600"
+                ? "border-pink-200 bg-pink-50 text-pink-600"
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
-            <Heart size={15} className={isFavorite ? "fill-red-600" : ""} />
+            <Heart size={15} className={isFavorite ? "fill-pink-600 text-pink-600" : ""} />
             <span>{isFavorite ? "Favorited" : "Add to Favorites"}</span>
           </button>
         </div>
@@ -162,7 +208,7 @@ export default function UserMealDetail() {
               </div>
               <div className="p-3 rounded-xl border border-blue-100 bg-blue-50/50 text-center flex flex-col justify-center">
                 <span className="text-lg font-black text-blue-700">
-                  {meal.protein_g}g
+                  {meal.protein}g
                 </span>
                 <span className="text-[11px] font-semibold text-blue-600 mt-0.5">
                   Protein
@@ -170,7 +216,7 @@ export default function UserMealDetail() {
               </div>
               <div className="p-3 rounded-xl border border-amber-100 bg-amber-50/50 text-center flex flex-col justify-center">
                 <span className="text-lg font-black text-amber-700">
-                  {meal.carbs_g}g
+                  {meal.carb}g
                 </span>
                 <span className="text-[11px] font-semibold text-amber-600 mt-0.5">
                   Carbs
@@ -178,7 +224,7 @@ export default function UserMealDetail() {
               </div>
               <div className="p-3 rounded-xl border border-rose-100 bg-rose-50/50 text-center flex flex-col justify-center">
                 <span className="text-lg font-black text-rose-700">
-                  {meal.fat_g}g
+                  {meal.fat}g
                 </span>
                 <span className="text-[11px] font-semibold text-rose-600 mt-0.5">
                   Fats
