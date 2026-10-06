@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from uuid import uuid4
+from backend.database.db import get_total_admins, get_total_riders, get_total_user_credits, get_total_users
 from backend.utils import authenticate_and_get_user_details
 import boto3
 from botocore.config import Config
@@ -36,22 +37,7 @@ s3_client = boto3.client(
 )
 clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
 
-@router.get("/total-users", status_code=status.HTTP_200_OK)
-async def get_total_users(
-    request: Request
-):
-    """Retrieves the customer profile from the database."""
-    user_details = authenticate_and_get_user_details(request)
-    role = user_details.get("role")
-    if role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. Admin privileges required."
-        )
-    response = clerk.users.count()
-    return {"total_users": response.total_count}
-
-@router.post("/meal")
+@router.post("/meals")
 async def create_meal(
     request: Request,
     title: str = Form(...),
@@ -69,8 +55,8 @@ async def create_meal(
     """Create a meal from multipart form data; user_id is passed separately."""
     user_details = authenticate_and_get_user_details(request)
     user_id = user_details.get("user_id")
-    public_metadata = user_details.get("public_metadata") or {}
-    role = user_details.get("role") or public_metadata.get("role")
+    public_metadata = user_details.get("public_metadata")
+    role = public_metadata.get("role")
 
     if role != "admin":
         raise HTTPException(
@@ -140,3 +126,38 @@ async def create_meal(
         )
 
     return {"id": meal.id}
+
+@router.get("/meals", status_code=status.HTTP_200_OK)
+async def get_meals(
+    db: Session = Depends(get_db),
+):
+    """Retrieves all meals from the database."""
+    return db.query(models.Meal).all()
+
+@router.get("/users-kpi", status_code=status.HTTP_200_OK)
+def get_users_kpi(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Retrieves the total number of users and the total number of meals."""
+    user_details = authenticate_and_get_user_details(request)
+    public_metadata = user_details.get("public_metadata")
+    role = public_metadata.get("role")
+
+    if role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access denied. Admin privileges required.",
+        )
+    
+    total_users = get_total_users(db)
+    total_admins = get_total_admins(db)
+    total_riders = get_total_riders(db)
+    total_credits = get_total_user_credits(db)
+
+    return {
+        "total_users": total_users,
+        "total_admins": total_admins,
+        "total_riders": total_riders,
+        "total_credits": total_credits,
+    }
