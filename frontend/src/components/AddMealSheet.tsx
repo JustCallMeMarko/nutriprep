@@ -29,6 +29,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import type { Meal } from "@/components/MealDataTable"
+import { useApi } from "@/lib/api"
 
 interface AddMealSheetProps {
   onAddMeal?: (meal: Meal) => void
@@ -36,6 +37,8 @@ interface AddMealSheetProps {
 }
 
 export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
+  const { makeRequest } = useApi()
+
   const [open, setOpen] = React.useState(false)
   const [isSuccess, setIsSuccess] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
@@ -52,6 +55,7 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
 
   // Photo upload & preview
   const [previewImage, setPreviewImage] = React.useState<string | null>(null)
+  const [imageFile, setImageFile] = React.useState<File | null>(null)
   const [isDragging, setIsDragging] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
 
@@ -60,7 +64,12 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
       setErrorMessage("Please select a valid image file (PNG, JPG, WEBP).")
       return
     }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage("Please select an image smaller than 5MB.")
+      return
+    }
     setErrorMessage(null)
+    setImageFile(file)
     const reader = new FileReader()
     reader.onloadend = () => {
       setPreviewImage(reader.result as string)
@@ -96,6 +105,7 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
 
   const handleRemoveImage = () => {
     setPreviewImage(null)
+    setImageFile(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -111,6 +121,7 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
     setCredits("")
     setStocks("")
     setPreviewImage(null)
+    setImageFile(null)
     setErrorMessage(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
@@ -129,10 +140,10 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (!previewImage) {
+    if (!imageFile) {
       setErrorMessage("Please upload a meal photo.")
       return
     }
@@ -175,32 +186,48 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
     setErrorMessage(null)
 
     const parsedStocks = stocks === "" ? 0 : Math.max(0, Number(stocks) || 0)
+    const formData = new FormData()
+    formData.append("title", title.trim().slice(0, 100))
+    formData.append("description", description.trim())
+    formData.append("img", imageFile)
+    formData.append("meal_status", "active")
+    formData.append("calories", String(Math.round(Number(calories))))
+    formData.append("protein", String(Number(protein)))
+    formData.append("carb", String(Number(carb)))
+    formData.append("fat", String(Number(fat)))
+    formData.append("credits", String(Math.round(Number(credits))))
+    formData.append("stocks", String(parsedStocks))
 
-    const newMeal: Meal = {
-      id: `meal-${Date.now()}`,
-      title: title.trim().slice(0, 100),
-      description: description.trim(),
-      image_url: previewImage,
-      calories: Math.round(Number(calories)),
-      protein_g: Number(protein),
-      carbs_g: Number(carb),
-      fat_g: Number(fat),
-      credits: Math.round(Number(credits)),
-      stocks: parsedStocks,
-      status: "active",
-      isFavorite: false,
+    try {
+      const { id } = await makeRequest("meals", {
+        method: "POST",
+        body: formData,
+      });
+      const newMeal: Meal = {
+        id,
+        title: title.trim().slice(0, 100),
+        description: description.trim(),
+        image_url: previewImage ?? "",
+        calories: Math.round(Number(calories)),
+        protein: Number(protein),
+        carb: Number(carb),
+        fat: Number(fat),
+        credits: Math.round(Number(credits)),
+        stocks: parsedStocks,
+        status: "active",
+        isFavorite: false,
+      }
+
+      onAddMeal?.(newMeal)
+      setIsSuccess(true)
+      setTimeout(() => {
+        setIsSuccess(false)
+        setOpen(false)
+        resetForm()
+      }, 1000)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to create meal.")
     }
-
-    if (onAddMeal) {
-      onAddMeal(newMeal)
-    }
-
-    setIsSuccess(true)
-    setTimeout(() => {
-      setIsSuccess(false)
-      setOpen(false)
-      resetForm()
-    }, 1000)
   }
 
   return (
@@ -311,11 +338,10 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className={`w-full h-36 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all p-4 text-center ${
-                        isDragging
+                      className={`w-full h-36 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all p-4 text-center ${isDragging
                           ? "border-blue-600 bg-blue-50/50"
                           : "border-slate-300 hover:border-blue-500 hover:bg-slate-50/50"
-                      }`}
+                        }`}
                     >
                       <div className="size-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
                         <UploadCloud size={20} />
