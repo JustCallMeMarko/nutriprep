@@ -4,6 +4,7 @@ import { ROUTES } from './constants/routes'
 import AuthenticationPage from './features/auth/AuthenticationPage'
 import ClerkProviderWithRoutes from './features/auth/ClerkProviderWithRoutes'
 import { ROLES } from './constants/roles'
+
 import UserLayout from './layouts/UserLayout'
 import UserDashboard from './pages/user/UserDashboard'
 import UserMeal from './pages/user/UserMeal'
@@ -11,17 +12,20 @@ import UserMealDetail from './pages/user/UserMealDetail'
 import UserPlan from './pages/user/UserPlan'
 import UserSubscription from './pages/user/UserSubscription'
 import UserFavorite from './pages/user/UserFavorite'
+
 import AdminLayout from './layouts/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUser from './pages/admin/AdminUser'
 import AdminOrder from './pages/admin/AdminOrder'
 import AdminMeal from './pages/admin/AdminMeal'
 import AdminNotification from './pages/admin/AdminNotification'
+
 import RiderLayout from './layouts/RiderLayout'
 import RiderDashboard from './pages/rider/RiderDashboard'
 import RiderActiveDelivery from './pages/rider/RiderActiveDelivery'
 import RiderAnalytics from './pages/rider/RiderAnalytics'
 import RiderNotification from './pages/rider/RiderNotification'
+import UserProfile from './pages/user/UserProfile'
 
 function App() {
   return (
@@ -38,6 +42,7 @@ function App() {
           <Route path={ROUTES.USER_PLAN.replace(`/${ROLES.USER}/`, '')} element={<UserPlan />} />
           <Route path={ROUTES.USER_SUBSCRIPTION.replace(`/${ROLES.USER}/`, '')} element={<UserSubscription />} />
           <Route path={ROUTES.USER_FAVORITE.replace(`/${ROLES.USER}/`, '')} element={<UserFavorite />} />
+          <Route path={ROUTES.USER_PROFILE.replace(`/${ROLES.USER}/`, '')} element={<UserProfile />} />
         </Route>
 
         <Route path={ROLES.ADMIN} element={<AdminLayout />}>

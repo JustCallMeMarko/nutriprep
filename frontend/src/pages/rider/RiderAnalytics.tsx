@@ -3,13 +3,12 @@ import {
   Wallet,
   TrendingUp,
   PackageCheck,
-  Star,
-  Clock,
   Sparkles,
   Download,
   Search,
   CheckCircle2,
-  Award,
+  RefreshCw,
+  ShieldAlert,
 } from "lucide-react"
 import {
   BarChart,
@@ -22,131 +21,131 @@ import {
 } from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useApi } from "@/lib/api"
 
-// Weekly performance chart data
-const WEEKLY_DATA = [
-  { day: "Mon", earnings: 1850, orders: 11, tips: 150 },
-  { day: "Tue", earnings: 2400, orders: 14, tips: 220 },
-  { day: "Wed", earnings: 2100, orders: 12, tips: 180 },
-  { day: "Thu", earnings: 2750, orders: 16, tips: 260 },
-  { day: "Fri", earnings: 3400, orders: 19, tips: 340 },
-  { day: "Sat", earnings: 3100, orders: 18, tips: 300 },
-  { day: "Sun", earnings: 2850, orders: 16, tips: 250 },
-]
-
-// Monthly performance chart data
-const MONTHLY_DATA = [
-  { day: "Week 1", earnings: 14200, orders: 82, tips: 1200 },
-  { day: "Week 2", earnings: 16800, orders: 98, tips: 1550 },
-  { day: "Week 3", earnings: 15900, orders: 91, tips: 1400 },
-  { day: "Week 4", earnings: 18450, orders: 118, tips: 1700 },
-]
-
-// Order History
 interface CompletedOrder {
-  id: string
-  customerName: string
-  completedAt: string
-  mealsCount: number
-  mealSummary: string
-  distanceKm: number
-  basePay: number
-  tip: number
-  totalPayout: number
-  status: "Paid" | "Pending Transfer"
+  deliveryId: number
+  orderId: number
+  riderId: string | null
+  userId: string
+  totalCredits: number
+  orderStatus: string
+  orderCreatedAt: string | null
+  deliveredAt: string | null
 }
 
-const COMPLETED_ORDERS: CompletedOrder[] = [
-  {
-    id: "ORD-9400",
-    customerName: "Claire Bennett",
-    completedAt: "Today, 11:45 AM",
-    mealsCount: 2,
-    mealSummary: "2x Grilled Chicken Quinoa Bowl",
-    distanceKm: 2.1,
-    basePay: 150,
-    tip: 30,
-    totalPayout: 180,
-    status: "Paid",
-  },
-  {
-    id: "ORD-9398",
-    customerName: "David Kim",
-    completedAt: "Today, 11:15 AM",
-    mealsCount: 1,
-    mealSummary: "1x Avocado & Salmon Keto Bowl",
-    distanceKm: 3.4,
-    basePay: 140,
-    tip: 20,
-    totalPayout: 160,
-    status: "Paid",
-  },
-  {
-    id: "ORD-9395",
-    customerName: "Sarah Jenkins",
-    completedAt: "Yesterday, 1:20 PM",
-    mealsCount: 3,
-    mealSummary: "2x Steak Power Skillet, 1x Greek Yogurt",
-    distanceKm: 4.2,
-    basePay: 190,
-    tip: 50,
-    totalPayout: 240,
-    status: "Paid",
-  },
-  {
-    id: "ORD-9392",
-    customerName: "Patrick Bateman",
-    completedAt: "Yesterday, 12:40 PM",
-    mealsCount: 2,
-    mealSummary: "2x Diabetic-Friendly Beef Tapa",
-    distanceKm: 3.0,
-    basePay: 160,
-    tip: 40,
-    totalPayout: 200,
-    status: "Paid",
-  },
-  {
-    id: "ORD-9389",
-    customerName: "Hannah Abbott",
-    completedAt: "Sep 26, 12:10 PM",
-    mealsCount: 1,
-    mealSummary: "1x Salmon Teriyaki & Broccoli",
-    distanceKm: 1.8,
-    basePay: 130,
-    tip: 20,
-    totalPayout: 150,
-    status: "Paid",
-  },
-  {
-    id: "ORD-9384",
-    customerName: "Michael Chang",
-    completedAt: "Sep 25, 1:05 PM",
-    mealsCount: 2,
-    mealSummary: "2x High-Protein Chicken Bowls",
-    distanceKm: 5.6,
-    basePay: 210,
-    tip: 40,
-    totalPayout: 250,
-    status: "Paid",
-  },
-]
+interface AnalyticsResponse {
+  chart: Array<{ label: string; earnings: number; orders: number; tips: number }>
+  orders: CompletedOrder[]
+  summary: {
+    earnings: number
+    orders: number
+    deliveredCredits: number
+    tips: number
+    averagePayout: number
+    earningsChange: number
+    ordersChange: number
+  }
+  capabilities: {
+    cashOut: boolean
+    distanceTracking: boolean
+    tipsTracking: boolean
+  }
+}
 
 export default function RiderAnalytics() {
+  const { makeRequest } = useApi()
   const [timeframe, setTimeframe] = React.useState<"weekly" | "monthly">("weekly")
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [analytics, setAnalytics] = React.useState<AnalyticsResponse | null>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
 
-  const chartData = timeframe === "weekly" ? WEEKLY_DATA : MONTHLY_DATA
-  const totalPeriodEarnings = chartData.reduce((acc, curr) => acc + curr.earnings, 0)
-  const totalPeriodOrders = chartData.reduce((acc, curr) => acc + curr.orders, 0)
-  const totalPeriodTips = chartData.reduce((acc, curr) => acc + curr.tips, 0)
+  const loadAnalytics = React.useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await makeRequest(`analytics?timeframe=${timeframe}`)
+      setAnalytics(response as AnalyticsResponse)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to load analytics.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [makeRequest, timeframe])
 
-  const filteredOrders = COMPLETED_ORDERS.filter((order) => {
+  React.useEffect(() => {
+    void loadAnalytics()
+  }, [loadAnalytics])
+
+  const chartData = analytics?.chart ?? []
+  const totalPeriodEarnings = analytics?.summary.earnings ?? 0
+  const totalPeriodOrders = analytics?.summary.orders ?? 0
+  const totalDeliveredCredits = analytics?.summary.deliveredCredits ?? 0
+  const earningsChange = analytics?.summary.earningsChange ?? 0
+  const completedOrders = analytics?.orders ?? []
+
+  const filteredOrders = completedOrders.filter((order) => {
+    const query = searchQuery.toLowerCase()
     return (
-      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.mealSummary.toLowerCase().includes(searchQuery.toLowerCase())
+      String(order.deliveryId).includes(query) ||
+      String(order.orderId).includes(query) ||
+      order.riderId?.toLowerCase().includes(query) ||
+      order.userId.toLowerCase().includes(query)
     )
   })
+
+  const exportCsv = () => {
+    const headers = [
+      "Delivery ID", "Order ID", "Rider ID", "User ID", "Total Credits",
+      "Order Status", "Order Created At", "Delivered At",
+    ]
+    const rows = completedOrders.map((order) => [
+      order.deliveryId,
+      order.orderId,
+      order.riderId,
+      order.userId,
+      order.totalCredits,
+      order.orderStatus,
+      order.orderCreatedAt,
+      order.deliveredAt,
+    ])
+    const csv = [headers, ...rows]
+      .map((row) => row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(","))
+      .join("\n")
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }))
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `rider-analytics-${timeframe}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  if (isLoading) {
+    return (
+      <section className="flex min-h-[420px] items-center justify-center">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+          <RefreshCw size={16} className="animate-spin" />
+          Loading your analytics...
+        </div>
+      </section>
+    )
+  }
+
+  if (error || !analytics) {
+    return (
+      <section className="flex min-h-[420px] flex-col items-center justify-center gap-4 text-center">
+        <ShieldAlert size={34} className="text-rose-600" />
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900">Could not load analytics</h1>
+          <p className="mt-1 max-w-md text-sm text-slate-600">{error ?? "No analytics data is available."}</p>
+        </div>
+        <Button onClick={() => void loadAnalytics()} className="bg-blue-600 font-bold text-white hover:bg-blue-700">
+          Try again
+        </Button>
+      </section>
+    )
+  }
 
   return (
     <section className="flex flex-col gap-6 w-full pb-16">
@@ -165,23 +164,27 @@ export default function RiderAnalytics() {
           <Button
             variant="outline"
             className="border-slate-300 font-bold text-xs sm:text-sm rounded-xl py-2 px-3.5 flex items-center gap-1.5 cursor-pointer hover:bg-slate-50"
-            onClick={() => alert("Earnings report exported as CSV")}
+            onClick={exportCsv}
           >
             <Download size={15} />
             Export CSV
           </Button>
 
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl py-2 px-4 flex items-center gap-1.5 cursor-pointer shadow-xs">
+          <Button
+            disabled={!analytics.capabilities.cashOut}
+            title="Cash out is not configured for this account yet."
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl py-2 px-4 flex items-center gap-1.5 cursor-pointer shadow-xs disabled:cursor-not-allowed disabled:opacity-50"
+          >
             <Wallet size={15} />
-            Cash Out ₱3,200
+            Cash Out unavailable
           </Button>
         </div>
       </div>
 
       {/* Top Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Total Earnings */}
-        <div className="bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+        <div className="flex min-h-48 flex-col justify-between rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Total Earnings
@@ -196,17 +199,17 @@ export default function RiderAnalytics() {
             </div>
             <div className="flex items-center gap-1.5 mt-2 text-xs font-bold text-emerald-600">
               <TrendingUp size={14} />
-              <span>+16.4% vs last period</span>
+              <span>{earningsChange >= 0 ? "+" : ""}{earningsChange}% vs last period</span>
             </div>
           </div>
-          <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>Includes ₱{totalPeriodTips.toLocaleString()} in tips</span>
-            <span className="font-semibold text-blue-600">Available: ₱3,200</span>
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <span>₱30 per order credit</span>
+            <span className="font-semibold text-blue-600">Database total</span>
           </div>
         </div>
 
         {/* Total Completed Orders */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
+        <div className="flex min-h-48 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Completed Orders
@@ -219,66 +222,42 @@ export default function RiderAnalytics() {
             <div className="text-3xl font-extrabold text-slate-900">
               {totalPeriodOrders}
             </div>
-            <div className="flex items-center gap-1.5 mt-2 text-xs font-bold text-emerald-600">
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
               <CheckCircle2 size={14} />
-              <span>99.2% On-Time Fulfillment</span>
+              <span>Delivered records</span>
             </div>
           </div>
-          <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>Peak slot: Lunch (64%)</span>
-            <span className="font-semibold text-slate-900">0 Cancelled</span>
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <span>From deliveries table</span>
+            <span className="font-semibold text-emerald-600">Completed</span>
           </div>
         </div>
 
-        {/* Average Order Value / Payout */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
+        {/* Delivered Credits */}
+        <div className="flex min-h-48 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Avg. Payout / Drop
+              Delivered Credits
             </span>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+            <div className="rounded-xl bg-amber-50 p-2 text-amber-600">
               <Sparkles size={18} />
             </div>
           </div>
           <div>
             <div className="text-3xl font-extrabold text-slate-900">
-              ₱{Math.round(totalPeriodEarnings / totalPeriodOrders)}
+              {totalDeliveredCredits.toLocaleString()}
             </div>
-            <div className="flex items-center gap-1.5 mt-2 text-xs font-bold text-blue-600">
-              <Clock size={14} />
-              <span>~21 mins avg drop time</span>
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-600">
+              <PackageCheck size={14} />
+              <span>Credits delivered</span>
             </div>
           </div>
-          <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>Avg distance: 3.2 km</span>
-            <span className="font-semibold text-amber-600">+₱25 Lunch Surge</span>
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <span>From orders table</span>
+            <span className="font-semibold text-amber-600">Total credits</span>
           </div>
         </div>
 
-        {/* Rider Rating & Tier */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between pb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Courier Rating
-            </span>
-            <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
-              <Star size={18} className="fill-purple-600 text-purple-600" />
-            </div>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 flex items-baseline gap-1.5">
-              4.96 <span className="text-base text-slate-500 font-semibold">/ 5.0</span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-2 text-xs font-bold text-purple-600">
-              <Award size={14} />
-              <span>Diamond Tier Courier</span>
-            </div>
-          </div>
-          <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>94 customer reviews</span>
-            <span className="font-semibold text-emerald-600">100% Positive</span>
-          </div>
-        </div>
       </div>
 
       {/* Full Width Earnings & Delivery Trends Chart */}
@@ -325,7 +304,7 @@ export default function RiderAnalytics() {
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis
-                dataKey="day"
+                dataKey="label"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "#64748b", fontSize: 12, fontWeight: 600 }}
@@ -342,10 +321,10 @@ export default function RiderAnalytics() {
                     const data = payload[0].payload
                     return (
                       <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg text-xs space-y-1">
-                        <p className="font-extrabold text-amber-400">{data.day}</p>
+                        <p className="font-extrabold text-amber-400">{data.label}</p>
                         <p className="font-semibold">Earnings: ₱{data.earnings.toLocaleString()}</p>
                         <p className="text-slate-300">Orders: {data.orders} deliveries</p>
-                        <p className="text-emerald-400">Tips: ₱{data.tips}</p>
+                        <p className="text-slate-300">Tips: Not tracked</p>
                       </div>
                     )
                   }
@@ -370,11 +349,13 @@ export default function RiderAnalytics() {
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-xs bg-emerald-500 inline-block"></span>
-              Includes Tips & Surge
+              Tips and surge are not tracked
             </span>
           </div>
           <span className="text-slate-500 font-semibold">
-            Highest Day: Friday (₱3,400)
+            {chartData.length > 0
+              ? `Highest Day: ${chartData.reduce((highest, item) => item.earnings > highest.earnings ? item : highest).label} (₱${Math.max(...chartData.map((item) => item.earnings)).toLocaleString()})`
+              : "No completed deliveries in this period"}
           </span>
         </div>
       </div>
@@ -384,10 +365,10 @@ export default function RiderAnalytics() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-4">
           <div>
             <h2 className="text-lg font-extrabold text-slate-900">
-              Completed Orders & Payouts Log
+              Completed Delivery and Order Records
             </h2>
             <p className="text-xs font-medium text-slate-500 mt-0.5">
-              Search and review past fulfilled meal orders and transferred earnings
+              Search records from the deliveries and orders tables
             </p>
           </div>
 
@@ -400,7 +381,7 @@ export default function RiderAnalytics() {
               />
               <input
                 type="text"
-                placeholder="Search orders or meals..."
+                placeholder="Search delivery, order, rider, or user ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 text-xs font-medium border border-slate-300 rounded-xl focus:outline-none focus:border-blue-600 bg-white"
@@ -414,55 +395,32 @@ export default function RiderAnalytics() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                <th className="py-3 px-3">Delivery ID</th>
                 <th className="py-3 px-3">Order ID</th>
-                <th className="py-3 px-3">Customer</th>
-                <th className="py-3 px-3">Meal Order</th>
+                <th className="py-3 px-3">Rider ID</th>
+                <th className="py-3 px-3">User ID</th>
+                <th className="py-3 px-3">Total Credits</th>
+                <th className="py-3 px-3">Order Status</th>
+                <th className="py-3 px-3">Order Created At</th>
                 <th className="py-3 px-3">Delivered At</th>
-                <th className="py-3 px-3">Distance</th>
-                <th className="py-3 px-3">Base Pay</th>
-                <th className="py-3 px-3">Tip</th>
-                <th className="py-3 px-3 font-extrabold text-slate-900">Total Payout</th>
-                <th className="py-3 px-3 text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-3 font-mono font-bold text-slate-900">
-                      {order.id}
-                    </td>
-                    <td className="py-3.5 px-3 font-bold text-slate-900">
-                      {order.customerName}
-                    </td>
-                    <td className="py-3.5 px-3 max-w-[220px]">
-                      <p className="font-medium text-slate-800 truncate" title={order.mealSummary}>
-                        {order.mealSummary}
-                      </p>
-                      <span className="text-[11px] text-slate-500">
-                        {order.mealsCount} meal pack
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-600 font-medium">
-                      {order.completedAt}
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-600 font-medium">
-                      {order.distanceKm} km
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-700">
-                      ₱{order.basePay}
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-emerald-600">
-                      +₱{order.tip}
-                    </td>
-                    <td className="py-3.5 px-3 font-extrabold text-sm text-slate-900">
-                      ₱{order.totalPayout}
-                    </td>
-                    <td className="py-3.5 px-3 text-right">
+                  <tr key={order.deliveryId} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-3 font-mono font-bold text-slate-900">{order.deliveryId}</td>
+                    <td className="py-3.5 px-3 font-mono font-bold text-slate-900">{order.orderId}</td>
+                    <td className="py-3.5 px-3 font-mono text-slate-600">{order.riderId ?? "—"}</td>
+                    <td className="py-3.5 px-3 font-mono text-slate-600">{order.userId}</td>
+                    <td className="py-3.5 px-3 font-semibold text-slate-700">{order.totalCredits}</td>
+                    <td className="py-3.5 px-3">
                       <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px] px-2 py-0.5 rounded-md">
-                        {order.status}
+                        {order.orderStatus}
                       </Badge>
                     </td>
+                    <td className="py-3.5 px-3 text-slate-600 font-medium">{order.orderCreatedAt ?? "—"}</td>
+                    <td className="py-3.5 px-3 text-slate-600 font-medium">{order.deliveredAt ?? "—"}</td>
                   </tr>
                 ))
               ) : (

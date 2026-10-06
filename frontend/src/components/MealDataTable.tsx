@@ -61,10 +61,9 @@ export type Meal = {
   status?: "active" | "archived"
   image_url: string
   calories: number
-  protein_g: number
-  carbs_g: number
-  carbs_fiber_g?: number
-  fat_g: number
+  protein: number
+  carb: number
+  fat: number
   tags?: string[]
   stocks: number
   credits: number
@@ -219,7 +218,7 @@ const defaultColumns = columnHelper.columns([
       </span>
     ),
   }),
-  columnHelper.accessor("protein_g", {
+  columnHelper.accessor("protein", {
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -233,11 +232,11 @@ const defaultColumns = columnHelper.columns([
     ),
     cell: ({ row }) => (
       <span className="inline-flex h-5.5 px-2 items-center justify-center rounded-[7px] border border-[rgba(174,174,178,0.5)] bg-white dark:bg-zinc-900 text-xs font-bold opacity-75">
-        {row.original.protein_g}g
+        {row.original.protein}g
       </span>
     ),
   }),
-  columnHelper.accessor("carbs_g", {
+  columnHelper.accessor("carb", {
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -251,11 +250,11 @@ const defaultColumns = columnHelper.columns([
     ),
     cell: ({ row }) => (
       <span className="inline-flex h-5.5 px-2 items-center justify-center rounded-[7px] border border-[rgba(174,174,178,0.5)] bg-white dark:bg-zinc-900 text-xs font-bold opacity-75">
-        {row.original.carbs_g}g
+        {row.original.carb}g
       </span>
     ),
   }),
-  columnHelper.accessor("fat_g", {
+  columnHelper.accessor("fat", {
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -269,7 +268,7 @@ const defaultColumns = columnHelper.columns([
     ),
     cell: ({ row }) => (
       <span className="inline-flex h-5.5 px-2 items-center justify-center rounded-[7px] border border-[rgba(174,174,178,0.5)] bg-white dark:bg-zinc-900 text-xs font-bold opacity-75">
-        {row.original.fat_g}g
+        {row.original.fat}g
       </span>
     ),
   }),

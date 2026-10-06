@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,6 +48,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { useApi } from "@/lib/api"
 
 function FigmaStar() {
   return (
@@ -533,8 +535,21 @@ const INITIAL_ORDERS: Order[] = [
   },
 ]
 
+void INITIAL_ORDERS
+
 export default function AdminOrder() {
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS)
+  const { makeRequest } = useApi()
+  const ordersQuery = useQuery<Order[]>({
+    queryKey: ["admin-orders"],
+    queryFn: () => makeRequest("orders"),
+    staleTime: 30_000,
+  })
+  const ridersQuery = useQuery<OrderRider[]>({
+    queryKey: ["admin-riders"],
+    queryFn: () => makeRequest("riders"),
+    staleTime: 60_000,
+  })
+  const [orders, setOrders] = useState<Order[]>([])
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<"all" | OrderStatus>("all")
@@ -549,20 +564,38 @@ export default function AdminOrder() {
   const [batchAssignOrders, setBatchAssignOrders] = useState<Order[] | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (ordersQuery.data) setOrders(ordersQuery.data)
+  }, [ordersQuery.data])
+
+  const getOrderId = (orderId: string) => orderId.replace("#ORD-", "")
+  const toApiStatus = (status: OrderStatus) => ({
+    Upcoming: "pending",
+    Preparing: "preparing",
+    "Out for Delivery": "out_for_delivery",
+    Delivered: "delivered",
+    Ready: "preparing",
+    Cancelled: "cancelled",
+  })[status]
+
   const showToast = (message: string) => {
     setToastMessage(message)
     setTimeout(() => setToastMessage(null), 3500)
   }
 
   // Handle single status change
-  const handleUpdateStatus = (order: Order, newStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o))
-    )
-    if (inspectingOrder && inspectingOrder.id === order.id) {
-      setInspectingOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
+  const handleUpdateStatus = async (order: Order, newStatus: OrderStatus) => {
+    try {
+      const updated = await makeRequest(`orders/${getOrderId(order.id)}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: toApiStatus(newStatus) }),
+      }) as Order
+      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
+      setInspectingOrder((prev) => (prev?.id === updated.id ? updated : prev))
+      showToast(`Updated ${order.id} status to "${newStatus}"`)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not update order status.")
     }
-    showToast(`Updated ${order.id} status to "${newStatus}"`)
   }
 
   // Handle batch status change
@@ -570,39 +603,38 @@ export default function AdminOrder() {
     targetOrders: Order[],
     newStatus: OrderStatus
   ) => {
-    const ids = new Set(targetOrders.map((o) => o.id))
-    setOrders((prev) =>
-      prev.map((o) => (ids.has(o.id) ? { ...o, status: newStatus } : o))
+    void Promise.all(
+      targetOrders.map((order) =>
+        makeRequest(`orders/${getOrderId(order.id)}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: toApiStatus(newStatus) }),
+        }) as Promise<Order>
+      )
     )
-    showToast(`Updated ${targetOrders.length} order(s) to "${newStatus}"`)
+      .then((updatedOrders) => {
+        const updatedById = new Map(updatedOrders.map((order) => [order.id, order]))
+        setOrders((prev) => prev.map((order) => updatedById.get(order.id) ?? order))
+        showToast(`Updated ${targetOrders.length} order(s) to "${newStatus}"`)
+      })
+      .catch((error) => {
+        showToast(error instanceof Error ? error.message : "Could not update orders.")
+      })
   }
 
   // Handle single rider assign
-  const handleAssignRider = (order: Order, rider: OrderRider) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === order.id
-          ? {
-              ...o,
-              rider,
-              status: o.status === "Upcoming" ? "Preparing" : o.status,
-            }
-          : o
-      )
-    )
-    if (inspectingOrder && inspectingOrder.id === order.id) {
-      setInspectingOrder((prev) =>
-        prev
-          ? {
-              ...prev,
-              rider,
-              status: prev.status === "Upcoming" ? "Preparing" : prev.status,
-            }
-          : null
-      )
+  const handleAssignRider = async (order: Order, rider: OrderRider) => {
+    try {
+      const updated = await makeRequest(`orders/${getOrderId(order.id)}/rider`, {
+        method: "PUT",
+        body: JSON.stringify({ rider_id: rider.id }),
+      }) as Order
+      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
+      setInspectingOrder((prev) => (prev?.id === updated.id ? updated : prev))
+      setAssigningOrder(null)
+      showToast(`Assigned courier ${rider.name} to ${order.id}`)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not assign courier.")
     }
-    setAssigningOrder(null)
-    showToast(`Assigned courier ${rider.name} to ${order.id}`)
   }
 
   // Handle batch rider assign
@@ -610,20 +642,23 @@ export default function AdminOrder() {
     targetOrders: Order[],
     rider: OrderRider
   ) => {
-    const ids = new Set(targetOrders.map((o) => o.id))
-    setOrders((prev) =>
-      prev.map((o) =>
-        ids.has(o.id)
-          ? {
-              ...o,
-              rider,
-              status: o.status === "Upcoming" ? "Preparing" : o.status,
-            }
-          : o
+    void Promise.all(
+      targetOrders.map((order) =>
+        makeRequest(`orders/${getOrderId(order.id)}/rider`, {
+          method: "PUT",
+          body: JSON.stringify({ rider_id: rider.id }),
+        }) as Promise<Order>
       )
     )
-    setBatchAssignOrders(null)
-    showToast(`Assigned ${rider.name} to ${targetOrders.length} order(s)`)
+      .then((updatedOrders) => {
+        const updatedById = new Map(updatedOrders.map((order) => [order.id, order]))
+        setOrders((prev) => prev.map((order) => updatedById.get(order.id) ?? order))
+        setBatchAssignOrders(null)
+        showToast(`Assigned ${rider.name} to ${targetOrders.length} order(s)`)
+      })
+      .catch((error) => {
+        showToast(error instanceof Error ? error.message : "Could not assign courier.")
+      })
   }
 
   // Drag and drop handlers
@@ -760,6 +795,20 @@ export default function AdminOrder() {
           >
             <X className="size-3.5" />
           </button>
+        </div>
+      )}
+
+      {ordersQuery.isLoading && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3.5 text-xs font-semibold text-blue-800">
+          Loading orders from the server...
+        </div>
+      )}
+      {ordersQuery.isError && (
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-semibold text-red-800">
+          <span>Unable to load orders. Check the backend connection.</span>
+          <Button size="sm" variant="outline" onClick={() => void ordersQuery.refetch()}>
+            Retry
+          </Button>
         </div>
       )}
 
@@ -1508,7 +1557,7 @@ export default function AdminOrder() {
               Select an available courier:
             </p>
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {AVAILABLE_RIDERS.map((rider) => (
+              {(ridersQuery.data ?? []).map((rider) => (
                 <div
                   key={rider.id}
                   onClick={() => {
@@ -1538,6 +1587,11 @@ export default function AdminOrder() {
                   </span>
                 </div>
               ))}
+              {!ridersQuery.isLoading && (ridersQuery.data ?? []).length === 0 && (
+                <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                  No riders are available.
+                </p>
+              )}
             </div>
           </div>
         </DialogContent>

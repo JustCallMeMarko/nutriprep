@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -79,6 +80,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useApi } from "@/lib/api"
 
 function FigmaStar() {
   return (
@@ -300,6 +302,7 @@ const INITIAL_CLERK_USERS: ClerkUser[] = [
     ordersCount: 11,
   },
 ]
+void INITIAL_CLERK_USERS
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -317,7 +320,14 @@ const features = tableFeatures({
 const columnHelper = createColumnHelper<typeof features, ClerkUser>()
 
 export default function AdminUsers() {
-  const [users, setUsers] = React.useState<ClerkUser[]>(INITIAL_CLERK_USERS)
+  const { makeRequest } = useApi()
+  const queryClient = useQueryClient()
+  const usersQuery = useQuery<ClerkUser[]>({
+    queryKey: ["admin-users"],
+    queryFn: () => makeRequest("users"),
+    staleTime: 30_000,
+  })
+  const users = usersQuery.data ?? []
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedRoleFilter, setSelectedRoleFilter] = React.useState<
     "all" | "admin" | "rider" | "user" | "subscribers"
@@ -335,40 +345,31 @@ export default function AdminUsers() {
   const [targetPlan, setTargetPlan] = React.useState<SubscriptionPlan>("Bronze")
   const [toastMessage, setToastMessage] = React.useState<string | null>(null)
 
-  const showToast = (message: string) => {
+  const showToast = React.useCallback((message: string) => {
     setToastMessage(message)
     setTimeout(() => setToastMessage(null), 3500)
-  }
+  }, [])
+
+  const replaceUser = React.useCallback((updatedUser: ClerkUser) => {
+    queryClient.setQueryData<ClerkUser[]>(["admin-users"], (prev = []) =>
+      prev.map((user) => user.id === updatedUser.id ? updatedUser : user)
+    )
+    setInspectingUser((prev) => prev?.id === updatedUser.id ? updatedUser : prev)
+  }, [queryClient])
 
   // Handle Promote / Change Role
-  const handleConfirmRoleChange = () => {
+  const handleConfirmRoleChange = async () => {
     if (!roleChangeUser) return
     const { user, targetRole } = roleChangeUser
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === user.id
-          ? {
-              ...u,
-              role: targetRole,
-              ...(targetRole === "admin"
-                ? { subscriptionPlan: "None" as SubscriptionPlan, subscriptionStatus: "None" as SubscriptionStatus, credits: 0 }
-                : {}),
-            }
-          : u
-      )
-    )
-    if (inspectingUser && inspectingUser.id === user.id) {
-      setInspectingUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              role: targetRole,
-              ...(targetRole === "admin"
-                ? { subscriptionPlan: "None" as SubscriptionPlan, subscriptionStatus: "None" as SubscriptionStatus, credits: 0 }
-                : {}),
-            }
-          : null
-      )
+    try {
+      const updatedUser = await makeRequest(`users/${user.id}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ role: targetRole }),
+      })
+      replaceUser(updatedUser)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Unable to update the user role.")
+      return
     }
 
     const roleNames: Record<UserRole, string> = {
@@ -381,33 +382,20 @@ export default function AdminUsers() {
   }
 
   // Handle Adjust Credits
-  const handleConfirmAdjustCredits = (isAdd: boolean) => {
+  const handleConfirmAdjustCredits = async (isAdd: boolean) => {
     if (!adjustCreditsUser) return
     const amount = parseInt(creditAmountInput, 10) || 0
     if (amount <= 0) return
 
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === adjustCreditsUser.id) {
-          const updatedCredits = isAdd
-            ? u.credits + amount
-            : Math.max(0, u.credits - amount)
-          return { ...u, credits: updatedCredits }
-        }
-        return u
+    try {
+      const updatedUser = await makeRequest(`users/${adjustCreditsUser.id}/credits`, {
+        method: "PATCH",
+        body: JSON.stringify({ amount, operation: isAdd ? "add" : "deduct" }),
       })
-    )
-    if (inspectingUser && inspectingUser.id === adjustCreditsUser.id) {
-      setInspectingUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              credits: isAdd
-                ? prev.credits + amount
-                : Math.max(0, prev.credits - amount),
-            }
-          : null
-      )
+      replaceUser(updatedUser)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Unable to adjust credits.")
+      return
     }
     showToast(
       `${isAdd ? "Added" : "Deducted"} ${amount} credits for ${adjustCreditsUser.name}.`
@@ -416,52 +404,50 @@ export default function AdminUsers() {
   }
 
   // Handle Subscription Plan Change
-  const handleConfirmPlanChange = () => {
+  const handleConfirmPlanChange = async () => {
     if (!changePlanUser) return
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === changePlanUser.id
-          ? {
-              ...u,
-              subscriptionPlan: targetPlan,
-              subscriptionStatus: targetPlan === "Free" || targetPlan === "None" ? "None" : "Active",
-            }
-          : u
-      )
-    )
-    if (inspectingUser && inspectingUser.id === changePlanUser.id) {
-      setInspectingUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              subscriptionPlan: targetPlan,
-              subscriptionStatus:
-                targetPlan === "Free" || targetPlan === "None" ? "None" : "Active",
-            }
-          : null
-      )
+    try {
+      const updatedUser = await makeRequest(`users/${changePlanUser.id}/subscription`, {
+        method: "PATCH",
+        body: JSON.stringify({ plan: targetPlan }),
+      })
+      replaceUser(updatedUser)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Unable to update the subscription.")
+      return
     }
     showToast(`Updated ${changePlanUser.name}'s subscription to ${targetPlan}.`)
     setChangePlanUser(null)
   }
 
   // Handle Suspend / Activate
-  const handleToggleSuspendUser = (user: ClerkUser) => {
-    const newStatus = user.status === "active" ? "suspended" : "active"
-    setUsers((prev) =>
-      prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u))
-    )
-    if (inspectingUser && inspectingUser.id === user.id) {
-      setInspectingUser((prev) =>
-        prev ? { ...prev, status: newStatus } : null
+  const handleToggleSuspendUser = React.useCallback(async (user: ClerkUser) => {
+    try {
+      const updatedUser = await makeRequest(`users/${user.id}/status`, { method: "PATCH" })
+      replaceUser(updatedUser)
+      showToast(
+        updatedUser.status === "suspended"
+          ? `Account ${user.name} has been suspended.`
+          : `Account ${user.name} has been reactivated.`
       )
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Unable to update account status.")
     }
-    showToast(
-      newStatus === "suspended"
-        ? `Account ${user.name} has been suspended.`
-        : `Account ${user.name} has been reactivated.`
-    )
-  }
+  }, [makeRequest, replaceUser, showToast])
+
+  const handleDeleteUser = React.useCallback(async (user: ClerkUser) => {
+    if (!window.confirm(`Delete ${user.name}'s account? This cannot be undone.`)) return
+    try {
+      await makeRequest(`users/${user.id}`, { method: "DELETE" })
+      queryClient.setQueryData<ClerkUser[]>(["admin-users"], (prev = []) =>
+        prev.filter((item) => item.id !== user.id)
+      )
+      if (inspectingUser?.id === user.id) setInspectingUser(null)
+      showToast(`Deleted ${user.name}'s account.`)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Unable to delete the account.")
+    }
+  }, [inspectingUser, makeRequest, queryClient, showToast])
 
   // Filtered Users
   const filteredUsers = React.useMemo(() => {
@@ -865,6 +851,7 @@ export default function AdminUsers() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       variant="destructive"
+                      onClick={() => handleDeleteUser(user)}
                       className="cursor-pointer flex items-center gap-2"
                     >
                       <Trash2 className="size-4" />
@@ -877,7 +864,7 @@ export default function AdminUsers() {
           },
         }),
       ]),
-    []
+    [handleToggleSuspendUser, handleDeleteUser]
   )
 
   const table = useTable({

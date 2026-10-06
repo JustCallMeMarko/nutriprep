@@ -36,13 +36,19 @@ services:
     build:
       context: ./backend
     environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nutriprep}
+      MYSQL_USER: ${MYSQL_USER:-nutriprep}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nutriprep}
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-nutriprep}:${MYSQL_PASSWORD:-nutriprep}@mysql:3306/${MYSQL_DATABASE:-nutriprep}
-      RUSTFS_ENDPOINT: http://rustfs:9000
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-adminpassword}
+      AWS_ENDPOINT: http://localhost:9000
+      AWS_BUCKET: ${AWS_BUCKET:-meals}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:-admin}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY:-adminpassword}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
       JWT_KEY: ${JWT_KEY:-}
       CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET:-}
+      OPENAI_API_URL: ${OPENAI_API_URL:-https://api.deepseek.com}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:

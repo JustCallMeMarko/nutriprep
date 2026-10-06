@@ -3,120 +3,39 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Grid2x2, List, Plus, Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import Food1 from "@/assets/landing/Food1.png"
-import Food2 from "@/assets/landing/Food2.png"
-import Food3 from "@/assets/landing/Food3.png"
-import Salad from "@/assets/landing/salad.png"
+import { useEffect, useMemo, useState } from 'react'
 import { MealCard } from '@/components/MealCard'
 import MealDataTable, { type Meal } from '@/components/MealDataTable'
-
-const INITIAL_MEALS: Meal[] = [
-  {
-    id: "meal-1",
-    title: "Veggie Egg White Omelette",
-    description: "Egg whites, spinach, tomato and mushroom, served with wholegrain toast.",
-    image_url: Food1,
-    calories: 310,
-    protein_g: 26,
-    carbs_g: 16,
-    carbs_fiber_g: 4,
-    fat_g: 9,
-    tags: ["Low calorie"],
-    stocks: 10,
-    credits: 4,
-    status: "active",
-    isFavorite: true,
-  },
-  {
-    id: "meal-2",
-    title: "Chicken cacciatore",
-    description: "Tender chicken simmered with tomatoes, peppers, onions and herbs.",
-    image_url: Food2,
-    calories: 250,
-    protein_g: 32,
-    carbs_g: 12,
-    carbs_fiber_g: 3,
-    fat_g: 8,
-    tags: ["Low carb", "High protein"],
-    stocks: 4,
-    credits: 3,
-    status: "active",
-    isFavorite: true,
-  },
-  {
-    id: "meal-3",
-    title: "Potato with Chicken",
-    description: "Roasted potato served with seasoned chicken and fresh vegetables.",
-    image_url: Food3,
-    calories: 200,
-    protein_g: 28,
-    carbs_g: 24,
-    carbs_fiber_g: 4,
-    fat_g: 6,
-    tags: ["High protein"],
-    stocks: 8,
-    credits: 5,
-    status: "archived",
-    isFavorite: true,
-  },
-  {
-    id: "meal-4",
-    title: "Mediterranean Salmon Salad",
-    description: "Fresh Atlantic salmon with crisp greens, olives, cucumber, and lemon vinaigrette.",
-    image_url: Salad,
-    calories: 340,
-    protein_g: 30,
-    carbs_g: 8,
-    carbs_fiber_g: 3,
-    fat_g: 14,
-    tags: ["Low carb", "High protein"],
-    stocks: 3,
-    credits: 5,
-    status: "active",
-    isFavorite: false,
-  },
-  {
-    id: "meal-5",
-    title: "High Protein Beef Power Bowl",
-    description: "Lean ground beef, jasmine rice, steamed broccoli, and avocado slices.",
-    image_url: Food1,
-    calories: 450,
-    protein_g: 38,
-    carbs_g: 35,
-    carbs_fiber_g: 5,
-    fat_g: 12,
-    tags: ["High protein"],
-    stocks: 15,
-    credits: 6,
-    status: "active",
-    isFavorite: false,
-  },
-  {
-    id: "meal-6",
-    title: "Keto Turkey Lettuce Wrap",
-    description: "Seasoned lean ground turkey wrapped in crisp romaine with avocado sauce.",
-    image_url: Food2,
-    calories: 275,
-    protein_g: 29,
-    carbs_g: 5,
-    carbs_fiber_g: 2,
-    fat_g: 10,
-    tags: ["Low carb", "Keto"],
-    stocks: 2,
-    credits: 4,
-    status: "archived",
-    isFavorite: false,
-  },
-]
+import { AddMealSheet } from '@/components/AddMealSheet'
+import { useApi } from '@/lib/api'
 
 export default function AdminMeals() {
+  const [meals, setMeals] = useState<Meal[]>([])
   const [selected, setSelected] = useState<'all' | 'low' | 'archived'>('all')
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
+  const {makeRequest} = useApi()
+
+  useEffect(() => {
+    fetchMeals()
+  }, [])
+
+  const fetchMeals = async () => {
+    try {
+      const response = await makeRequest("meals")
+      setMeals(response)
+      console.log("Fetched meals:", response)
+    } catch (error) {
+      console.error("Error fetching meals:", error)
+    }
+  }
+
+  const handleAddMeal = (newMeal: Meal) => {
+    setMeals((prev) => [newMeal, ...prev])
+  }
 
   const filteredMeals = useMemo(() => {
-    return INITIAL_MEALS.filter((meal) => {
+    return meals.filter((meal) => {
       const q = searchQuery.toLowerCase().trim()
       const matchesSearch =
         !q ||
@@ -134,7 +53,7 @@ export default function AdminMeals() {
       }
       return true
     })
-  }, [searchQuery, selected])
+  }, [meals, searchQuery, selected])
 
   return (
     <section className="flex flex-col">
@@ -142,10 +61,15 @@ export default function AdminMeals() {
         <h1 className="text-3xl font-bold tracking-[-0.02em] text-black">
           Meal Management
         </h1>
-        <Button className="cursor-pointer flex items-center gap-2 px-4 py-4.5">
-          <Plus size={16} />
-          Add Meal
-        </Button>
+        <AddMealSheet
+          onAddMeal={handleAddMeal}
+          trigger={
+            <Button className="cursor-pointer flex items-center gap-2 px-4 py-4.5 font-bold text-sm shadow-xs">
+              <Plus size={16} />
+              Add Meal
+            </Button>
+          }
+        />
       </div>
 
       <Field className="w-full sm:w-1/2 md:w-1/3 mb-2">

@@ -1,65 +1,34 @@
-import Food1 from "@/assets/landing/Food1.png"
-import Food2 from "@/assets/landing/Food2.png"
-import Food3 from "@/assets/landing/Food3.png"
 import { MealCard } from "@/components/MealCard"
+import type { Meal } from "@/components/MealDataTable"
 import { ROUTES } from "@/constants/routes"
+import { useApi } from "@/lib/api"
 import { ArrowRight } from "lucide-react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-
-const INITIAL_CART = [
-  {
-    id: 1,
-    title: "Veggie Egg White Omelette",
-    description: "Egg whites, spinach, tomato and mushroom, served with wholegrain toast. asdsa sadsadsad ads asdsadsa sadsadsadsa adsa dsdsa dsdsadasd asd",
-    image_url: Food1,
-    calories: 310,
-    protein_g: 26,
-    carbs_g: 16,
-    carbs_fiber_g: 4,
-    fat_g: 9,
-    tags: ["Low calorie"],
-    stocks: 10,
-    credits: 4,
-    isFavorite: true,
-  },
-  {
-    id: "meal-2",
-    title: "Chicken cacciatore",
-    description: "Tender chicken simmered with tomatoes, peppers, onions and herbs.",
-    image_url: Food2,
-    calories: 250,
-    protein_g: 32,
-    carbs_g: 12,
-    carbs_fiber_g: 3,
-    fat_g: 8,
-    tags: ["Low carb", "High protein"],
-    stocks: 5,
-    credits: 3,
-    isFavorite: true,
-  },
-  {
-    id: "meal-3",
-    title: "Potato with Chicken",
-    description: "Roasted potato served with seasoned chicken and fresh vegetables.",
-    image_url: Food3,
-    calories: 200,
-    protein_g: 28,
-    carbs_g: 24,
-    carbs_fiber_g: 4,
-    fat_g: 6,
-    tags: ["High protein"],
-    stocks: 8,
-    credits: 5,
-    isFavorite: true,
-  },
-]
 
 export default function UserFavorite() {
   const navigate = useNavigate()
-  const totalItemsCount = INITIAL_CART.length
-  const totalCalories = INITIAL_CART.reduce((total, meal) => total + meal.calories, 0)
-  const totalCredits = INITIAL_CART.reduce((total, meal) => total + meal.credits, 0)
+  const {makeRequest} = useApi()
+  const [meals, setMeals] = useState<Meal[]>()
+  const totalItemsCount = meals?.length || 0
+  const totalCalories = meals?.reduce((total, meal) => total + meal.calories, 0) || 0
+  const totalCredits = meals?.reduce((total, meal) => total + meal.credits, 0) || 0
 
+  useEffect(() => {
+    fetchFavoriteMeals()
+  }, [])
+
+  const fetchFavoriteMeals = async () => {
+    try {
+      const response = await makeRequest("fav-meal")
+      setMeals(response.map((meal: Meal) => ({ ...meal, isFavorite: true })))
+      console.log("Fetched favorite meals:", response)
+    }
+    catch (error) {
+      console.error("Error fetching favorite meals:", error)
+    }
+  }
+  
   return (
     <section className="bg-white text-slate-900 flex flex-col">
 
@@ -74,9 +43,25 @@ export default function UserFavorite() {
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
-            {INITIAL_CART.map((item) => (
-              <MealCard key={item.id} meal={item} />
-            ))}
+            {meals && meals.length > 0 ? (
+              meals.map((item) => (
+                <MealCard
+                  key={item.id}
+                  meal={item}
+                  onFavoriteChange={(isFavorite) => {
+                    if (!isFavorite) {
+                      setMeals((currentMeals) =>
+                        currentMeals?.filter((meal) => meal.id !== item.id)
+                      )
+                    }
+                  }}
+                />
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">
+                No favorite meals found.
+              </p>
+            )}
           </div>
         </div>
 

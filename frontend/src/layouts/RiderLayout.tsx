@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Menu, X, Package, Navigation, BarChart3 } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
-import { Navigate, useNavigate, Link, Outlet } from 'react-router-dom'
+import { Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { UserButton, useUser } from '@clerk/react'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -15,6 +15,7 @@ export default function RiderLayout() {
     const role = user?.publicMetadata?.role
     const closeMenu = () => setIsMenuOpen(false)
     const navigate = useNavigate()
+    const location = useLocation()
 
     if (!isLoaded) {
         return null
@@ -53,7 +54,7 @@ export default function RiderLayout() {
                             key={link.name}
                             variant="outline"
                             onClick={() => navigate(link.href)}
-                            className="flex gap-1 items-center whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold cursor-pointer"
+                            className={`flex gap-1 items-center whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold cursor-pointer ${location.pathname === link.href ? 'text-blue-600 hover:bg-transparent hover:text-blue-600' : ''}`}
                         >
                             <link.icon className="size-4" />
                             {link.name}
@@ -84,7 +85,7 @@ export default function RiderLayout() {
                                     key={link.name}
                                     to={link.href}
                                     onClick={closeMenu}
-                                    className="flex gap-2 items-center px-3 py-2 font-semibold hover:bg-zinc-100"
+                                    className={`flex gap-2 items-center px-3 py-2 font-semibold hover:bg-zinc-100 ${location.pathname === link.href ? 'text-blue-600 hover:bg-transparent' : ''}`}
                                 >
                                     <link.icon className="size-4.5" />
                                     {link.name}

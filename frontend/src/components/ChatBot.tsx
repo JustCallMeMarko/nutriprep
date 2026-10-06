@@ -32,6 +32,7 @@ import {
     MarkerIcon,
     MarkerContent,
 } from "@/components/ui/marker"
+import { useApi } from "@/lib/api"
 
 interface ChatMessage {
     id: string
@@ -59,51 +60,16 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 const now = () =>
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
-// Word-start match so "again" doesn't trigger "gain"
-const hasAny = (query: string, words: string[]) =>
-    words.some((w) => new RegExp(`\\b${w}`, "i").test(query))
-
-function generateBotReply(userQuery: string): { text: string; suggestedActions?: string[] } {
-    const query = userQuery.toLowerCase()
-    if (hasAny(query, ["protein", "muscle", "gain"])) {
-        return {
-            text: "For high protein, try the Steak & Whole Egg Power Skillet (48g protein) or Grilled Chicken Quinoa Bowl (42g protein). Both support optimal muscle repair and steady energy.",
-            suggestedActions: ["Low-carb diet options", "Daily macro goals"]
-        }
-    }
-    if (hasAny(query, ["carb", "keto"])) {
-        return {
-            text: "Great low-carb choices include the Avocado & Salmon Keto Bowl (under 9g net carbs) and Turkey & Cheese Frittata. Clean macros and steady all-day fuel.",
-            suggestedActions: ["High-protein meals", "How do credits work?"]
-        }
-    }
-    if (hasAny(query, ["credit", "balance", "token", "subscription"])) {
-        return {
-            text: "Each meal is redeemed using prep credits from your plan. Your current balance is displayed at the top of the Catalog and Plan tabs.",
-            suggestedActions: ["High-protein meals", "Low-carb diet options"]
-        }
-    }
-    if (hasAny(query, ["calorie", "goal", "macro", "track"])) {
-        return {
-            text: "Your daily dashboard tracks Calories, Protein, Carbs, and Fats live against your target goal. You can adjust your targets anytime in your profile settings.",
-            suggestedActions: ["High-protein meals", "How do credits work?"]
-        }
-    }
-    return {
-        text: `Got it! I've noted: "${userQuery}". Explore all fresh meals in the catalog or ask for custom macro combos!`,
-        suggestedActions: ["High-protein meals", "Low-carb diet options"]
-    }
-}
-
 export default function ChatBot() {
+    const { makeRequest } = useApi()
     const [open, setOpen] = React.useState(false)
     const [messages, setMessages] = React.useState<ChatMessage[]>(INITIAL_MESSAGES)
     const [input, setInput] = React.useState("")
     const [isTyping, setIsTyping] = React.useState(false)
     const chatContainerRef = React.useRef<HTMLDivElement | null>(null)
     const inputRef = React.useRef<HTMLInputElement | null>(null)
-    const replyTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
     const idCounterRef = React.useRef(0)
+    const chatGenerationRef = React.useRef(0)
 
     const nextId = (prefix: string) => `${prefix}-${++idCounterRef.current}`
 
@@ -136,14 +102,7 @@ export default function ChatBot() {
         }
     }, [open])
 
-    // Clear any pending reply on unmount
-    React.useEffect(() => {
-        return () => {
-            if (replyTimerRef.current) clearTimeout(replyTimerRef.current)
-        }
-    }, [])
-
-    const handleSendMessage = (textToSend?: string) => {
+    const handleSendMessage = async (textToSend?: string) => {
         if (isTyping) return // one pending reply at a time
         const messageText = (textToSend ?? input).trim()
         if (!messageText) return
@@ -154,30 +113,52 @@ export default function ChatBot() {
         ])
         if (textToSend === undefined) setInput("")
         setIsTyping(true)
+        const generation = chatGenerationRef.current
 
-        replyTimerRef.current = setTimeout(() => {
-            const reply = generateBotReply(messageText)
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: nextId("msg-bot"),
-                    sender: "bot",
-                    text: reply.text,
-                    timestamp: now(),
-                    suggestedActions: reply.suggestedActions,
-                },
-            ])
-            setIsTyping(false)
-            replyTimerRef.current = null
-        }, 650)
+        try {
+            const response = await makeRequest("chat", {
+                method: "POST",
+                body: JSON.stringify({
+                    message: messageText,
+                    history: messages.map((message) => ({
+                        role: message.sender === "bot" ? "assistant" : "user",
+                        content: message.text,
+                    })),
+                }),
+            }) as { reply: string }
+            if (generation === chatGenerationRef.current) {
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: nextId("msg-bot"),
+                        sender: "bot",
+                        text: response.reply,
+                        timestamp: now(),
+                        suggestedActions: ["High-protein meals", "Low-carb diet options"],
+                    },
+                ])
+            }
+        } catch (error) {
+            if (generation === chatGenerationRef.current) {
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: nextId("msg-bot-error"),
+                        sender: "bot",
+                        text: error instanceof Error
+                            ? error.message
+                            : "I couldn't reach the assistant. Please try again.",
+                        timestamp: now(),
+                    },
+                ])
+            }
+        } finally {
+            if (generation === chatGenerationRef.current) setIsTyping(false)
+        }
     }
 
     const handleResetChat = () => {
-        // FIX: cancel pending reply so it can't land in the fresh chat
-        if (replyTimerRef.current) {
-            clearTimeout(replyTimerRef.current)
-            replyTimerRef.current = null
-        }
+        chatGenerationRef.current += 1
         setIsTyping(false)
         setMessages(INITIAL_MESSAGES)
         setInput("")

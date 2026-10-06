@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { dummyMeals, MEAL_TAGS, MEAL_TIME_SECTIONS } from "@/lib/dummyMeals"
 import { MealCard } from "@/components/MealCard"
 import { Search } from "lucide-react"
 import { ROUTES } from "@/constants/routes"
+import { useApi } from "@/lib/api"
+import type { Meal } from "@/components/MealDataTable"
 
 function StarIcon() {
   return (
@@ -17,25 +18,39 @@ function StarIcon() {
 }
 
 export default function UserMeal() {
+  const {makeRequest} = useApi()
   const [search, setSearch] = useState("")
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [meals, setMeals] = useState<Meal[]>([])
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    )
+  useEffect(() => {
+    fetchMeals()
+  }, [])
+
+  const fetchMeals = async () => {
+    try {
+      const [mealsResponse, favoritesResponse] = await Promise.all([
+        makeRequest("meals"),
+        makeRequest("fav-meal"),
+      ])
+      const favoriteIds = new Set(
+        favoritesResponse.map((meal: Meal) => String(meal.id))
+      )
+      setMeals(
+        mealsResponse.map((meal: Meal) => ({
+          ...meal,
+          isFavorite: favoriteIds.has(String(meal.id)),
+        }))
+      )
+    }
+    catch (error) {
+      console.error("Error fetching meals:", error)
+    }
   }
 
   const filteredMeals = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return dummyMeals.filter((meal) => {
-      const tags = meal.tags || []
-      const matchesTags =
-        selectedTags.length === 0 || selectedTags.every((t) => tags.includes(t))
-      const matchesSearch = !q || meal.title.toLowerCase().includes(q)
-      return matchesTags && matchesSearch
-    })
-  }, [selectedTags, search])
+    return meals.filter((meal) => !q || meal.title.toLowerCase().includes(q))
+  }, [meals, search])
 
   return (
     <section className="flex flex-col gap-8 pb-16 w-full">
@@ -49,9 +64,24 @@ export default function UserMeal() {
             Chef-cooked meals planned around your macros and calorie target.
           </p>
         </div>
+      </div>
 
-        {/* Credit Balance Badge */}
-        <div className="flex h-10 items-center gap-2.5 rounded-full border border-slate-300 bg-white px-3.5 shadow-xs shrink-0">
+      {/* Search */}
+      <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="relative w-full md:w-100">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search meals..."
+            className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-4 pr-10 text-xs font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#306FE6]"
+          />
+          <Search
+            size={16}
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+        </div>
+         <div className="flex h-10 items-center gap-2.5 rounded-full border border-slate-300 bg-white px-3.5 shadow-xs shrink-0">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black">
             <StarIcon />
           </span>
@@ -67,56 +97,6 @@ export default function UserMeal() {
         </div>
       </div>
 
-      {/* Controls: Search & Tag Filters */}
-      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-        {/* Tag Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedTags([])}
-            className={`rounded-full px-4 py-1.5 text-xs font-bold transition cursor-pointer ${
-              selectedTags.length === 0
-                ? "bg-black text-white"
-                : "border border-slate-300 bg-white text-slate-800 hover:border-black"
-            }`}
-          >
-            All Meals
-          </button>
-          {MEAL_TAGS.map((tag) => {
-            const active = selectedTags.includes(tag)
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                className={`rounded-full px-4 py-1.5 text-xs font-bold transition cursor-pointer ${
-                  active
-                    ? "bg-black text-white"
-                    : "border border-slate-300 bg-white text-slate-800 hover:border-black"
-                }`}
-              >
-                {tag}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Search Input */}
-        <div className="relative w-full md:w-72">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search meals..."
-            className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-4 pr-10 text-xs font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#306FE6]"
-          />
-          <Search
-            size={16}
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
-        </div>
-      </div>
-
       {/* Meals Content Grid */}
       <div>
         {filteredMeals.length === 0 ? (
@@ -126,33 +106,14 @@ export default function UserMeal() {
           </div>
         ) : (
           <div className="flex flex-col gap-6">
-            {MEAL_TIME_SECTIONS.map(({ key, label }) => {
-              const group = filteredMeals.filter((m) => m.meal_time === key)
-              if (!group.length) return null
-
-              return (
-                <section key={key} className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-                    <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                      {label}
-                    </h2>
-                    <span className="text-[11px] font-semibold text-slate-500">
-                      {group.length} {group.length === 1 ? "Option" : "Options"}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {group.map((meal) => (
-                      <MealCard key={meal.id} meal={meal} />
-                    ))}
-                  </div>
-                </section>
-              )
-            })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredMeals.map((meal) => (
+                <MealCard key={meal.id} meal={meal} />
+              ))}
+            </div>
           </div>
         )}
       </div>
     </section>
   )
 }
-

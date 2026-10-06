@@ -9,6 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useApi } from "@/lib/api"
 
 export interface UserNotification {
   id: string
@@ -19,46 +20,40 @@ export interface UserNotification {
   read: boolean
 }
 
-const INITIAL_USER_NOTIFICATIONS: UserNotification[] = [
-  {
-    id: "un-1",
-    title: "Severe Weather & Delivery Delay Advisory",
-    message: "Tropical storm conditions are impacting dispatch. Afternoon delivery slots may experience an estimated 30-45 min delay.",
-    time: "15m ago",
-    isUrgent: true,
-    read: false,
-  },
-  {
-    id: "un-2",
-    title: "Weekend Meal Prep Menu Drop is LIVE!",
-    message: "High-Protein & Low-Carb special selections have been updated for next week. Lock in your weekly meals before Friday 8 PM.",
-    time: "2h ago",
-    read: false,
-  },
-  {
-    id: "un-3",
-    title: "Subscription Renewal Confirmed",
-    message: "Your Gold Tier subscription has successfully renewed. 80 fresh meal credits are ready in your balance.",
-    time: "Yesterday",
-    read: true,
-  },
-]
-
 export function UserNotificationBell() {
-  const [notifications, setNotifications] = React.useState<UserNotification[]>(INITIAL_USER_NOTIFICATIONS)
+  const { makeRequest } = useApi()
+  const [notifications, setNotifications] = React.useState<UserNotification[]>([])
+
+  React.useEffect(() => {
+    void makeRequest("notifications")
+      .then((response) => setNotifications((response as Array<UserNotification & { priority?: string }>).map((item) => ({
+        ...item,
+        isUrgent: item.isUrgent ?? item.priority === "urgent",
+      }))))
+      .catch(() => setNotifications([]))
+  }, [makeRequest])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    await Promise.all(
+      notifications.filter((n) => !n.read).map((n) =>
+        makeRequest(`notifications/${n.id}/read`, { method: "PATCH" })
+      )
+    )
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
   }
 
-  const deleteNotification = (id: string, e: React.MouseEvent) => {
+  const deleteNotification = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    await makeRequest(`notifications/${id}`, { method: "DELETE" })
     setNotifications((prev) => prev.filter((n) => n.id !== id))
   }
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
+    const notification = notifications.find((n) => n.id === id)
+    if (!notification || notification.read) return
+    await makeRequest(`notifications/${id}/read`, { method: "PATCH" })
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     )

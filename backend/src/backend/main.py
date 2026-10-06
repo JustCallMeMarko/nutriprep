@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import user, webhooks, admin, rider
+from .routes import user, webhooks, admin, rider, chat
 import uvicorn
 app = FastAPI()
 
@@ -16,6 +16,7 @@ app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 app.include_router(user.router, prefix="/user", tags=["User"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(rider.router, prefix="/rider", tags=["Rider"])
+app.include_router(chat.router, prefix="/user/chat", tags=["AI"])
 
 @app.get("/")
 def status():

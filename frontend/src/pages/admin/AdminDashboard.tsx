@@ -1,14 +1,40 @@
-import {
-  Users,
-  Wallet,
-  Plus,
-  UserCog
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { ROUTES } from "@/constants/routes";
-import { BroadcastDialog } from "@/components/BroadcastDialog";
 import { useQuery } from "@tanstack/react-query";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { AlertCircle, Plus, Users, UserCog, Wallet } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
+
+import { BroadcastDialog } from "@/components/BroadcastDialog";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { ROUTES } from "@/constants/routes";
 import { useApi } from "@/lib/api";
+
+type AcquisitionPoint = {
+  day: string;
+  date: string;
+  users: number;
+};
+
+type DashboardMetrics = {
+  total_users: number;
+  daily_credits: number;
+  active_deliveries: number;
+  active_delivery_rate: number;
+  user_change_percent: number;
+  acquisition: AcquisitionPoint[];
+};
+
+const chartConfig = {
+  users: {
+    label: "New users",
+    color: "#306FE6",
+  },
+} satisfies ChartConfig;
 
 function TruckIcon({ size = 20, className = "" }) {
   return (
@@ -22,6 +48,7 @@ function TruckIcon({ size = 20, className = "" }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      aria-hidden="true"
     >
       <path d="M1 3h15v13H1z" />
       <path d="M16 8h4l3 3v5h-7V8z" />
@@ -31,177 +58,136 @@ function TruckIcon({ size = 20, className = "" }) {
   );
 }
 
-const acquisitionData = [
-  { day: "Mon", value: 2000, label: "2.0k" },
-  { day: "Tue", value: 2700, label: "2.7k" },
-  { day: "Wed", value: 1500, label: "1.5k" },
-  { day: "Thu", value: 3500, label: "3.5k" },
-  { day: "Fri", value: 4500, label: "4.5k", highlight: true },
-  { day: "Sat", value: 3000, label: "3.0k" },
-  { day: "Sun", value: 4000, label: "4.0k" },
-];
+function MetricCard({
+  label,
+  value,
+  detail,
+  icon,
+  accent = false,
+}: {
+  label: string;
+  value: string | number;
+  detail: string;
+  icon: ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`flex min-h-40 flex-col justify-between rounded border p-6 ${
+        accent ? "border-[#306FE6] bg-[#306FE6] text-white" : "border-[#E2E2E2] bg-white"
+      }`}
+    >
+      <div className="flex items-start justify-between pb-4">
+        <p className={`text-sm font-bold tracking-wider ${accent ? "text-white" : "text-[#4C4546]"}`}>
+          {label}
+        </p>
+        {icon}
+      </div>
+      <div className="flex flex-col gap-1">
+        <p className={`text-[32px] font-bold tracking-[-0.01em] ${accent ? "text-white" : "text-[#1B1B1B]"}`}>
+          {value}
+        </p>
+        <p className={`text-xs font-medium ${accent ? "text-blue-100" : "text-[#306FE6]"}`}>
+          {detail}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
-  const maxValue = 5000;
   const navigate = useNavigate();
-  const {makeRequest} = useApi();
+  const { makeRequest } = useApi();
+  const { data, isLoading, isError, refetch } = useQuery<DashboardMetrics>({
+    queryKey: ["admin-dashboard"],
+    queryFn: () => makeRequest("dashboard"),
+    staleTime: 60_000,
+  });
 
-  const { data } = useQuery({
-    queryKey: ["total-users"],
-    queryFn: async () => { 
-      const response = await makeRequest("/admin/total-users");
-      return response.total_users;
-    },
-  })
+  const formatNumber = (value: number) => new Intl.NumberFormat("en-PH").format(value);
+  const change = data?.user_change_percent ?? 0;
+  const changeLabel = `${change >= 0 ? "↑" : "↓"} ${Math.abs(change).toFixed(1)}% vs previous 7 days`;
+
+  if (isError) {
+    return (
+      <section className="flex min-h-96 flex-col items-center justify-center gap-4 rounded border border-[#E2E2E2] bg-white p-8 text-center">
+        <AlertCircle className="text-red-600" />
+        <div>
+          <h1 className="text-xl font-bold">Unable to load dashboard metrics</h1>
+          <p className="mt-1 text-sm text-[#4C4546]">Check the backend connection and try again.</p>
+        </div>
+        <button className="border border-[#1B1B1B] px-4 py-2 text-sm font-bold" onClick={() => refetch()}>
+          Try again
+        </button>
+      </section>
+    );
+  }
 
   return (
-    <section
-      className="flex flex-col gap-8 md:max-h-screen"
-    >
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-[-0.02em] text-black">
-            System Overview
-          </h1>
-          <p className="text-sm text-[#4C4546]">
-            Real-time performance metrics and management hub.
-          </p>
-        </div>
+    <section className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-black">System Overview</h1>
+        <p className="text-sm text-[#4C4546]">Real-time performance metrics and management hub.</p>
+      </div>
 
-        <div className="grid grid-cols-3 gap-6">
-          <div className="flex flex-col justify-between p-6 rounded border border-[#E2E2E2] bg-white">
-            <div className="flex justify-between items-start pb-4">
-              <p className="text-sm font-bold tracking-wider text-[#4C4546]">
-                TOTAL USERS
-              </p>
-              <Users size={20} className="text-[#4C4546]" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <p className="text-[32px] font-bold tracking-[-0.01em] text-[#1B1B1B]">
-                {data ?? 'Loading...'}
-              </p>
-              <p className="text-xs font-medium text-[#306FE6]">
-                ↑ +8.4% vs last week
-              </p>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <MetricCard
+          label="TOTAL USERS"
+          value={isLoading ? "—" : formatNumber(data?.total_users ?? 0)}
+          detail={isLoading ? "Loading metrics..." : changeLabel}
+          icon={<Users size={20} className="text-[#4C4546]" />}
+        />
+        <MetricCard
+          label="DAILY ORDER CREDITS"
+          value={isLoading ? "—" : formatNumber(data?.daily_credits ?? 0)}
+          detail="Confirmed orders today"
+          icon={<Wallet size={20} className="text-[#4C4546]" />}
+        />
+        <MetricCard
+          label="ACTIVE DELIVERIES"
+          value={isLoading ? "—" : formatNumber(data?.active_deliveries ?? 0)}
+          detail={`${data?.active_delivery_rate ?? 0}% of all orders`}
+          icon={<TruckIcon size={20} className="text-white" />}
+          accent
+        />
+      </div>
 
-          <div className="flex flex-col justify-between p-6 rounded border border-[#E2E2E2] bg-white">
-            <div className="flex justify-between items-start pb-4">
-              <p className="text-sm font-bold tracking-wider text-[#4C4546]">
-                DAILY REVENUE
-              </p>
-              <Wallet size={20} className="text-[#4C4546]" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <p className="text-[32px] font-bold tracking-[-0.01em] text-[#1B1B1B]">
-                ₱42,890
-              </p>
-              <p className="text-xs font-medium text-[#306FE6]">
-                ↑ +12.1% vs yesterday
-              </p>
-            </div>
-          </div>
-
-          <div
-            className="flex flex-col justify-between p-6 rounded"
-            style={{ backgroundColor: "#306FE6" }}
-          >
-            <div className="flex justify-between items-start pb-4">
-              <p className="text-sm font-bold tracking-wider text-white">
-                ACTIVE DELIVERIES
-              </p>
-              <TruckIcon size={20} className="text-white" />
-            </div>
-            <div className="flex flex-col gap-3">
-              <p className="text-[32px] font-bold tracking-[-0.01em] text-white">
-                843
-              </p>
-              <div
-                className="w-full h-2"
-                style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
-              >
-                <div
-                  className="h-2"
-                  style={{ width: "75%", backgroundColor: "#FFFFFF" }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Chart + Quick actions */}
-        <div className="grid grid-cols-[1fr_320px] gap-6 items-start">
-          <div className="flex flex-col gap-2 p-6 rounded border border-[#E2E2E2] bg-white">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_320px]">
+        <div className="flex min-w-0 flex-col gap-2 rounded border border-[#E2E2E2] bg-white p-6">
+          <div>
             <h2 className="text-2xl font-bold">User Acquisition Trends</h2>
-            <div className="flex border-b border-[#E2E2E2] h-68 py-4">
-              <div className="flex flex-col justify-between text-xs font-medium text-[#4C4546] w-8 h-full pb-1">
-                <span>5k</span>
-                <span>2.5k</span>
-                <span>0</span>
-              </div>
-              <div className="flex items-end justify-around w-full h-full pl-2">
-                {acquisitionData.map((d) => (
-                  <div
-                    key={d.day}
-                    className="flex flex-col items-center justify-end h-full"
-                  >
-                    <div
-                      className="flex justify-center pt-1 mb-2 rounded-sm"
-                      style={{
-                        backgroundColor: "#1B1B1B",
-                        width: "40px",
-                      }}
-                    >
-                      <span className="text-xs text-white px-1">
-                        {d.label}
-                      </span>
-                    </div>
-                    <div
-                      className="w-8"
-                      style={{
-                        height: `${(d.value / maxValue) * 215}px`,
-                        backgroundColor: d.highlight ? "#306FE6" : "#E2E2E2",
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-around pl-10">
-              {acquisitionData.map((d) => (
-                <span
-                  key={d.day}
-                  className="text-xs font-medium text-[#4C4546] w-8 text-center"
-                >
-                  {d.day}
-                </span>
-              ))}
-            </div>
+            <p className="mt-1 text-sm text-[#4C4546]">New accounts created over the last seven days.</p>
           </div>
-
-          <div className="flex flex-col p-6 rounded border border-[#E2E2E2] bg-white gap-4">
-            <h2 className="text-2xl font-bold pb-2">Quick Actions</h2>
-            <button
-              className="flex items-center justify-center gap-2 py-3 px-4 text-white cursor-pointer bg-blue-500"
-              onClick={() => navigate(ROUTES.ADMIN_MEAL)}
-            >
-              <Plus size={18} />
-              <span className="text-sm font-bold tracking-wider">
-                New Meal Plan
-              </span>
-            </button>
-            <button
-              className="flex items-center justify-center gap-2 py-3 px-4 border border-[#1B1B1B] cursor-pointer"
-              onClick={() => navigate(ROUTES.ADMIN_USER)}
-            >
-              <UserCog size={18} />
-              <span className="text-sm font-bold tracking-wider">
-                Manage Users
-              </span>
-            </button>
-            <BroadcastDialog />
-          </div>
+          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <BarChart accessibilityLayer data={data?.acquisition ?? []} margin={{ top: 12, right: 8, left: -18, bottom: 0 }}>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="day" tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Bar dataKey="users" fill="var(--color-users)" radius={4} />
+            </BarChart>
+          </ChartContainer>
         </div>
+
+        <div className="flex flex-col gap-4 rounded border border-[#E2E2E2] bg-white p-6">
+          <h2 className="pb-2 text-2xl font-bold">Quick Actions</h2>
+          <button
+            className="flex cursor-pointer items-center justify-center gap-2 bg-[#306FE6] px-4 py-3 text-white"
+            onClick={() => navigate(ROUTES.ADMIN_MEAL)}
+          >
+            <Plus size={18} />
+            <span className="text-sm font-bold tracking-wider">New Meal Plan</span>
+          </button>
+          <button
+            className="flex cursor-pointer items-center justify-center gap-2 border border-[#1B1B1B] px-4 py-3"
+            onClick={() => navigate(ROUTES.ADMIN_USER)}
+          >
+            <UserCog size={18} />
+            <span className="text-sm font-bold tracking-wider">Manage Users</span>
+          </button>
+          <BroadcastDialog />
+        </div>
+      </div>
     </section>
   );
 }

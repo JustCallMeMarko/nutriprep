@@ -26,6 +26,7 @@ import {
     Bell,
     Check
 } from "lucide-react"
+import { useApi } from "@/lib/api"
 
 export function BroadcastDialog() {
     const [open, setOpen] = React.useState(false)
@@ -34,20 +35,32 @@ export function BroadcastDialog() {
     const [priority, setPriority] = React.useState<"normal" | "urgent">("normal")
     const [message, setMessage] = React.useState("")
     const [isSent, setIsSent] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+    const { makeRequest } = useApi()
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!title.trim() || !message.trim()) return
 
-        setIsSent(true)
-        setTimeout(() => {
+        setError(null)
+        try {
+            await makeRequest("broadcasts", {
+                method: "POST",
+                body: JSON.stringify({ title, message, audience, priority }),
+            })
+            window.dispatchEvent(new Event("broadcast-created"))
+            setIsSent(true)
+            setTimeout(() => {
             setIsSent(false)
             setOpen(false)
             setTitle("")
             setMessage("")
             setAudience("users")
             setPriority("normal")
-        }, 1200)
+            }, 1200)
+        } catch (submitError) {
+            setError(submitError instanceof Error ? submitError.message : "Unable to send broadcast.")
+        }
     }
 
     return (
@@ -91,6 +104,8 @@ export function BroadcastDialog() {
                             <p className="text-xs text-muted-foreground">Notification queued to {audience.toUpperCase()} audience.</p>
                         </div>
                     ) : (
+                        <>
+                        {error && <p className="text-xs text-red-600" role="alert">{error}</p>}
                         <FieldGroup className="space-y-4">
                             {/* Broadcast Title */}
                             <Field>
@@ -229,6 +244,7 @@ export function BroadcastDialog() {
                                 />
                             </Field>
                         </FieldGroup>
+                        </>
                     )}
 
                     {!isSent && (

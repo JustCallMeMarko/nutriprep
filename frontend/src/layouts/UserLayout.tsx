@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Menu, X, Home, Pizza, CircleDollarSign, NotebookPen, Heart } from 'lucide-react'
+import { Menu, X, Home, Pizza, CircleDollarSign, NotebookPen, Heart, Flame } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
-import { Navigate, useNavigate, Link, Outlet } from 'react-router-dom'
+import { Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { UserButton, useUser } from '@clerk/react'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -15,9 +15,11 @@ export default function UserLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const { isLoaded, user } = useUser()
     const role = user?.publicMetadata?.role
+    const onboarded = user?.publicMetadata?.onboarded
     const closeMenu = () => setIsMenuOpen(false)
     const navigate = useNavigate()
-    const { data, isLoading, error } = useSubscription()
+    const location = useLocation()
+    const { data } = useSubscription()
 
     if (!isLoaded) {
         return null
@@ -35,6 +37,12 @@ export default function UserLayout() {
         return <Navigate to={`/${role}`} replace />
     }
 
+    const isProfilePage = location.pathname === ROUTES.USER_PROFILE
+
+    if (!onboarded && !isProfilePage) {
+        return <Navigate to={ROUTES.USER_PROFILE} replace />
+    }
+
     const NavLinks = [
         { name: 'Home', href: ROUTES.USER_DASHBOARD, icon: Home },
         { name: 'Plan', href: ROUTES.USER_PLAN, icon: NotebookPen },
@@ -43,23 +51,10 @@ export default function UserLayout() {
         { name: 'Subscription', href: ROUTES.USER_SUBSCRIPTION, icon: CircleDollarSign },
     ]
 
-    if (isLoading) {
-        return <div>Loading Subscription...</div>
-    }
-
-    if (error) {
-        return <div>Error loading Subscription: {error.message}</div>
-    }
-
-    if (!data) {
-        return <div>No Subscription found</div>
-    }
-
-     // 1. Extract plan name from subscriptionItems
     const firstItem = data?.subscriptionItems?.[0]
     const planName = firstItem?.plan?.name || "Free"
 
-    const isAIEnabled = planName === SUBSCRIPTION_PLANS.SILVER || planName === SUBSCRIPTION_PLANS.GOLD
+    const isAIEnabled = !isProfilePage && (planName === SUBSCRIPTION_PLANS.SILVER || planName === SUBSCRIPTION_PLANS.GOLD)
 
 
     return (
@@ -72,7 +67,7 @@ export default function UserLayout() {
 
                 <ButtonGroup className="hidden md:flex">
                     {NavLinks.map((link) => (
-                        <Button key={link.name} variant="outline" onClick={() => navigate(link.href)} className="flex gap-1 items-center whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold cursor-pointer">
+                        <Button key={link.name} variant="outline" onClick={() => navigate(link.href)} className={`flex gap-1 items-center whitespace-nowrap text-sm hover:text-slate-600 transition-colors ease-in font-semibold cursor-pointer ${location.pathname === link.href ? 'text-blue-600 hover:bg-transparent hover:text-blue-600' : ''}`}>
 
                             <link.icon className="size-4.5" />
                             {link.name}
@@ -91,7 +86,15 @@ export default function UserLayout() {
                 </button>
                 <div className="hidden md:flex items-center justify-center gap-3">
                     <UserNotificationBell />
-                    <UserButton />
+                    <UserButton>
+                        <UserButton.MenuItems>
+                            <UserButton.Action
+                                label="NutriPrep Info"
+                                labelIcon={<Flame className="size-4" />}
+                                onClick={() => navigate(ROUTES.USER_PROFILE)}
+                            />
+                        </UserButton.MenuItems>
+                    </UserButton>
                 </div>
                 {isMenuOpen && (
 
@@ -99,7 +102,7 @@ export default function UserLayout() {
                     <nav className="absolute top-full left-0 right-0 border-b-2 border-slate-800 bg-white px-4 py-4 shadow-lg md:hidden">
                         <div className="flex flex-col gap-1">
                             {NavLinks.map((link) => (
-                                <Link key={link.name} to={link.href} onClick={closeMenu} className="flex gap-1 items-center px-3 py-2 font-semibold hover:bg-zinc-100">
+                                <Link key={link.name} to={link.href} onClick={closeMenu} className={`flex gap-1 items-center px-3 py-2 font-semibold hover:bg-zinc-100 ${location.pathname === link.href ? 'text-blue-600 hover:bg-transparent' : ''}`}>
                                     <link.icon className="size-4.5" />
                                     {link.name}
                                 </Link>

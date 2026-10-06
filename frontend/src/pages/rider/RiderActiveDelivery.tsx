@@ -1,8 +1,10 @@
 import * as React from "react"
+import { useSearchParams } from "react-router-dom"
 import {
   MapContainer,
   TileLayer,
   Marker,
+  CircleMarker,
   Popup,
   Polyline,
   useMap,
@@ -20,11 +22,12 @@ import {
   ShieldAlert,
   ChevronRight,
   Sparkles,
-  Store,
+  RefreshCw,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "cn"
+import { useApi } from "@/lib/api"
 
 // Types
 interface DeliveryStop {
@@ -35,90 +38,18 @@ interface DeliveryStop {
   address: string
   district: string
   mealsCount: number
+  credits: number
   mealSummary: string
   slot: string
   payout: number
   notes?: string
-  lat: number
-  lng: number
+  lat: number | null
+  lng: number | null
+  orderDatabaseId?: number
   status: "in_transit" | "delivered" | "pending"
 }
 
-// Hub Location: NutriPrep Kitchen
-const KITCHEN_HUB = {
-  name: "NutriPrep Central Kitchen",
-  address: "32nd St & 5th Ave, Bonifacio Global City, Taguig",
-  lat: 14.5518,
-  lng: 121.0485,
-}
-
-// Mock Active Stops in BGC / Makati area
-const INITIAL_STOPS: DeliveryStop[] = [
-  {
-    id: "stop-1",
-    orderId: "ORD-9401",
-    customerName: "Theo Crain",
-    customerPhone: "+63 917 555 0192",
-    address: "Unit 14B, One Serendra, 32nd St, BGC, Taguig",
-    district: "BGC / Taguig",
-    mealsCount: 2,
-    mealSummary: "2x Grilled Chicken Quinoa Bowl",
-    slot: "11:30 AM – 12:30 PM",
-    payout: 160,
-    notes: "Call on arrival at the lobby entrance.",
-    lat: 14.5502,
-    lng: 121.0545,
-    status: "in_transit",
-  },
-  {
-    id: "stop-2",
-    orderId: "ORD-9402",
-    customerName: "Elena Rodriguez",
-    customerPhone: "+63 920 555 0831",
-    address: "8th Floor, Net Park Building, 5th Ave, BGC",
-    district: "BGC / Taguig",
-    mealsCount: 2,
-    mealSummary: "1x Avocado & Salmon Keto Bowl, 1x Chia Greek Yogurt",
-    slot: "12:00 PM – 1:00 PM",
-    payout: 180,
-    notes: "Leave at front desk with building security.",
-    lat: 14.5475,
-    lng: 121.0482,
-    status: "pending",
-  },
-  {
-    id: "stop-3",
-    orderId: "ORD-9407",
-    customerName: "Arthur Parris",
-    customerPhone: "+63 917 555 0712",
-    address: "Unit 1904, Arthaland Century Pacific Tower, 5th Ave, BGC",
-    district: "BGC / Taguig",
-    mealsCount: 1,
-    mealSummary: "1x Beef & Greens Stir-Fry",
-    slot: "12:15 PM – 1:15 PM",
-    payout: 175,
-    notes: "Deliver to receptionist at level 19.",
-    lat: 14.5539,
-    lng: 121.0498,
-    status: "pending",
-  },
-]
-
 // Custom HTML Pin Icons
-const createKitchenIcon = () => {
-  return L.divIcon({
-    className: "custom-leaflet-icon",
-    html: `
-      <div class="flex items-center justify-center w-10 h-10 bg-amber-600 text-white rounded-full shadow-lg border-2 border-white ring-2 ring-amber-600/30 font-bold">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/></svg>
-      </div>
-    `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    popupAnchor: [0, -22],
-  })
-}
-
 const createStopIcon = (
   stopNumber: number,
   status: "in_transit" | "delivered" | "pending"
@@ -159,35 +90,149 @@ function MapFocusHandler({ center }: { center: [number, number] }) {
 }
 
 export default function RiderActiveDelivery() {
-  const [stops, setStops] = React.useState<DeliveryStop[]>(INITIAL_STOPS)
-  const [selectedStopId, setSelectedStopId] = React.useState<string>(INITIAL_STOPS[0].id)
+  const { makeRequest } = useApi()
+  const [searchParams] = useSearchParams()
+  const [stops, setStops] = React.useState<DeliveryStop[]>([])
+  const [selectedStopId, setSelectedStopId] = React.useState<string | null>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [isUpdating, setIsUpdating] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [isAvailable, setIsAvailable] = React.useState(false)
+  const [riderLocation, setRiderLocation] = React.useState<[number, number] | null>(null)
+  const [locationMessage, setLocationMessage] = React.useState<string | null>(null)
 
-  const activeStop = stops.find((s) => s.id === selectedStopId) || stops[0]
+  const loadDeliveries = React.useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const deliveries = await makeRequest("deliveries") as DeliveryStop[]
+      setStops(deliveries)
+      const requestedStopId = searchParams.get("stop")
+      setSelectedStopId((current) =>
+        requestedStopId && deliveries.some((stop) => stop.id === requestedStopId)
+          ? requestedStopId
+          : current && deliveries.some((stop) => stop.id === current)
+          ? current
+          : deliveries.find((stop) => stop.status !== "delivered")?.id ?? deliveries[0]?.id ?? null
+      )
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to load deliveries.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [makeRequest, searchParams])
+
+  React.useEffect(() => {
+    void loadDeliveries()
+  }, [loadDeliveries])
+
+  React.useEffect(() => {
+    void makeRequest("status").then((status: { available: boolean; location?: { lat: number; lng: number } | null }) => {
+      setIsAvailable(status.available)
+      if (status.location) setRiderLocation([status.location.lat, status.location.lng])
+    }).catch(() => undefined)
+  }, [makeRequest])
+
+  React.useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationMessage("This browser does not support location tracking.")
+      return
+    }
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const location: [number, number] = [position.coords.latitude, position.coords.longitude]
+        setRiderLocation(location)
+        setLocationMessage(null)
+        void makeRequest("location", {
+          method: "PATCH",
+          body: JSON.stringify({ lat: location[0], lng: location[1] }),
+        }).catch(() => setLocationMessage("Location could not be synced with dispatch."))
+      },
+      () => setLocationMessage("Allow location access to share your live position with dispatch."),
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 },
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [makeRequest])
+
+  const toggleAvailability = async () => {
+    const nextValue = !isAvailable
+    await makeRequest("status", {
+      method: "PATCH",
+      body: JSON.stringify({ available: nextValue }),
+    })
+    setIsAvailable(nextValue)
+  }
+
+  const activeStop = stops.find((s) => s.id === selectedStopId) ?? stops[0]
   const completedCount = stops.filter((s) => s.status === "delivered").length
   const totalCount = stops.length
 
-  const handleMarkDelivered = (id: string) => {
-    setStops((prev) => {
-      const updated = prev.map((s) =>
-        s.id === id ? { ...s, status: "delivered" as const } : s
-      )
-      // Automatically advance to the next pending stop if available
-      const nextPending = updated.find((s) => s.status === "pending")
-      if (nextPending) {
-        nextPending.status = "in_transit"
-        setSelectedStopId(nextPending.id)
-      }
-      return [...updated]
-    })
+  const handleMarkDelivered = async (id: string) => {
+    setIsUpdating(true)
+    setError(null)
+    try {
+      await makeRequest(`deliveries/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "delivered" }),
+      })
+      await loadDeliveries()
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to update delivery.")
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   // Generate route coordinates for the polyline
-  const routePoints: [number, number][] = [
-    [KITCHEN_HUB.lat, KITCHEN_HUB.lng],
-    ...stops.map((s) => [s.lat, s.lng] as [number, number]),
-  ]
+  const mappedStops = stops.filter(
+    (stop): stop is DeliveryStop & { lat: number; lng: number } =>
+      stop.lat !== null && stop.lng !== null
+  )
+  const routePoints: [number, number][] = mappedStops.map((stop) => [stop.lat, stop.lng])
+  const hasMapLocation = mappedStops.length > 0 || riderLocation !== null
 
-  const activeCenter: [number, number] = [activeStop.lat, activeStop.lng]
+  const activeCenter: [number, number] = activeStop?.lat !== null && activeStop?.lat !== undefined &&
+    activeStop?.lng !== null && activeStop?.lng !== undefined
+    ? [activeStop.lat, activeStop.lng]
+    : mappedStops.length > 0
+    ? [mappedStops[0].lat, mappedStops[0].lng]
+    : riderLocation ?? [14.5995, 120.9842]
+
+  if (isLoading) {
+    return (
+      <section className="flex min-h-[420px] items-center justify-center">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+          <RefreshCw size={16} className="animate-spin" />
+          Loading your active deliveries...
+        </div>
+      </section>
+    )
+  }
+
+  if (error && stops.length === 0) {
+    return (
+      <section className="flex min-h-[420px] flex-col items-center justify-center gap-4 text-center">
+        <ShieldAlert size={32} className="text-rose-600" />
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900">Could not load deliveries</h1>
+          <p className="mt-1 max-w-md text-sm text-slate-600">{error}</p>
+        </div>
+        <Button onClick={() => void loadDeliveries()} className="bg-blue-600 font-bold text-white hover:bg-blue-700">
+          Try again
+        </Button>
+      </section>
+    )
+  }
+
+  if (!activeStop) {
+    return (
+      <section className="flex min-h-[420px] flex-col items-center justify-center gap-2 text-center">
+        <CheckCircle2 size={36} className="text-emerald-600" />
+        <h1 className="text-2xl font-extrabold text-slate-900">No active deliveries</h1>
+        <p className="text-sm text-slate-600">Newly assigned deliveries will appear here.</p>
+      </section>
+    )
+  }
 
   return (
     <section className="flex flex-col gap-6 w-full pb-16">
@@ -208,8 +253,11 @@ export default function RiderActiveDelivery() {
           </Badge>
           <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 font-semibold text-sm py-1.5 px-3 rounded-full flex items-center gap-1.5">
             <Sparkles size={14} className="text-amber-600" />
-            Batch #729
+            {stops.reduce((total, stop) => total + stop.credits, 0).toLocaleString()} credits
           </Badge>
+          <Button onClick={() => void toggleAvailability()} variant="outline" className="font-bold">
+            {isAvailable ? "Available" : "Offline"}
+          </Button>
         </div>
       </div>
 
@@ -221,7 +269,7 @@ export default function RiderActiveDelivery() {
             <div className="flex items-center gap-2">
               <Navigation size={18} className="text-blue-400" />
               <span className="text-sm font-bold uppercase tracking-wider">
-                Live Route Overview (BGC Delivery Zone)
+                Live Route Overview
               </span>
             </div>
             <span className="text-xs text-slate-300 font-medium bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
@@ -243,25 +291,16 @@ export default function RiderActiveDelivery() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               <MapFocusHandler center={activeCenter} />
-
-              {/* Central Hub Marker */}
-              <Marker
-                position={[KITCHEN_HUB.lat, KITCHEN_HUB.lng]}
-                icon={createKitchenIcon()}
-              >
-                <Popup>
-                  <div className="p-1 text-slate-900">
-                    <p className="font-bold text-sm text-amber-700">{KITCHEN_HUB.name}</p>
-                    <p className="text-xs text-slate-600 mt-0.5">{KITCHEN_HUB.address}</p>
-                    <span className="inline-block mt-1 text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                      Starting Hub & Dispatch Point
-                    </span>
-                  </div>
-                </Popup>
-              </Marker>
+              {riderLocation && (
+                <CircleMarker center={riderLocation} radius={9} pathOptions={{ color: "#0f766e", fillColor: "#14b8a6", fillOpacity: 1 }}>
+                  <Popup>Your live rider location</Popup>
+                </CircleMarker>
+              )}
 
               {/* Delivery Stop Markers */}
-              {stops.map((stop, idx) => (
+              {mappedStops.map((stop) => {
+                const idx = stops.findIndex((item) => item.id === stop.id)
+                return (
                 <Marker
                   key={stop.id}
                   position={[stop.lat, stop.lng]}
@@ -288,26 +327,35 @@ export default function RiderActiveDelivery() {
                     </div>
                   </Popup>
                 </Marker>
-              ))}
+                )
+              })}
 
               {/* Route Path Line */}
-              <Polyline
-                positions={routePoints}
-                pathOptions={{
-                  color: "#2563eb",
-                  weight: 4,
-                  dashArray: "8, 8",
-                  opacity: 0.8,
-                }}
-              />
+              {routePoints.length > 1 && (
+                <Polyline
+                  positions={routePoints}
+                  pathOptions={{
+                    color: "#2563eb",
+                    weight: 4,
+                    dashArray: "8, 8",
+                    opacity: 0.8,
+                  }}
+                />
+              )}
             </MapContainer>
+            {locationMessage && (
+              <div className="absolute top-3 left-3 right-3 z-[400] rounded-lg border border-amber-200 bg-amber-50/95 px-3 py-2 text-xs font-semibold text-amber-900">
+                {locationMessage}
+              </div>
+            )}
+            {!hasMapLocation && (
+              <div className="absolute inset-0 z-[350] flex items-center justify-center bg-slate-900/70 p-6 text-center text-sm font-semibold text-white">
+                Delivery coordinates are not available yet. The address and GPS controls remain available below.
+              </div>
+            )}
 
             {/* Map Floating Legend */}
             <div className="absolute bottom-4 left-4 z-[400] bg-white/95 backdrop-blur-xs border border-slate-200 rounded-xl p-3 shadow-md text-xs space-y-1.5 font-medium text-slate-700">
-              <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded-full bg-amber-600 inline-block"></span>
-                <span>Central Kitchen Dispatch</span>
-              </div>
               <div className="flex items-center gap-2">
                 <span className="w-3.5 h-3.5 rounded-full bg-blue-600 inline-block"></span>
                 <span>Active Delivery Destination</span>
@@ -341,7 +389,7 @@ export default function RiderActiveDelivery() {
                 </Badge>
               ) : (
                 <Badge className="bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs py-1 px-2.5 rounded-md">
-                  In Progress
+                  {activeStop.status === "in_transit" ? "In Progress" : "Pending"}
                 </Badge>
               )}
             </div>
@@ -371,6 +419,9 @@ export default function RiderActiveDelivery() {
                 <Utensils size={16} className="text-blue-600 shrink-0" />
                 <span className="font-medium text-xs sm:text-sm">{activeStop.mealSummary}</span>
               </div>
+              <div className="text-xs font-semibold text-slate-600">
+                {activeStop.credits.toLocaleString()} order credits · ₱30 per credit
+              </div>
 
               {activeStop.notes && (
                 <div className="text-xs text-amber-900 bg-amber-50/80 border border-amber-200 p-2.5 rounded-xl flex items-start gap-1.5 mt-2">
@@ -395,7 +446,7 @@ export default function RiderActiveDelivery() {
                 </a>
 
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}`}
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${activeCenter[0]},${activeCenter[1]}`}
                   target="_blank"
                   rel="noreferrer"
                   className={cn(
@@ -411,10 +462,11 @@ export default function RiderActiveDelivery() {
               {activeStop.status !== "delivered" ? (
                 <Button
                   onClick={() => handleMarkDelivered(activeStop.id)}
+                  disabled={isUpdating}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 flex items-center justify-center gap-2 cursor-pointer rounded-xl shadow-xs transition-all"
                 >
-                  <CheckCircle2 size={18} />
-                  Mark as Delivered
+                  {isUpdating ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                  {isUpdating ? "Updating..." : "Mark as Delivered"}
                 </Button>
               ) : (
                 <div className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-center font-bold text-sm py-2.5 rounded-xl flex items-center justify-center gap-1.5">
@@ -434,16 +486,6 @@ export default function RiderActiveDelivery() {
             </h3>
 
             <div className="space-y-2">
-              {/* Hub start */}
-              <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                <Store size={16} className="text-amber-600 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-slate-800 truncate">Central Kitchen Hub</p>
-                  <p className="text-slate-500 truncate">Pickup completed</p>
-                </div>
-                <Badge variant="outline" className="text-[10px] bg-white font-bold">Origin</Badge>
-              </div>
-
               {/* Drops */}
               {stops.map((stop, idx) => {
                 const isSelected = stop.id === activeStop.id
@@ -494,4 +536,3 @@ export default function RiderActiveDelivery() {
     </section>
   )
 }
-
