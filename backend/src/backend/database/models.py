@@ -1,8 +1,9 @@
 from dotenv import load_dotenv
 import os
 import enum
+import json
 from urllib.parse import quote_plus
-from sqlalchemy import Date, Enum, UniqueConstraint, create_engine, String, ForeignKey, Text, func, inspect, text
+from sqlalchemy import Date, Enum, JSON, UniqueConstraint, create_engine, String, ForeignKey, Text, func, inspect, text
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship, sessionmaker
 from datetime import date, datetime
 load_dotenv()
@@ -225,60 +226,106 @@ class Broadcast(Base):
     user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
-    audience: Mapped[Roles] = mapped_column(Enum(Roles, native_enum=False), nullable=False)
+    audience: Mapped[str] = mapped_column(String(20), nullable=False)
+    priority: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
+    recipient_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    read_by: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    dismissed_by: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="broadcasts")
-    priority: Mapped["BroadcastPriority | None"] = relationship(
-        back_populates="broadcast", uselist=False, cascade="all, delete-orphan"
-    )
-    audience_details: Mapped["BroadcastAudience | None"] = relationship(
-        back_populates="broadcast", uselist=False, cascade="all, delete-orphan"
-    )
-    recipients: Mapped[list["BroadcastRecipient"]] = relationship(
-        back_populates="broadcast", cascade="all, delete-orphan"
-    )
-
-class BroadcastPriority(Base):
-    __tablename__ = "broadcast_priorities"
-
-    broadcast_id: Mapped[int] = mapped_column(
-        ForeignKey("broadcasts.id", ondelete="CASCADE"), primary_key=True
-    )
-    value: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
-
-    broadcast: Mapped["Broadcast"] = relationship(back_populates="priority")
-
-class BroadcastAudience(Base):
-    __tablename__ = "broadcast_audiences"
-
-    broadcast_id: Mapped[int] = mapped_column(
-        ForeignKey("broadcasts.id", ondelete="CASCADE"), primary_key=True
-    )
-    value: Mapped[str] = mapped_column(String(20), nullable=False)
-
-    broadcast: Mapped["Broadcast"] = relationship(back_populates="audience_details")
-
-class BroadcastRecipient(Base):
-    __tablename__ = "broadcast_recipients"
-    __table_args__ = (
-        UniqueConstraint("broadcast_id", "user_id", name="uq_broadcast_recipient"),
-    )
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    broadcast_id: Mapped[int] = mapped_column(
-        ForeignKey("broadcasts.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    user_id: Mapped[str] = mapped_column(
-        String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    read_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    dismissed_at: Mapped[datetime | None] = mapped_column(nullable=True)
-
-    broadcast: Mapped["Broadcast"] = relationship(back_populates="recipients")
-    user: Mapped["User"] = relationship()
 
 Base.metadata.create_all(engine)
+
+_broadcast_tables = set(inspect(engine).get_table_names())
+if "broadcasts" in _broadcast_tables:
+    _broadcast_columns = {
+        column["name"] for column in inspect(engine).get_columns("broadcasts")
+    }
+    _broadcast_column_definitions = {
+        "priority": "VARCHAR(20) NOT NULL DEFAULT 'normal'",
+        "recipient_ids": "JSON NULL",
+        "read_by": "JSON NULL",
+        "dismissed_by": "JSON NULL",
+    }
+    with engine.begin() as connection:
+        for column_name, column_type in _broadcast_column_definitions.items():
+            if column_name not in _broadcast_columns:
+                connection.execute(
+                    text(
+                        f"ALTER TABLE broadcasts ADD COLUMN "
+                        f"{column_name} {column_type}"
+                    )
+                )
+        connection.execute(
+            text(
+                "UPDATE broadcasts SET recipient_ids = JSON_ARRAY(), "
+                "read_by = JSON_ARRAY(), dismissed_by = JSON_ARRAY() "
+                "WHERE recipient_ids IS NULL OR read_by IS NULL OR dismissed_by IS NULL"
+            )
+        )
+
+        if {
+            "broadcast_priorities",
+            "broadcast_audiences",
+            "broadcast_recipients",
+        }.intersection(_broadcast_tables):
+            broadcast_rows = connection.execute(
+                text("SELECT id FROM broadcasts")
+            ).all()
+            for (broadcast_id,) in broadcast_rows:
+                audience = "users"
+                if "broadcast_audiences" in _broadcast_tables:
+                    audience = connection.execute(
+                        text(
+                            "SELECT value FROM broadcast_audiences "
+                            "WHERE broadcast_id = :broadcast_id"
+                        ),
+                        {"broadcast_id": broadcast_id},
+                    ).scalar() or audience
+                priority = "normal"
+                if "broadcast_priorities" in _broadcast_tables:
+                    priority = connection.execute(
+                        text(
+                            "SELECT value FROM broadcast_priorities "
+                            "WHERE broadcast_id = :broadcast_id"
+                        ),
+                        {"broadcast_id": broadcast_id},
+                    ).scalar() or priority
+                recipient_ids = []
+                if "broadcast_recipients" in _broadcast_tables:
+                    recipient_ids = [
+                        row[0]
+                        for row in connection.execute(
+                            text(
+                                "SELECT user_id FROM broadcast_recipients "
+                                "WHERE broadcast_id = :broadcast_id"
+                            ),
+                            {"broadcast_id": broadcast_id},
+                        ).all()
+                    ]
+                connection.execute(
+                    text(
+                        "UPDATE broadcasts SET audience = :audience, "
+                        "priority = :priority, recipient_ids = :recipient_ids, "
+                        "read_by = '[]', dismissed_by = '[]' "
+                        "WHERE id = :broadcast_id"
+                    ),
+                    {
+                        "audience": audience,
+                        "priority": priority,
+                        "recipient_ids": json.dumps(recipient_ids),
+                        "broadcast_id": broadcast_id,
+                    },
+                )
+
+            for table_name in (
+                "broadcast_recipients",
+                "broadcast_audiences",
+                "broadcast_priorities",
+            ):
+                if table_name in _broadcast_tables:
+                    connection.execute(text(f"DROP TABLE {table_name}"))
 
 # Keep deployments that predate rider location tracking compatible with the
 # declarative model. This is intentionally additive and safe to run repeatedly.

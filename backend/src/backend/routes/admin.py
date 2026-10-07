@@ -63,22 +63,18 @@ class BroadcastCreate(BaseModel):
     priority: str = "normal"
 
 def _serialize_broadcast(broadcast: models.Broadcast) -> dict:
-    priority = broadcast.priority.value if broadcast.priority else "normal"
-    recipients = broadcast.recipients
+    recipient_ids = broadcast.recipient_ids or []
+    read_by = broadcast.read_by or []
     return {
         "id": str(broadcast.id),
         "title": broadcast.title,
         "message": broadcast.message,
-        "audience": (
-            broadcast.audience_details.value
-            if broadcast.audience_details
-            else broadcast.audience.value
-        ),
-        "priority": priority,
+        "audience": broadcast.audience,
+        "priority": broadcast.priority,
         "sentAt": broadcast.created_at.isoformat(),
         "sentBy": broadcast.user.full_name,
-        "recipientCount": len(recipients),
-        "readCount": sum(1 for recipient in recipients if recipient.read_at is not None),
+        "recipientCount": len(recipient_ids),
+        "readCount": sum(1 for user_id in recipient_ids if user_id in read_by),
     }
 
 def _require_admin(request: Request) -> None:
@@ -167,9 +163,6 @@ def get_broadcasts(request: Request, db: Session = Depends(get_db)):
         db.query(models.Broadcast)
         .options(
             joinedload(models.Broadcast.user),
-            joinedload(models.Broadcast.priority),
-            joinedload(models.Broadcast.audience_details),
-            joinedload(models.Broadcast.recipients),
         )
         .order_by(models.Broadcast.created_at.desc())
         .all()
@@ -205,18 +198,15 @@ def create_broadcast(
         user_id=sender_id,
         title=payload.title.strip(),
         message=payload.message.strip(),
-        audience=models.Roles.ADMIN if payload.audience == "all" else audience_roles[0],
-        priority=models.BroadcastPriority(value=payload.priority),
-        audience_details=models.BroadcastAudience(value=payload.audience),
+        audience=payload.audience,
+        priority=payload.priority,
     )
     recipients = (
         db.query(models.User)
         .filter(models.User.role.in_(audience_roles))
         .all()
     )
-    broadcast.recipients = [
-        models.BroadcastRecipient(user_id=recipient.id) for recipient in recipients
-    ]
+    broadcast.recipient_ids = [recipient.id for recipient in recipients]
     db.add(broadcast)
     db.commit()
     db.refresh(broadcast)

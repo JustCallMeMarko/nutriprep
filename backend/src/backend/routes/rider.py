@@ -283,8 +283,7 @@ def update_rider_location(
     db.commit()
     return {"lat": latitude, "lng": longitude}
 
-def _notification_payload(recipient: models.BroadcastRecipient) -> dict:
-    broadcast = recipient.broadcast
+def _notification_payload(broadcast: models.Broadcast, user_id: str) -> dict:
     text = f"{broadcast.title} {broadcast.message}".lower()
     notification_type = (
         "dispatch" if "dispatch" in text or "pickup" in text
@@ -295,50 +294,45 @@ def _notification_payload(recipient: models.BroadcastRecipient) -> dict:
         "id": str(broadcast.id),
         "title": broadcast.title,
         "message": broadcast.message,
-        "priority": broadcast.priority.value if broadcast.priority else "normal",
+        "priority": broadcast.priority,
         "type": notification_type,
-        "isUrgent": (broadcast.priority.value if broadcast.priority else "normal") == "urgent",
+        "isUrgent": broadcast.priority == "urgent",
         "time": broadcast.created_at.isoformat(),
-        "read": recipient.read_at is not None,
+        "read": user_id in (broadcast.read_by or []),
     }
 
 @router.get("/notifications", status_code=status.HTTP_200_OK)
 def get_notifications(request: Request, db: Session = Depends(get_db)):
     user_id = authenticate_and_get_user_details(request).get("user_id")
-    recipients = (
-        db.query(models.BroadcastRecipient)
-        .options(joinedload(models.BroadcastRecipient.broadcast).joinedload(models.Broadcast.priority))
-        .filter(
-            models.BroadcastRecipient.user_id == user_id,
-            models.BroadcastRecipient.dismissed_at.is_(None),
-        )
-        .order_by(models.BroadcastRecipient.id.desc())
+    broadcasts = (
+        db.query(models.Broadcast)
+        .filter(models.Broadcast.created_at.is_not(None))
+        .order_by(models.Broadcast.id.desc())
         .all()
     )
-    return [_notification_payload(recipient) for recipient in recipients]
+    return [
+        _notification_payload(broadcast, user_id)
+        for broadcast in broadcasts
+        if user_id in (broadcast.recipient_ids or [])
+        and user_id not in (broadcast.dismissed_by or [])
+    ]
 
 @router.patch("/notifications/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 def mark_notification_read(notification_id: int, request: Request, db: Session = Depends(get_db)):
     user_id = authenticate_and_get_user_details(request).get("user_id")
-    recipient = db.query(models.BroadcastRecipient).filter(
-        models.BroadcastRecipient.broadcast_id == notification_id,
-        models.BroadcastRecipient.user_id == user_id,
-    ).first()
-    if not recipient:
+    broadcast = db.query(models.Broadcast).filter(models.Broadcast.id == notification_id).first()
+    if not broadcast or user_id not in (broadcast.recipient_ids or []):
         raise HTTPException(status_code=404, detail="Notification not found.")
-    recipient.read_at = datetime.now()
+    broadcast.read_by = list(dict.fromkeys([*(broadcast.read_by or []), user_id]))
     db.commit()
 
 @router.delete("/notifications/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
 def dismiss_notification(notification_id: int, request: Request, db: Session = Depends(get_db)):
     user_id = authenticate_and_get_user_details(request).get("user_id")
-    recipient = db.query(models.BroadcastRecipient).filter(
-        models.BroadcastRecipient.broadcast_id == notification_id,
-        models.BroadcastRecipient.user_id == user_id,
-    ).first()
-    if not recipient:
+    broadcast = db.query(models.Broadcast).filter(models.Broadcast.id == notification_id).first()
+    if not broadcast or user_id not in (broadcast.recipient_ids or []):
         raise HTTPException(status_code=404, detail="Notification not found.")
-    recipient.dismissed_at = datetime.now()
+    broadcast.dismissed_by = list(dict.fromkeys([*(broadcast.dismissed_by or []), user_id]))
     db.commit()
 
 @router.get("/total-users")
