@@ -623,7 +623,7 @@ async def create_meal(
             detail=f"Access denied. Admin privileges required.",
         )
 
-    image_key = f"meals/{uuid4()}{Path(img.filename or '').suffix}"
+    image_key = f"{uuid4()}{Path(img.filename or '').suffix}"
     try:
         img.file.seek(0)
         s3_client.upload_fileobj(
