@@ -12,6 +12,7 @@ import { useApi } from '@/lib/api'
 export default function AdminMeals() {
   const [meals, setMeals] = useState<Meal[]>([])
   const [selected, setSelected] = useState<'all' | 'low' | 'archived'>('all')
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null)
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
   const {makeRequest} = useApi()
@@ -32,6 +33,11 @@ export default function AdminMeals() {
 
   const handleAddMeal = (newMeal: Meal) => {
     setMeals((prev) => [newMeal, ...prev])
+  }
+
+  const handleUpdateMeal = (updatedMeal: Meal) => {
+    setMeals((prev) => prev.map((meal) => meal.id === updatedMeal.id ? updatedMeal : meal))
+    setEditingMeal(null)
   }
 
   const filteredMeals = useMemo(() => {
@@ -134,7 +140,7 @@ export default function AdminMeals() {
         filteredMeals.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 my-4">
             {filteredMeals.map((meal) => (
-              <MealCard key={meal.id} meal={meal} type="admin" />
+              <MealCard key={meal.id} meal={meal} type="admin" onClick={() => setEditingMeal(meal)} />
             ))}
           </div>
         ) : (
@@ -145,9 +151,15 @@ export default function AdminMeals() {
         )
       ) : (
         <div className="my-4">
-          <MealDataTable data={filteredMeals} />
+          <MealDataTable data={filteredMeals} onMealClick={setEditingMeal} />
         </div>
       )}
+      <AddMealSheet
+        editingMeal={editingMeal}
+        onUpdateMeal={handleUpdateMeal}
+        onAddMeal={handleAddMeal}
+        trigger={<span className="hidden" />}
+      />
     </section>
   )
 }

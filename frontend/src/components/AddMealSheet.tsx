@@ -33,10 +33,12 @@ import { useApi } from "@/lib/api"
 
 interface AddMealSheetProps {
   onAddMeal?: (meal: Meal) => void
+  onUpdateMeal?: (meal: Meal) => void
+  editingMeal?: Meal | null
   trigger?: React.ReactNode
 }
 
-export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
+export function AddMealSheet({ onAddMeal, onUpdateMeal, editingMeal, trigger }: AddMealSheetProps) {
   const { makeRequest } = useApi()
 
   const [open, setOpen] = React.useState(false)
@@ -52,12 +54,31 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
   const [fat, setFat] = React.useState<number | "">("")
   const [credits, setCredits] = React.useState<number | "">("")
   const [stocks, setStocks] = React.useState<number | "">("")
+  const [mealStatus, setMealStatus] = React.useState<"active" | "archived">("active")
 
   // Photo upload & preview
   const [previewImage, setPreviewImage] = React.useState<string | null>(null)
   const [imageFile, setImageFile] = React.useState<File | null>(null)
   const [isDragging, setIsDragging] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+  const isEditing = Boolean(editingMeal)
+
+  React.useEffect(() => {
+    if (!editingMeal) return
+    setOpen(true)
+    setTitle(editingMeal.title)
+    setDescription(editingMeal.description)
+    setCalories(editingMeal.calories)
+    setProtein(editingMeal.protein)
+    setCarb(editingMeal.carb)
+    setFat(editingMeal.fat)
+    setCredits(editingMeal.credits)
+    setStocks(editingMeal.stocks)
+    setMealStatus(editingMeal.status ?? "active")
+    setPreviewImage(editingMeal.image_url || null)
+    setImageFile(null)
+    setErrorMessage(null)
+  }, [editingMeal])
 
   const processFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -120,6 +141,7 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
     setFat("")
     setCredits("")
     setStocks("")
+    setMealStatus("active")
     setPreviewImage(null)
     setImageFile(null)
     setErrorMessage(null)
@@ -143,7 +165,7 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (!imageFile) {
+    if (!isEditing && !imageFile) {
       setErrorMessage("Please upload a meal photo.")
       return
     }
@@ -189,8 +211,8 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
     const formData = new FormData()
     formData.append("title", title.trim().slice(0, 100))
     formData.append("description", description.trim())
-    formData.append("img", imageFile)
-    formData.append("meal_status", "active")
+    if (imageFile) formData.append("img", imageFile)
+    formData.append("meal_status", mealStatus)
     formData.append("calories", String(Math.round(Number(calories))))
     formData.append("protein", String(Number(protein)))
     formData.append("carb", String(Number(carb)))
@@ -199,26 +221,27 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
     formData.append("stocks", String(parsedStocks))
 
     try {
-      const { id } = await makeRequest("meals", {
-        method: "POST",
+      const savedMeal = await makeRequest(isEditing ? `meals/${editingMeal?.id}` : "meals", {
+        method: isEditing ? "PATCH" : "POST",
         body: formData,
       });
-      const newMeal: Meal = {
-        id,
+      const saved: Meal = {
+        ...savedMeal,
+        id: savedMeal.id ?? editingMeal?.id,
         title: title.trim().slice(0, 100),
         description: description.trim(),
-        image_url: previewImage ?? "",
+        image_url: savedMeal.image_url ?? previewImage ?? "",
         calories: Math.round(Number(calories)),
         protein: Number(protein),
         carb: Number(carb),
         fat: Number(fat),
         credits: Math.round(Number(credits)),
         stocks: parsedStocks,
-        status: "active",
-        isFavorite: false,
+        status: mealStatus,
       }
 
-      onAddMeal?.(newMeal)
+      if (isEditing) onUpdateMeal?.(saved)
+      else onAddMeal?.(saved)
       setIsSuccess(true)
       setTimeout(() => {
         setIsSuccess(false)
@@ -255,10 +278,12 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
               <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
                 <Utensils size={20} />
               </div>
-              Add New Meal
+              {isEditing ? "Edit Meal" : "Add New Meal"}
             </SheetTitle>
             <SheetDescription className="text-xs text-muted-foreground">
-              Provide meal details and nutrition macros to add to your catalog.
+              {isEditing
+                ? "Update the meal details and catalog status."
+                : "Provide meal details and nutrition macros to add to your catalog."}
             </SheetDescription>
           </SheetHeader>
 
@@ -470,7 +495,7 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
                 </div>
 
                 {/* 5. Credits & Stocks */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                   <Field>
                     <Label htmlFor="meal-credits" className="text-xs font-semibold text-foreground flex items-center gap-1">
                       <Coins size={13} className="text-amber-600" /> Credits *
@@ -485,6 +510,21 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
                       className="h-9 text-xs bg-white mt-1 font-bold"
                       required
                     />
+                  </Field>
+
+                  <Field>
+                    <Label htmlFor="meal-status" className="text-xs font-semibold text-foreground">
+                      Status *
+                    </Label>
+                    <select
+                      id="meal-status"
+                      value={mealStatus}
+                      onChange={(e) => setMealStatus(e.target.value as "active" | "archived")}
+                      className="h-9 w-full rounded-md border border-input bg-white px-3 text-xs font-semibold"
+                    >
+                      <option value="active">Active</option>
+                      <option value="archived">Archived</option>
+                    </select>
                   </Field>
 
                   <Field>
@@ -521,8 +561,8 @@ export function AddMealSheet({ onAddMeal, trigger }: AddMealSheetProps) {
                 type="submit"
                 className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs gap-1.5 shadow-xs px-5 h-9"
               >
-                <Plus size={14} />
-                Save Meal
+                {isEditing ? <Check size={14} /> : <Plus size={14} />}
+                {isEditing ? "Update Meal" : "Save Meal"}
               </Button>
             </SheetFooter>
           )}

@@ -40,10 +40,12 @@ export function MealCard({
   meal,
   type = 'user',
   onFavoriteChange,
+  onClick,
 }: {
   meal: Meal;
   type?: 'admin' | 'user';
   onFavoriteChange?: (isFavorite: boolean) => void;
+  onClick?: () => void;
 }) {
   const navigate = useNavigate();
   const {makeRequest} = useApi()
@@ -64,6 +66,10 @@ export function MealCard({
   const [isFav, setIsFav] = useState(isFavorite);
 
   const handleCardClick = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
     if (type === 'user' && id !== undefined) {
       navigate(`/user/meal/${id}`);
     }
@@ -89,7 +95,7 @@ export function MealCard({
     <div
       onClick={handleCardClick}
       className={`relative flex flex-col w-full h-full bg-white border border-[rgba(174,174,178,0.5)] rounded-xl overflow-hidden shadow-xs hover:border-black/30 transition-all ${
-        type === 'user' ? 'cursor-pointer group' : ''
+        type === 'user' || onClick ? 'cursor-pointer group' : ''
       }`}
     >
       {/* Image Banner */}

@@ -612,6 +612,8 @@ async def create_meal(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Access denied. Admin privileges required.",
         )
+    if meal_status not in {status.value for status in models.MealStatus}:
+        raise HTTPException(status_code=422, detail="Invalid meal status.")
 
     image_key = f"{uuid4()}{Path(img.filename or '').suffix}"
     try:
@@ -674,7 +676,80 @@ async def create_meal(
             ),
         )
 
-    return {"id": meal.id}
+    return meal
+
+@router.patch("/meals/{meal_id}")
+async def update_meal(
+    meal_id: int,
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(...),
+    img: UploadFile | None = File(None),
+    meal_status: str = Form(...),
+    calories: int = Form(...),
+    protein: float = Form(...),
+    carb: float = Form(...),
+    fat: float = Form(...),
+    credits: int = Form(...),
+    stocks: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    user_details = authenticate_and_get_user_details(request)
+    if (user_details.get("public_metadata") or {}).get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Access denied. Admin privileges required.")
+    if meal_status not in {status.value for status in models.MealStatus}:
+        raise HTTPException(status_code=422, detail="Invalid meal status.")
+
+    meal = db.query(models.Meal).filter(models.Meal.id == meal_id).first()
+    if not meal:
+        raise HTTPException(status_code=404, detail="Meal not found.")
+
+    old_image_url = meal.image_url
+    new_image_key = None
+    if img and img.filename:
+        new_image_key = f"{uuid4()}{Path(img.filename).suffix}"
+        try:
+            img.file.seek(0)
+            s3_client.upload_fileobj(
+                img.file,
+                AWS_BUCKET,
+                new_image_key,
+                ExtraArgs={"ContentType": img.content_type or "application/octet-stream"},
+            )
+            meal.image_url = f"{AWS_ENDPOINT.rstrip('/')}/{AWS_BUCKET}/{new_image_key}"
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to upload meal image.",
+            ) from exc
+
+    meal.title = title.strip()
+    meal.description = description.strip()
+    meal.status = meal_status
+    meal.calories = calories
+    meal.protein = protein
+    meal.carb = carb
+    meal.fat = fat
+    meal.credits = credits
+    meal.stocks = stocks
+
+    try:
+        db.commit()
+        db.refresh(meal)
+    except Exception as db_err:
+        db.rollback()
+        if new_image_key:
+            s3_client.delete_object(Bucket=AWS_BUCKET, Key=new_image_key)
+        raise HTTPException(status_code=500, detail="Failed to update meal.") from db_err
+
+    if new_image_key and old_image_url:
+        old_key = old_image_url.rsplit("/", 1)[-1]
+        try:
+            s3_client.delete_object(Bucket=AWS_BUCKET, Key=old_key)
+        except Exception:
+            pass
+
+    return meal
 
 @router.get("/meals", status_code=status.HTTP_200_OK)
 async def get_meals(

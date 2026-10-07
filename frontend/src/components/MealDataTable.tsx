@@ -378,6 +378,7 @@ const defaultColumns = columnHelper.columns([
 
 export interface MealDataTableProps {
   data?: Meal[]
+  onMealClick?: (meal: Meal) => void
   columns?: ColumnDef<typeof features, Meal>[]
   searchQuery?: string
   showSearch?: boolean
@@ -386,6 +387,7 @@ export interface MealDataTableProps {
 
 export default function MealDataTable({
   data = [],
+  onMealClick,
   columns = defaultColumns,
   searchQuery,
   showSearch = false,
@@ -525,7 +527,8 @@ export default function MealDataTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-muted/40 transition-colors"
+                  className={`hover:bg-muted/40 transition-colors ${onMealClick ? "cursor-pointer" : ""}`}
+                  onClick={() => onMealClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="px-4 py-3">
