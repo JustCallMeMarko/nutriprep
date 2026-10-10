@@ -13,7 +13,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from dotenv import load_dotenv
 from ..database import models
-from ..schemas import user
 from ..database.models import get_db
 from clerk_backend_api import Clerk
 
@@ -620,7 +619,7 @@ async def create_meal(
     if role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Access denied. Admin privileges required.",
+            detail="Access denied. Admin privileges required.",
         )
 
     image_key = f"meals/{uuid4()}{Path(img.filename or '').suffix}"
@@ -706,7 +705,7 @@ def get_users_kpi(
     if role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Access denied. Admin privileges required.",
+            detail="Access denied. Admin privileges required.",
         )
     
     total_users = get_total_users(db)

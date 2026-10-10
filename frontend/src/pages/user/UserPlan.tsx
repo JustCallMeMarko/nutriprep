@@ -12,8 +12,14 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog"
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion"
 import { Input } from "@/components/ui/input"
-import { Lock, LockOpen, Plus, X } from "lucide-react"
+import { Lock, LockOpen, Plus, ShoppingBag, X } from "lucide-react"
 import { useApi } from "@/lib/api"
 
 // ---------- Types ----------
@@ -23,6 +29,28 @@ type Meal = {
     name: string
     kcal: number
     tag: "Custom" | "Favorite"
+    ordered?: boolean
+}
+
+type OrderItem = {
+    title: string
+    quantity: number
+    calories: number
+    protein_g: number
+    carb: number
+    fat: number
+    credits: number
+    image_url?: string
+}
+
+type UserOrder = {
+    id: string
+    items: OrderItem[]
+    totalAmount: number
+    address: string
+    status: string
+    rider: { name: string; vehicle: string; phone: string } | null
+    placedAt: string
 }
 
 type SlotKey = "breakfast" | "lunch" | "dinner"
@@ -106,6 +134,9 @@ export default function UserPlan() {
     const [pickerFor, setPickerFor] = useState<{ dateKey: string; slot: SlotKey } | null>(null)
     const [customName, setCustomName] = useState("")
     const [favoriteMeals, setFavoriteMeals] = useState<Meal[]>([])
+    const [orders, setOrders] = useState<UserOrder[]>([])
+    const [selectedOrder, setSelectedOrder] = useState<UserOrder | null>(null)
+    const [placingOrder, setPlacingOrder] = useState(false)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -120,6 +151,23 @@ export default function UserPlan() {
 
     const editableDays = days.filter((d) => !isBlocked(d, unlockDate))
     const hasEditableDays = editableDays.length > 0
+    const orderableDateKeys = days
+        .filter((d) => !isBlocked(d, unlockDate))
+        .map(dateKeyOf)
+        .filter((key) =>
+            SLOTS.some((s) => {
+                const meal = plan[key]?.[s.key]
+                return meal && !meal.ordered && meal.tag === "Favorite"
+            })
+        )
+    const orderableMealCount = orderableDateKeys.reduce(
+        (count, key) =>
+            count + SLOTS.filter((s) => {
+                const meal = plan[key]?.[s.key]
+                return meal && !meal.ordered && meal.tag === "Favorite"
+            }).length,
+        0
+    )
     const formattedUnlockDate = unlockDate.toLocaleDateString(undefined, {
         weekday: "short",
         month: "short",
@@ -128,14 +176,18 @@ export default function UserPlan() {
 
     useEffect(() => {
         let active = true
-        Promise.all([makeRequest("plan"), makeRequest("fav-meal")])
-            .then(([savedPlan, favorites]) => {
+        Promise.all([makeRequest("plan"), makeRequest("fav-meal"), makeRequest("orders")])
+            .then(([savedPlan, favorites, savedOrders]) => {
                 if (!active) return
                 const nextPlan: PlannerState = {}
-                savedPlan.forEach((entry: { date: string; slot: SlotKey; meal: Meal }) => {
-                    nextPlan[entry.date] = { ...nextPlan[entry.date], [entry.slot]: entry.meal }
+                savedPlan.forEach((entry: { date: string; slot: SlotKey; meal: Meal; ordered: boolean }) => {
+                    nextPlan[entry.date] = {
+                        ...nextPlan[entry.date],
+                        [entry.slot]: { ...entry.meal, ordered: entry.ordered },
+                    }
                 })
                 setPlan(nextPlan)
+                setOrders(savedOrders)
                 setFavoriteMeals(favorites.map((meal: { id: string | number; title: string; calories: number }) => ({
                     id: String(meal.id),
                     name: meal.title,
@@ -151,6 +203,7 @@ export default function UserPlan() {
     function openPicker(key: string, slot: SlotKey) {
         const day = days.find((d) => dateKeyOf(d) === key)
         if (locked || (day && isBlocked(day, unlockDate))) return
+        if (plan[key]?.[slot]?.ordered) return
         setCustomName("")
         setPickerFor({ dateKey: key, slot })
     }
@@ -185,8 +238,41 @@ export default function UserPlan() {
         assignMeal({ id: `custom-${Date.now()}`, name: customName.trim(), kcal: 0, tag: "Custom" })
     }
 
+    async function placeOrder() {
+        if (orderableDateKeys.length === 0 || placingOrder) return
+        setPlacingOrder(true)
+        try {
+            const order = await makeRequest("orders", {
+                method: "POST",
+                body: JSON.stringify({ plan_dates: orderableDateKeys }),
+            })
+            const orderedKeys = new Set(orderableDateKeys)
+            setPlan((prev) => {
+                const next: PlannerState = { ...prev }
+                for (const key of orderedKeys) {
+                    const dayMeals = { ...next[key] }
+                    for (const slot of SLOTS) {
+                        const meal = dayMeals[slot.key]
+                        if (meal && !meal.ordered && meal.tag === "Favorite") {
+                            dayMeals[slot.key] = { ...meal, ordered: true }
+                        }
+                    }
+                    next[key] = dayMeals
+                }
+                return next
+            })
+            setOrders((prev) => [order, ...prev])
+            setError(null)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unable to place your order. Please try again.")
+        } finally {
+            setPlacingOrder(false)
+        }
+    }
+
     async function removeMeal(key: string, slot: SlotKey) {
         if (locked || isBlocked(new Date(`${key}T00:00:00`), unlockDate)) return
+        if (plan[key]?.[slot]?.ordered) return
         try {
             await makeRequest(`plan/${key}/${slot}`, { method: "DELETE" })
             setPlan((prev) => {
@@ -221,6 +307,23 @@ export default function UserPlan() {
                         </Button>
                     </ButtonGroup>
                 </div>
+
+                <Accordion className="mb-4 rounded-lg border px-4">
+                    <AccordionItem value="how-it-works" className="border-b-0">
+                        <AccordionTrigger className="py-3 text-sm font-medium">
+                            How meal planning works
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+                                <li>Deliveries go out every <span className="font-medium text-foreground">Sunday and Wednesday</span>.</li>
+                                <li>Pick a meal for each slot (breakfast, lunch, dinner) on any open date. Use <span className="font-medium text-foreground">Weeks</span> to see the whole week or <span className="font-medium text-foreground">Days</span> for one day.</li>
+                                <li>Once a delivery cycle starts, its dates lock — dimmed dates in the calendar can't be edited.</li>
+                                <li>When your picks look good, hit <span className="font-medium text-foreground">Place order</span> to spend your credits. Ordered meals can't be changed or removed.</li>
+                                <li>Custom meals are planning notes only — only catalog meals (from your favorites) can be ordered.</li>
+                            </ul>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
 
                 {loading ? (
                     <p className="text-sm text-muted-foreground">Loading your plan…</p>
@@ -298,6 +401,34 @@ export default function UserPlan() {
                         </div>
                     </div>
                 </div>
+
+                {orders.length > 0 && (
+                    <div className="mt-4 w-full">
+                        <h2 className="mb-3 text-xl font-semibold text-foreground">Your orders</h2>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {orders.map((order) => (
+                                <button
+                                    key={order.id}
+                                    onClick={() => setSelectedOrder(order)}
+                                    className="flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-semibold">{order.id}</span>
+                                        <Badge variant="outline" className="capitalize">
+                                            {order.status.replace(/_/g, " ")}
+                                        </Badge>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">
+                                        {order.items.reduce((n, item) => n + item.quantity, 0)} items · {order.totalAmount} credits
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        Placed {new Date(order.placedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="flex flex-col gap-2 shrink-0">
@@ -322,8 +453,78 @@ export default function UserPlan() {
                         {locked ? "Unlock" : "Lock meals"}
                     </Button>
                 )}
+                {orderableMealCount > 0 && (
+                    <Button
+                        size="sm"
+                        onClick={placeOrder}
+                        disabled={placingOrder}
+                        className="gap-2 py-4.5 cursor-pointer"
+                    >
+                        <ShoppingBag className="size-4" />
+                        {placingOrder
+                            ? "Placing order…"
+                            : `Place order (${orderableMealCount} meal${orderableMealCount === 1 ? "" : "s"})`}
+                    </Button>
+                )}
             </div>
 
+            <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            Order {selectedOrder?.id}
+                            {selectedOrder && (
+                                <Badge variant="outline" className="capitalize">
+                                    {selectedOrder.status.replace(/_/g, " ")}
+                                </Badge>
+                            )}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {selectedOrder && (
+                        <div className="flex flex-col gap-4 text-sm">
+                            <div className="flex flex-col gap-2">
+                                {selectedOrder.items.map((item, i) => (
+                                    <div key={i} className="flex items-center justify-between rounded-md border px-3 py-2">
+                                        <div>
+                                            <div className="font-medium">{item.title}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {item.calories} kcal · {item.protein_g}g protein · {item.carb}g carbs · {item.fat}g fat
+                                            </div>
+                                        </div>
+                                        <div className="text-right text-xs text-muted-foreground">
+                                            <div>×{item.quantity}</div>
+                                            <div>{item.credits * item.quantity} credits</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex flex-col gap-1 border-t pt-3 text-xs text-muted-foreground">
+                                <div className="flex justify-between">
+                                    <span>Total</span>
+                                    <span className="font-medium text-foreground">{selectedOrder.totalAmount} credits</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Deliver to</span>
+                                    <span className="max-w-[60%] text-right">{selectedOrder.address}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Placed</span>
+                                    <span>{new Date(selectedOrder.placedAt).toLocaleString()}</span>
+                                </div>
+                                {selectedOrder.rider && (
+                                    <div className="flex justify-between">
+                                        <span>Rider</span>
+                                        <span>{selectedOrder.rider.name} · {selectedOrder.rider.vehicle}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setSelectedOrder(null)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={!!pickerFor} onOpenChange={(open) => !open && setPickerFor(null)}>
                 <DialogContent className="sm:max-w-md">
@@ -395,7 +596,7 @@ function SlotRow({
                 const delivery = DELIVERY_DAYS.has(d.getDay())
                 const blocked = isBlocked(d, unlockDate)
                 const meal = plan[key]?.[slot.key]
-                const disabled = locked || blocked
+                const disabled = locked || blocked || meal?.ordered
 
                 return (
                     <div
@@ -407,7 +608,11 @@ function SlotRow({
                             <div className="min-w-0 w-full rounded-md border bg-background px-1.5 py-1.5 text-xs flex flex-col gap-1 sm:px-2">
                                 <div className="flex items-start justify-between gap-1">
                                     <span className="min-w-0 wrap-break-word font-medium leading-snug">{meal.name}</span>
-                                    {!disabled && (
+                                    {meal.ordered ? (
+                                        <Badge variant="outline" className="shrink-0 border-emerald-300 px-1 py-0 text-[10px] text-emerald-700">
+                                            Ordered
+                                        </Badge>
+                                    ) : !disabled && (
                                         <button
                                             onClick={() => onRemove(key, slot.key)}
                                             className="text-muted-foreground hover:text-foreground shrink-0"
