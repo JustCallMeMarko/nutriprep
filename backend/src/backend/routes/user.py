@@ -2,8 +2,6 @@ import os
 import logging
 from datetime import date, datetime, timedelta
 from backend.utils import authenticate_and_get_user_details
-import boto3
-from botocore.config import Config
 from fastapi import APIRouter, Request, HTTPException, Depends, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
@@ -30,7 +28,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
 
-DELIVERY_DAYS = {0, 3}
 VALID_PLAN_SLOTS = {slot.value for slot in models.PlanSlot}
 
 def _notification_payload(broadcast: models.Broadcast, user_id: str) -> dict:
@@ -118,6 +115,7 @@ def get_plan(request: Request, db: Session = Depends(get_db)):
                 "kcal": entry.kcal,
                 "tag": "Custom",
             },
+            "ordered": entry.order_id is not None,
         }
         for entry in entries
     ]
@@ -147,6 +145,8 @@ def upsert_plan_entry(
         models.PlanEntry.plan_date == payload.plan_date,
         models.PlanEntry.slot == payload.slot,
     ).first()
+    if entry and entry.order_id is not None:
+        raise HTTPException(status_code=409, detail="This meal is already part of an order")
     if not entry:
         entry = models.PlanEntry(
             user_id=user_id,
@@ -176,9 +176,123 @@ def delete_plan_entry(
         models.PlanEntry.plan_date == plan_date,
         models.PlanEntry.slot == slot,
     ).first()
+    if entry and entry.order_id is not None:
+        raise HTTPException(status_code=409, detail="This meal is already part of an order")
     if entry:
         db.delete(entry)
         db.commit()
+
+
+def _serialize_user_order(order: models.Order) -> dict:
+    profile = order.user.customer_profile
+    return {
+        "id": f"#ORD-{order.id:04d}",
+        "items": [
+            {
+                "title": item.meal.title,
+                "quantity": item.quantity,
+                "calories": item.meal.calories,
+                "protein_g": item.meal.protein,
+                "carb": item.meal.carb,
+                "fat": item.meal.fat,
+                "credits": item.meal.credits,
+                "image_url": item.meal.image_url,
+            }
+            for item in order.items
+        ],
+        "totalAmount": order.total_credits,
+        "address": profile.delivery_address if profile else "No delivery address",
+        "status": order.status.value,
+        "rider": (
+            {
+                "name": order.delivery.rider.user.full_name,
+                "vehicle": order.delivery.rider.plate_number or "No vehicle",
+                "phone": (
+                    order.delivery.rider.user.customer_profile.phone_number
+                    if order.delivery.rider.user.customer_profile
+                    else ""
+                ),
+            }
+            if order.delivery and order.delivery.rider
+            else None
+        ),
+        "placedAt": order.created_at.isoformat(),
+    }
+
+
+@router.get("/orders", status_code=status.HTTP_200_OK)
+def get_orders(request: Request, db: Session = Depends(get_db)):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    orders = (
+        db.query(models.Order)
+        .options(
+            joinedload(models.Order.user).joinedload(models.User.customer_profile),
+            joinedload(models.Order.items).joinedload(models.OrderItem.meal),
+            joinedload(models.Order.delivery)
+            .joinedload(models.Delivery.rider)
+            .joinedload(models.RiderProfile.user)
+            .joinedload(models.User.customer_profile),
+        )
+        .filter(models.Order.user_id == user_id)
+        .order_by(models.Order.created_at.desc())
+        .all()
+    )
+    return [_serialize_user_order(order) for order in orders]
+
+
+@router.post("/orders", status_code=status.HTTP_201_CREATED)
+def place_order(
+    request: Request,
+    payload: user.OrderCreate,
+    db: Session = Depends(get_db),
+):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    if not payload.plan_dates:
+        raise HTTPException(status_code=422, detail="No plan dates provided")
+
+    entries = (
+        db.query(models.PlanEntry)
+        .options(joinedload(models.PlanEntry.meal))
+        .filter(
+            models.PlanEntry.user_id == user_id,
+            models.PlanEntry.plan_date.in_(payload.plan_dates),
+            models.PlanEntry.order_id.is_(None),
+            models.PlanEntry.meal_id.isnot(None),
+        )
+        .all()
+    )
+    if not entries:
+        raise HTTPException(status_code=422, detail="No planned meals to order")
+
+    total_credits = sum(entry.meal.credits for entry in entries)
+    profile = (
+        db.query(models.CustomerProfile)
+        .filter(models.CustomerProfile.user_id == user_id)
+        .first()
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    if profile.credits < total_credits:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Not enough credits: this order costs {total_credits} but you have {profile.credits}",
+        )
+
+    order = models.Order(user_id=user_id, total_credits=total_credits)
+    db.add(order)
+    db.flush()
+
+    ordered_meal_counts: dict[int, int] = {}
+    for entry in entries:
+        ordered_meal_counts[entry.meal_id] = ordered_meal_counts.get(entry.meal_id, 0) + 1
+        entry.order_id = order.id
+    for meal_id, quantity in ordered_meal_counts.items():
+        db.add(models.OrderItem(order_id=order.id, meal_id=meal_id, quantity=quantity))
+
+    profile.credits -= total_credits
+    db.commit()
+    db.refresh(order)
+    return _serialize_user_order(order)
 
 @router.post("/profile", status_code=status.HTTP_201_CREATED)
 def create_profile(
@@ -215,7 +329,7 @@ def create_profile(
     try:
         db.commit()
         db.refresh(profile)
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

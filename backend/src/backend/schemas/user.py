@@ -22,3 +22,6 @@ class PlanEntryUpsert(BaseModel):
     meal_id: Optional[int] = None
     custom_name: Optional[str] = None
     kcal: int = 0
+
+class OrderCreate(BaseModel):
+    plan_dates: list[date]
