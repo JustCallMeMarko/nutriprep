@@ -75,14 +75,8 @@ def dismiss_notification(notification_id: int, request: Request, db: Session = D
     db.commit()
 
 def _plan_unlock_date(today: date) -> date:
-    """Return the next Sunday or Wednesday after the current delivery cycle."""
-    current = today
-    while current.weekday() not in {6, 2}:  # Sunday, Wednesday
-        current -= timedelta(days=1)
-    unlock = current + timedelta(days=1)
-    while unlock.weekday() not in {6, 2}:
-        unlock += timedelta(days=1)
-    return unlock
+    """Deliveries go out every day, so today's batch is already locked."""
+    return today + timedelta(days=1)
 
 def _validate_plan_date(plan_date: date, slot: str) -> None:
     if slot not in VALID_PLAN_SLOTS:
@@ -108,6 +102,7 @@ def get_plan(request: Request, db: Session = Depends(get_db)):
                 "id": str(entry.meal.id),
                 "name": entry.meal.title,
                 "kcal": entry.meal.calories,
+                "image_url": entry.meal.image_url,
                 "tag": "Favorite",
             } if entry.meal else {
                 "id": f"custom-{entry.id}",
