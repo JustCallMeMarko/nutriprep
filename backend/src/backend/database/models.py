@@ -62,7 +62,7 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
     role: Mapped[Roles] = mapped_column(Enum(Roles, native_enum=False), nullable=False, default=Roles.USER, index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
@@ -348,6 +348,18 @@ _plan_columns = {column["name"] for column in inspect(engine).get_columns("plan_
 if "order_id" not in _plan_columns:
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE plan_entries ADD COLUMN order_id INTEGER"))
+
+# Email is nullable so Clerk accounts without an email address don't collide
+# on a shared '' placeholder (the column is unique). MySQL-only ALTER; fresh
+# schemas and SQLite already create it nullable from the model above.
+_user_columns = {column["name"]: column for column in inspect(engine).get_columns("users")}
+if (
+    engine.dialect.name == "mysql"
+    and _user_columns.get("email")
+    and not _user_columns["email"]["nullable"]
+):
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE users MODIFY email VARCHAR(255) NULL"))
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

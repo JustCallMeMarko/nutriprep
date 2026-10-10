@@ -146,6 +146,19 @@ def _grant_subscription_credits(db, event_id: str, data: dict) -> dict:
 
     return {"status": "credited", "credits": credits}
 
+def _primary_email(user_data: dict) -> str | None:
+    """Email matching Clerk's primary_email_address_id, else the first address."""
+    addresses = user_data.get("email_addresses") or []
+    primary_id = user_data.get("primary_email_address_id")
+    if primary_id:
+        for address in addresses:
+            if address.get("id") == primary_id:
+                return address.get("email_address")
+    if addresses:
+        return addresses[0].get("email_address")
+    return None
+
+
 @router.post("/clerk")
 async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
     if not CLERK_WEBHOOK_SECRET or not CLERK_SECRET_KEY:
@@ -173,7 +186,7 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
         
         role = requested_role if requested_role in ALLOWED_SIGNUP_ROLES else "user"
         full_name = user_data.get("first_name", "") + " " + user_data.get("last_name", "")
-        email = user_data.get("email_addresses", [{}])[0].get("email_address", "")
+        email = _primary_email(user_data)
 
         try:
             create_user(db, user_id=user_id, role=role, full_name=full_name, email=email)
@@ -196,21 +209,20 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
         public_meta = user_data.get("public_metadata") or {}
         metadata_role = public_meta.get("role")
         full_name = user_data.get("first_name", "") + " " + user_data.get("last_name", "")
-        email = user_data.get("email_addresses", [{}])[0].get("email_address", "")
+        email = _primary_email(user_data)
 
         # Sync profile fields for every user.updated event, not only when the
         # role metadata changes. Clerk may omit unchanged metadata from the
         # event payload when only the user's name or email is edited.
-        if metadata_role:
-            updated_user = sync_role_from_metadata(
-                db,
-                user_id=user_id,
-                full_name=full_name,
-                email=email,
-                new_role_str=metadata_role,
-            )
-            if updated_user:
-                return {"status": "updated", "role": updated_user.role.value}
+        updated_user = sync_role_from_metadata(
+            db,
+            user_id=user_id,
+            full_name=full_name,
+            email=email,
+            new_role_str=metadata_role,
+        )
+        if updated_user:
+            return {"status": "updated", "role": updated_user.role.value}
 
         return {"status": "no_role_change"}
 

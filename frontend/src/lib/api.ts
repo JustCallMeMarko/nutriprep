@@ -9,6 +9,9 @@ export const useApi = () => {
   const role = user?.publicMetadata?.role
 
   const makeRequest = useCallback(async (endpoint: string, options: RequestInit = {}) => {
+    if (!role) {
+      throw new Error("Your account is still loading. Please try again.")
+    }
     const token = await getToken()
     const { headers: customHeaders, body, ...restOptions } = options
     const isFormData = body instanceof FormData
