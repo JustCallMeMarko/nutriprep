@@ -91,10 +91,12 @@ function dateKeyOf(d: Date) {
     return `${d.getFullYear()}-${month}-${day}`
 }
 
-// Deliveries go out every day, so today's batch is already being prepped —
-// editing opens again tomorrow.
-function unlockDateFor(today: Date) {
-    return addDays(startOfDay(today), 1)
+// Same-day edits close at the 1pm cutoff; before that, today is still editable.
+const PLAN_CUTOFF_HOUR = 13
+
+function unlockDateFor(now: Date) {
+    const today = startOfDay(now)
+    return now.getHours() >= PLAN_CUTOFF_HOUR ? addDays(today, 1) : today
 }
 
 function isBlocked(d: Date, unlockDate: Date) {
@@ -301,7 +303,7 @@ export default function UserPlan() {
                             <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
                                 <li>Deliveries go out <span className="font-medium text-foreground">every day</span>.</li>
                                 <li>Pick a meal for each slot (breakfast, lunch, dinner) on any open date. Use <span className="font-medium text-foreground">Weeks</span> to see the whole week or <span className="font-medium text-foreground">Days</span> for one day.</li>
-                                <li>Only past dates and today are locked — today's delivery is already being prepped. Dimmed dates in the calendar can't be edited.</li>
+                                <li>Each date locks at <span className="font-medium text-foreground">1:00 PM</span> on that date — after that, its meals are being prepped. Past dates and dimmed calendar dates can't be edited.</li>
                                 <li>When your picks look good, hit <span className="font-medium text-foreground">Place order</span> to spend your credits. Ordered meals can't be changed or removed.</li>
                                 <li>Custom meals are planning notes only — only catalog meals (from your favorites) can be ordered.</li>
                             </ul>
@@ -319,7 +321,9 @@ export default function UserPlan() {
                         <span>{formatRange(days[0], days[days.length - 1])}</span>
                         {hasEditableDays ? (
                             <span className="max-w-[60%] text-right text-xs leading-tight">
-                                Editing reopens {formattedUnlockDate} — earlier dates are locked
+                                {unlockDate.getTime() <= startOfDay(new Date()).getTime()
+                                    ? "Today's plan locks at 1:00 PM — past dates are locked"
+                                    : `Editing reopens ${formattedUnlockDate} — earlier dates are locked`}
                             </span>
                         ) : (
                             <span className="max-w-[60%] text-right text-xs leading-tight text-amber-600">

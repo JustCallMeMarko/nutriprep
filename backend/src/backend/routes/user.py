@@ -74,14 +74,19 @@ def dismiss_notification(notification_id: int, request: Request, db: Session = D
     broadcast.dismissed_by = list(dict.fromkeys([*(broadcast.dismissed_by or []), user_id]))
     db.commit()
 
-def _plan_unlock_date(today: date) -> date:
-    """Deliveries go out every day, so today's batch is already locked."""
-    return today + timedelta(days=1)
+PLAN_CUTOFF_HOUR = 13  # plans lock at 1pm on the delivery date itself
+
+
+def _plan_unlock_date(now: datetime) -> date:
+    """Same-day edits are allowed until the 1pm cutoff, then the date locks."""
+    today = now.date()
+    return today + timedelta(days=1) if now.hour >= PLAN_CUTOFF_HOUR else today
+
 
 def _validate_plan_date(plan_date: date, slot: str) -> None:
     if slot not in VALID_PLAN_SLOTS:
         raise HTTPException(status_code=422, detail="Invalid meal slot")
-    if plan_date < _plan_unlock_date(datetime.now().date()):
+    if plan_date < _plan_unlock_date(datetime.now()):
         raise HTTPException(status_code=409, detail="This date is no longer editable")
 
 @router.get("/plan", status_code=status.HTTP_200_OK)
