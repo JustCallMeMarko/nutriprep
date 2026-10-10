@@ -115,6 +115,7 @@ class RiderProfile(Base):
 
     user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     plate_number: Mapped[str | None] = mapped_column(String(50), default=None)
+    phone_number: Mapped[str | None] = mapped_column(String(25), default=None)
     is_available: Mapped[bool] = mapped_column(nullable=False, default=False, index=True)
     current_lat: Mapped[float | None] = mapped_column(default=None)
     current_long: Mapped[float | None] = mapped_column(default=None)
@@ -335,6 +336,7 @@ _rider_column_definitions = {
     "current_lat": "DOUBLE",
     "current_long": "DOUBLE",
     "location_updated_at": "DATETIME",
+    "phone_number": "VARCHAR(25)",
 }
 with engine.begin() as connection:
     for column_name, column_type in _rider_column_definitions.items():

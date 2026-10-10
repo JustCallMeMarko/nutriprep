@@ -6,8 +6,10 @@ from ..database import models
 from ..database.models import get_db
 from clerk_backend_api import Clerk
 import os
+import logging
 from dotenv import load_dotenv
 
+logger = logging.getLogger(__name__)
 load_dotenv()
 
 router = APIRouter()
@@ -196,6 +198,55 @@ def get_deliveries(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     return [_serialize_delivery(delivery) for delivery in deliveries]
+
+@router.get("/profile", status_code=status.HTTP_200_OK)
+def get_rider_profile(request: Request, db: Session = Depends(get_db)):
+    rider_id = _rider_id(request)
+    profile = _rider_profile(db, rider_id)
+    return {
+        "plateNumber": profile.plate_number,
+        "phoneNumber": profile.phone_number,
+        "available": profile.is_available,
+    }
+
+
+@router.put("/profile", status_code=status.HTTP_200_OK)
+def upsert_rider_profile(
+    payload: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    rider_id = _rider_id(request)
+    plate_number = (payload.get("plate_number") or "").strip()
+    phone_number = (payload.get("phone_number") or "").strip()
+    if not plate_number or not phone_number:
+        raise HTTPException(status_code=422, detail="plate_number and phone_number are required.")
+
+    profile = db.query(models.RiderProfile).filter(
+        models.RiderProfile.user_id == rider_id
+    ).first()
+    if not profile:
+        profile = models.RiderProfile(user_id=rider_id)
+        db.add(profile)
+    profile.plate_number = plate_number
+    profile.phone_number = phone_number
+    db.commit()
+
+    try:
+        clerk = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
+        clerk.users.update_metadata(
+            user_id=rider_id,
+            public_metadata={"riderOnboarded": True},
+        )
+    except Exception:
+        logger.exception("Failed to set riderOnboarded metadata for user %s", rider_id)
+
+    return {
+        "plateNumber": profile.plate_number,
+        "phoneNumber": profile.phone_number,
+        "available": profile.is_available,
+    }
+
 
 @router.patch("/deliveries/{delivery_id}/status", status_code=status.HTTP_200_OK)
 def update_delivery_status(

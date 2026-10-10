@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Menu, X, Package, Navigation, BarChart3 } from 'lucide-react'
+import { Menu, X, Package, Navigation, BarChart3, Bike } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
 import { Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
@@ -13,6 +13,7 @@ export default function RiderLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const { isLoaded, user } = useUser()
     const role = user?.publicMetadata?.role
+    const onboarded = user?.publicMetadata?.riderOnboarded
     const closeMenu = () => setIsMenuOpen(false)
     const navigate = useNavigate()
     const location = useLocation()
@@ -31,6 +32,12 @@ export default function RiderLayout() {
 
     if (role !== 'rider') {
         return <Navigate to={`/${role}`} replace />
+    }
+
+    const isOnboardingPage = location.pathname === ROUTES.RIDER_ONBOARDING
+
+    if (!onboarded && !isOnboardingPage) {
+        return <Navigate to={ROUTES.RIDER_ONBOARDING} replace />
     }
 
     const NavLinks = [
@@ -74,7 +81,15 @@ export default function RiderLayout() {
 
                 <div className="hidden md:flex items-center justify-center gap-3">
                     <RiderNotificationBell />
-                    <UserButton />
+                    <UserButton>
+                        <UserButton.MenuItems>
+                            <UserButton.Action
+                                label="Rider profile"
+                                labelIcon={<Bike className="size-4" />}
+                                onClick={() => navigate(ROUTES.RIDER_ONBOARDING)}
+                            />
+                        </UserButton.MenuItems>
+                    </UserButton>
                 </div>
 
                 {isMenuOpen && (

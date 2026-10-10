@@ -25,6 +25,7 @@ import RiderDashboard from './pages/rider/RiderDashboard'
 import RiderActiveDelivery from './pages/rider/RiderActiveDelivery'
 import RiderAnalytics from './pages/rider/RiderAnalytics'
 import RiderNotification from './pages/rider/RiderNotification'
+import RiderOnboarding from './pages/rider/RiderOnboarding'
 import UserProfile from './pages/user/UserProfile'
 
 function App() {
@@ -58,6 +59,7 @@ function App() {
           <Route path="active" element={<RiderActiveDelivery />} />
           <Route path="analytics" element={<RiderAnalytics />} />
           <Route path={ROUTES.RIDER_NOTIFICATION.replace(`/${ROLES.RIDER}/`, '')} element={<RiderNotification />} />
+          <Route path="onboarding" element={<RiderOnboarding />} />
         </Route>
       </Routes> 
     </ClerkProviderWithRoutes>

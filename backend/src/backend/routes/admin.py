@@ -453,9 +453,10 @@ def get_admin_riders(request: Request, db: Session = Depends(get_db)):
             "id": rider.user_id,
             "name": rider.user.full_name,
             "vehicle": rider.plate_number or "No vehicle",
-            "phone": rider.user.customer_profile.phone_number
-            if rider.user.customer_profile
-            else "",
+            "phone": rider.phone_number
+            or (rider.user.customer_profile.phone_number
+                if rider.user.customer_profile
+                else ""),
             "rating": "—",
             "activeLoads": active_loads.get(rider.user_id, 0),
         }

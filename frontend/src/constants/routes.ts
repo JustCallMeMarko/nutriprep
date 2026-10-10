@@ -17,4 +17,5 @@ export const ROUTES = {
     RIDER_ACTIVE_DELIVERY: '/rider/active',
     RIDER_ANALYTICS: '/rider/analytics',
     RIDER_NOTIFICATION: '/rider/notification',
+    RIDER_ONBOARDING: '/rider/onboarding',
 }
