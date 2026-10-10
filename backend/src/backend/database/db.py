@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from . import models
 from .models import Goals
 
-def create_user(db: Session, user_id: str, full_name: str, email: str, role: str) -> models.User:
+def create_user(db: Session, user_id: str, full_name: str, email: str | None, role: str) -> models.User:
     """Creates only the base user record without provisioning profiles."""
     existing = db.query(models.User).filter(models.User.id == user_id).first()
     if existing:
@@ -62,7 +62,7 @@ def create_customer_profile(
     db.refresh(profile)
     return profile
 
-def sync_role_from_metadata(db: Session, user_id: str, full_name: str, email: str, new_role_str: str | None = None) -> models.User | None:
+def sync_role_from_metadata(db: Session, user_id: str, full_name: str, email: str | None, new_role_str: str | None = None) -> models.User | None:
     """Syncs profile fields and manual role promotions (e.g. promoting to admin in Clerk dashboard)."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
