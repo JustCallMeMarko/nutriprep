@@ -30,6 +30,7 @@ type Meal = {
     kcal: number
     tag: "Custom" | "Favorite"
     ordered?: boolean
+    image_url?: string
 }
 
 type OrderItem = {
@@ -63,7 +64,6 @@ const SLOTS: { key: SlotKey; label: string; window: string }[] = [
 ]
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-const DELIVERY_DAYS = new Set([0, 3]) // Sunday, Wednesday
 
 // ---------- Helpers ----------
 
@@ -91,27 +91,10 @@ function dateKeyOf(d: Date) {
     return `${d.getFullYear()}-${month}-${day}`
 }
 
-// The delivery day that "owns" the current cycle: the most recent delivery
-// day on or before `from`. Everything from this date up to (but not
-// including) the *next* delivery day is already being prepped/shipped.
-function currentCycleDeliveryDate(from: Date) {
-    let d = startOfDay(from)
-    while (!DELIVERY_DAYS.has(d.getDay())) d = addDays(d, -1)
-    return d
-}
-
-// First delivery day strictly after `from`.
-function nextDeliveryDateAfter(from: Date) {
-    let d = addDays(startOfDay(from), 1)
-    while (!DELIVERY_DAYS.has(d.getDay())) d = addDays(d, 1)
-    return d
-}
-
-// The date on which the calendar unlocks again: the delivery day that
-// follows whichever delivery day currently governs "today". e.g. if today
-// is Wed, the Wed batch covers through Sat, and things open back up Sun.
+// Deliveries go out every day, so today's batch is already being prepped —
+// editing opens again tomorrow.
 function unlockDateFor(today: Date) {
-    return nextDeliveryDateAfter(currentCycleDeliveryDate(today))
+    return addDays(startOfDay(today), 1)
 }
 
 function isBlocked(d: Date, unlockDate: Date) {
@@ -188,10 +171,11 @@ export default function UserPlan() {
                 })
                 setPlan(nextPlan)
                 setOrders(savedOrders)
-                setFavoriteMeals(favorites.map((meal: { id: string | number; title: string; calories: number }) => ({
+                setFavoriteMeals(favorites.map((meal: { id: string | number; title: string; calories: number; image_url?: string }) => ({
                     id: String(meal.id),
                     name: meal.title,
                     kcal: meal.calories,
+                    image_url: meal.image_url,
                     tag: "Favorite",
                 })))
             })
@@ -315,9 +299,9 @@ export default function UserPlan() {
                         </AccordionTrigger>
                         <AccordionContent>
                             <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
-                                <li>Deliveries go out every <span className="font-medium text-foreground">Sunday and Wednesday</span>.</li>
+                                <li>Deliveries go out <span className="font-medium text-foreground">every day</span>.</li>
                                 <li>Pick a meal for each slot (breakfast, lunch, dinner) on any open date. Use <span className="font-medium text-foreground">Weeks</span> to see the whole week or <span className="font-medium text-foreground">Days</span> for one day.</li>
-                                <li>Once a delivery cycle starts, its dates lock — dimmed dates in the calendar can't be edited.</li>
+                                <li>Only past dates and today are locked — today's delivery is already being prepped. Dimmed dates in the calendar can't be edited.</li>
                                 <li>When your picks look good, hit <span className="font-medium text-foreground">Place order</span> to spend your credits. Ordered meals can't be changed or removed.</li>
                                 <li>Custom meals are planning notes only — only catalog meals (from your favorites) can be ordered.</li>
                             </ul>
@@ -357,26 +341,16 @@ export default function UserPlan() {
                         >
                             <div className="border-b border-r bg-muted/40" />
                             {days.map((d, i) => {
-                                const delivery = DELIVERY_DAYS.has(d.getDay())
                                 const blocked = isBlocked(d, unlockDate)
                                 return (
                                     <div
                                         key={i}
-                                        className={`min-w-0 border-b border-r px-1 py-2 text-center sm:px-2 ${delivery ? "bg-emerald-50" : "bg-muted/40"
-                                            }`}
+                                        className="min-w-0 border-b border-r px-1 py-2 text-center sm:px-2 bg-muted/40"
                                     >
                                         <div className="text-xs text-muted-foreground">
                                             {DAY_LABELS[d.getDay()]}
                                         </div>
                                         <div className="text-sm font-semibold">{d.getDate()}</div>
-                                        {delivery && (
-                                            <Badge
-                                                variant="outline"
-                                                className="mt-1 max-w-full overflow-hidden text-ellipsis whitespace-nowrap border-emerald-300 px-1 py-0 text-[10px] text-emerald-700"
-                                            >
-                                                Delivery day
-                                            </Badge>
-                                        )}
                                         {blocked && (
                                             <div className="mt-1 text-[10px] text-muted-foreground">
                                                 Locked
@@ -537,10 +511,19 @@ export default function UserPlan() {
                             <button
                                 key={meal.id}
                                 onClick={() => assignMeal(meal)}
-                                className="flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
+                                className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
                             >
-                                <span>{meal.name}</span>
-                                <span className="text-xs text-muted-foreground">{meal.kcal} kcal</span>
+                                <span className="flex min-w-0 items-center gap-2">
+                                    {meal.image_url && (
+                                        <img
+                                            src={meal.image_url}
+                                            alt=""
+                                            className="size-9 shrink-0 rounded-md object-cover"
+                                        />
+                                    )}
+                                    <span className="min-w-0 wrap-break-word">{meal.name}</span>
+                                </span>
+                                <span className="shrink-0 text-xs text-muted-foreground">{meal.kcal} kcal</span>
                             </button>
                         ))}
                     </div>
@@ -593,7 +576,6 @@ function SlotRow({
             </div>
             {days.map((d, i) => {
                 const key = dateKeyOf(d)
-                const delivery = DELIVERY_DAYS.has(d.getDay())
                 const blocked = isBlocked(d, unlockDate)
                 const meal = plan[key]?.[slot.key]
                 const disabled = locked || blocked || meal?.ordered
@@ -601,11 +583,17 @@ function SlotRow({
                 return (
                     <div
                         key={i}
-                        className={`min-w-0 border-b border-r p-1 sm:p-2 min-h-19 flex ${delivery ? "bg-emerald-50/60" : ""
-                            }`}
+                        className="min-w-0 border-b border-r p-1 sm:p-2 min-h-19 flex"
                     >
                         {meal ? (
                             <div className="min-w-0 w-full rounded-md border bg-background px-1.5 py-1.5 text-xs flex flex-col gap-1 sm:px-2">
+                                {meal.image_url && (
+                                    <img
+                                        src={meal.image_url}
+                                        alt=""
+                                        className="h-10 w-full rounded-sm object-cover"
+                                    />
+                                )}
                                 <div className="flex items-start justify-between gap-1">
                                     <span className="min-w-0 wrap-break-word font-medium leading-snug">{meal.name}</span>
                                     {meal.ordered ? (
