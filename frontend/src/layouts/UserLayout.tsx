@@ -51,10 +51,11 @@ export default function UserLayout() {
         { name: 'Subscription', href: ROUTES.USER_SUBSCRIPTION, icon: CircleDollarSign },
     ]
 
-    const firstItem = data?.subscriptionItems?.[0]
-    const planName = firstItem?.plan?.name || "Free"
-
-    const isAIEnabled = !isProfilePage && (planName === SUBSCRIPTION_PLANS.SILVER || planName === SUBSCRIPTION_PLANS.GOLD)
+    const AI_PLANS = [SUBSCRIPTION_PLANS.SILVER, SUBSCRIPTION_PLANS.GOLD]
+    const isAIEnabled = !isProfilePage && (data?.subscriptionItems ?? []).some((item) => {
+        const planName = String(item?.plan?.name ?? "").toLowerCase()
+        return AI_PLANS.some((plan) => planName.startsWith(plan.toLowerCase()))
+    })
 
 
     return (
