@@ -58,7 +58,9 @@ function addDays(d: Date, n: number) {
 }
 
 function dateKeyOf(d: Date) {
-    return d.toISOString().slice(0, 10)
+    const month = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    return `${d.getFullYear()}-${month}-${day}`
 }
 
 // The delivery day that "owns" the current cycle: the most recent delivery
@@ -107,7 +109,7 @@ export default function UserPlan() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    const activeDate = date ?? new Date()
+    const activeDate = useMemo(() => date ?? new Date(), [date])
     const unlockDate = useMemo(() => unlockDateFor(new Date()), [])
 
     const days = useMemo(() => {
@@ -115,6 +117,14 @@ export default function UserPlan() {
         const start = startOfWeek(activeDate)
         return Array.from({ length: 7 }, (_, i) => addDays(start, i))
     }, [view, activeDate])
+
+    const editableDays = days.filter((d) => !isBlocked(d, unlockDate))
+    const hasEditableDays = editableDays.length > 0
+    const formattedUnlockDate = unlockDate.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+    })
 
     useEffect(() => {
         let active = true
@@ -187,11 +197,6 @@ export default function UserPlan() {
         } catch {
             setError("Unable to remove this meal. Please try again.")
         }
-        setPlan((prev) => {
-            const dayMeals = { ...prev[key] }
-            delete dayMeals[slot]
-            return { ...prev, [key]: dayMeals }
-        })
     }
 
     return (
@@ -225,15 +230,15 @@ export default function UserPlan() {
                 <div className="min-w-0">
                     <div className="mb-2 flex items-center justify-between text-sm font-medium text-muted-foreground">
                         <span>{formatRange(days[0], days[days.length - 1])}</span>
-                        <span className="max-w-[60%] text-right text-xs leading-tight">
-                            Editing reopens{" "}
-                            {unlockDate.toLocaleDateString(undefined, {
-                                weekday: "short",
-                                month: "short",
-                                day: "numeric",
-                            })}
-                            {" "}— dates before then are locked
-                        </span>
+                        {hasEditableDays ? (
+                            <span className="max-w-[60%] text-right text-xs leading-tight">
+                                Editing reopens {formattedUnlockDate} — earlier dates are locked
+                            </span>
+                        ) : (
+                            <span className="max-w-[60%] text-right text-xs leading-tight text-amber-600">
+                                This {view === "days" ? "day" : "week"} is locked — editing reopens {formattedUnlockDate}
+                            </span>
+                        )}
                     </div>
 
                     <div className={view === "days" ? "rounded-lg border overflow-hidden" : "overflow-x-auto rounded-lg border lg:overflow-x-hidden"}>
@@ -303,18 +308,20 @@ export default function UserPlan() {
                     onSelect={setDate}
                     className="rounded-lg border h-fit w-full"
                     captionLayout="dropdown"
+                    modifiers={{ locked: (day) => isBlocked(day, unlockDate) }}
+                    modifiersClassNames={{ locked: "opacity-40" }}
                 />
-                <Button
-                    size="sm"
-                    variant={locked ? "secondary" : "default"}
-                    onClick={() => setLocked((v) => !v)}
-                    className="gap-2 py-4.5 cursor-pointer"
-                >
-                    {locked ? <LockOpen className="size-4" /> : <Lock className="size-4" />}
-                    {locked
-                        ? "Unlock"
-                        : `Lock meals`}
-                </Button>
+                {hasEditableDays && (
+                    <Button
+                        size="sm"
+                        variant={locked ? "secondary" : "default"}
+                        onClick={() => setLocked((v) => !v)}
+                        className="gap-2 py-4.5 cursor-pointer"
+                    >
+                        {locked ? <LockOpen className="size-4" /> : <Lock className="size-4" />}
+                        {locked ? "Unlock" : "Lock meals"}
+                    </Button>
+                )}
             </div>
 
 
