@@ -13,7 +13,10 @@ def authenticate_and_get_user_details(request):
         request_state = clerk_sdk.authenticate_request(
             request,
             AuthenticateRequestOptions(
-                authorized_parties=["http://localhost:5173"],
+                authorized_parties=[
+                origin.strip()
+                for origin in os.getenv("AUTHORIZED_PARTIES", "http://localhost:5173").split(",")
+            ],
                 jwt_key=os.getenv("JWT_KEY")
             )
         )
@@ -28,5 +31,7 @@ def authenticate_and_get_user_details(request):
             "user_id": user_id,
             "public_metadata": public_metadata
             }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

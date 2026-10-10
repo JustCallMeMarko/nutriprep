@@ -62,8 +62,8 @@ def create_customer_profile(
     db.refresh(profile)
     return profile
 
-def sync_role_from_metadata(db: Session, user_id: str, full_name: str, email: str, new_role_str: str) -> models.User | None:
-    """Syncs manual role promotions (e.g. promoting to admin in Clerk dashboard)."""
+def sync_role_from_metadata(db: Session, user_id: str, full_name: str, email: str, new_role_str: str | None = None) -> models.User | None:
+    """Syncs profile fields and manual role promotions (e.g. promoting to admin in Clerk dashboard)."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         return None
@@ -73,12 +73,10 @@ def sync_role_from_metadata(db: Session, user_id: str, full_name: str, email: st
         "rider": models.Roles.RIDER,
         "user": models.Roles.USER
     }
-    target_role = role_map.get(new_role_str.lower())
-    if not target_role:
-        return user
+    target_role = role_map.get((new_role_str or "").lower())
 
     changed = False
-    if user.role != target_role:
+    if target_role and user.role != target_role:
         user.role = target_role
         changed = True
     if user.full_name != full_name:

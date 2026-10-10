@@ -99,7 +99,7 @@ export default function RiderOnboarding() {
 
   if (!isLoaded) {
     return (
-      <section className="flex min-h-screen items-center justify-center">
+      <section className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
           <RefreshCw size={16} className="animate-spin" />
           Loading your account...
@@ -113,7 +113,7 @@ export default function RiderOnboarding() {
   }
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
+    <section className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto px-4 py-12">
       <form onSubmit={handleSubmit} className="w-full max-w-lg">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
