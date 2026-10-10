@@ -1,6 +1,5 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from datetime import datetime
 from . import models
 from .models import Goals
 

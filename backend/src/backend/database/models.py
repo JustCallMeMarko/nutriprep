@@ -167,6 +167,7 @@ class PlanEntry(Base):
     meal_id: Mapped[int | None] = mapped_column(ForeignKey("meals.id", ondelete="SET NULL"), nullable=True)
     custom_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     kcal: Mapped[int] = mapped_column(nullable=False, default=0)
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
 
     meal: Mapped["Meal | None"] = relationship()
 
@@ -292,6 +293,12 @@ with engine.begin() as connection:
     for column_name, column_type in _rider_column_definitions.items():
         if column_name not in _rider_columns:
             connection.execute(text(f"ALTER TABLE rider_profiles ADD COLUMN {column_name} {column_type}"))
+
+# Same additive migration for plan entries that predate ordering.
+_plan_columns = {column["name"] for column in inspect(engine).get_columns("plan_entries")}
+if "order_id" not in _plan_columns:
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE plan_entries ADD COLUMN order_id INTEGER"))
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
