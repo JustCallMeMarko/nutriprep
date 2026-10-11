@@ -1,4 +1,5 @@
 import os
+import secrets
 from pathlib import Path
 from uuid import uuid4
 from datetime import date, datetime, timedelta
@@ -55,6 +56,12 @@ class UserCreditsUpdate(BaseModel):
 class UserSubscriptionUpdate(BaseModel):
     plan: str
 
+class PayoutRateUpdate(BaseModel):
+    rate: int = Field(gt=0, le=100_000)
+
+class PayoutConfirm(BaseModel):
+    pin: str = Field(min_length=6, max_length=6)
+
 class BroadcastCreate(BaseModel):
     title: str = Field(min_length=1, max_length=100)
     message: str = Field(min_length=1)
@@ -84,6 +91,48 @@ def _require_admin(request: Request) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied. Admin privileges required.",
         )
+
+BROADCAST_AUDIENCE_ROLES = {
+    "users": [models.Roles.USER],
+    "riders": [models.Roles.RIDER],
+    "admins": [models.Roles.ADMIN],
+    "all": list(models.Roles),
+}
+
+def _require_admin_sender(request: Request, db: Session) -> str:
+    user_details = authenticate_and_get_user_details(request)
+    if (user_details.get("public_metadata") or {}).get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Access denied. Admin privileges required.")
+    sender_id = user_details.get("user_id")
+    sender = db.query(models.User).filter(models.User.id == sender_id).first()
+    if not sender:
+        raise HTTPException(status_code=404, detail="Admin is not provisioned in the database.")
+    return sender_id
+
+def _add_broadcast(
+    db: Session,
+    sender_id: str,
+    title: str,
+    message: str,
+    audience: str,
+    priority: str = "normal",
+) -> models.Broadcast:
+    """Stages a broadcast addressed to every user in the audience; caller commits."""
+    broadcast = models.Broadcast(
+        user_id=sender_id,
+        title=title,
+        message=message,
+        audience=audience,
+        priority=priority,
+    )
+    recipients = (
+        db.query(models.User)
+        .filter(models.User.role.in_(BROADCAST_AUDIENCE_ROLES[audience]))
+        .all()
+    )
+    broadcast.recipient_ids = [recipient.id for recipient in recipients]
+    db.add(broadcast)
+    return broadcast
 
 def _clerk_metadata(clerk_user) -> dict:
     return dict(getattr(clerk_user, "public_metadata", None) or {})
@@ -174,39 +223,20 @@ def create_broadcast(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user_details = authenticate_and_get_user_details(request)
-    if (user_details.get("public_metadata") or {}).get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Access denied. Admin privileges required.")
-    if payload.audience not in {"all", "users", "riders", "admins"}:
+    sender_id = _require_admin_sender(request, db)
+    if payload.audience not in BROADCAST_AUDIENCE_ROLES:
         raise HTTPException(status_code=422, detail="Unsupported broadcast audience.")
     if payload.priority not in {"normal", "urgent"}:
         raise HTTPException(status_code=422, detail="Unsupported broadcast priority.")
 
-    audience_roles = {
-        "users": [models.Roles.USER],
-        "riders": [models.Roles.RIDER],
-        "admins": [models.Roles.ADMIN],
-        "all": list(models.Roles),
-    }[payload.audience]
-    sender_id = user_details.get("user_id")
-    sender = db.query(models.User).filter(models.User.id == sender_id).first()
-    if not sender:
-        raise HTTPException(status_code=404, detail="Admin is not provisioned in the database.")
-
-    broadcast = models.Broadcast(
-        user_id=sender_id,
+    broadcast = _add_broadcast(
+        db,
+        sender_id,
         title=payload.title.strip(),
         message=payload.message.strip(),
         audience=payload.audience,
         priority=payload.priority,
     )
-    recipients = (
-        db.query(models.User)
-        .filter(models.User.role.in_(audience_roles))
-        .all()
-    )
-    broadcast.recipient_ids = [recipient.id for recipient in recipients]
-    db.add(broadcast)
     db.commit()
     db.refresh(broadcast)
     return _serialize_broadcast(broadcast)
@@ -223,6 +253,206 @@ def delete_broadcast(
         raise HTTPException(status_code=404, detail="Broadcast not found.")
     db.delete(broadcast)
     db.commit()
+
+def _payout_rate_payload(db: Session) -> dict:
+    setting = db.get(models.AppSetting, models.PAYOUT_RATE_KEY)
+    return {
+        "rate": models.get_payout_rate(db),
+        "updatedAt": setting.updated_at.isoformat() if setting and setting.updated_at else None,
+    }
+
+@router.get("/payout-rate", status_code=status.HTTP_200_OK)
+def get_payout_rate(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    return _payout_rate_payload(db)
+
+@router.put("/payout-rate", status_code=status.HTTP_200_OK)
+def update_payout_rate(
+    payload: PayoutRateUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    sender_id = _require_admin_sender(request, db)
+    changed = models.get_payout_rate(db) != payload.rate
+    models.set_payout_rate(db, payload.rate)
+    db.commit()
+
+    notified_riders = 0
+    if changed:
+        broadcast = _add_broadcast(
+            db,
+            sender_id,
+            title="Payout Rate Updated",
+            message=f"Your earnings rate is now ₱{payload.rate:,} per credit.",
+            audience="riders",
+        )
+        db.commit()
+        notified_riders = len(broadcast.recipient_ids)
+
+    return {**_payout_rate_payload(db), "notifiedRiders": notified_riders}
+
+def _unpaid_deliveries_query(db: Session, rider_id: str | None = None):
+    query = (
+        db.query(models.Delivery)
+        .join(models.Delivery.order)
+        .filter(
+            models.Order.status == models.OrderStatus.DELIVERED,
+            models.Delivery.paid_out_at.is_(None),
+            models.Delivery.rider_id.is_not(None),
+        )
+    )
+    if rider_id is not None:
+        query = query.filter(models.Delivery.rider_id == rider_id)
+    return query
+
+def _unpaid_credits(db: Session, rider_id: str) -> int:
+    return (
+        _unpaid_deliveries_query(db, rider_id)
+        .with_entities(func.coalesce(func.sum(models.Order.total_credits), 0))
+        .scalar()
+        or 0
+    )
+
+def _get_payout_rider(db: Session, rider_id: str) -> models.RiderProfile:
+    rider = (
+        db.query(models.RiderProfile)
+        .join(models.RiderProfile.user)
+        .filter(
+            models.RiderProfile.user_id == rider_id,
+            models.User.role == models.Roles.RIDER,
+        )
+        .first()
+    )
+    if not rider:
+        raise HTTPException(status_code=404, detail="Rider not found.")
+    return rider
+
+def _pending_payout(db: Session, rider_id: str) -> models.RiderPayout | None:
+    return (
+        db.query(models.RiderPayout)
+        .filter(
+            models.RiderPayout.rider_id == rider_id,
+            models.RiderPayout.status == "pending",
+        )
+        .order_by(models.RiderPayout.id.desc())
+        .first()
+    )
+
+def _generate_payout_pin(db: Session) -> str:
+    pending_pins = {
+        pin
+        for (pin,) in db.query(models.RiderPayout.pin)
+        .filter(models.RiderPayout.status == "pending")
+        .all()
+    }
+    while True:
+        pin = f"{secrets.randbelow(1_000_000):06d}"
+        if pin not in pending_pins:
+            return pin
+
+@router.get("/payouts", status_code=status.HTTP_200_OK)
+def get_payouts(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    rate = models.get_payout_rate(db)
+    riders = (
+        db.query(models.User)
+        .options(
+            joinedload(models.User.rider_profile),
+            joinedload(models.User.customer_profile),
+        )
+        .filter(models.User.role == models.Roles.RIDER)
+        .order_by(models.User.full_name.asc())
+        .all()
+    )
+    unpaid = {
+        rider_id: (credits or 0, count)
+        for rider_id, credits, count in _unpaid_deliveries_query(db)
+        .with_entities(
+            models.Delivery.rider_id,
+            func.sum(models.Order.total_credits),
+            func.count(models.Delivery.id),
+        )
+        .group_by(models.Delivery.rider_id)
+        .all()
+    }
+    last_paid = dict(
+        db.query(models.RiderPayout.rider_id, func.max(models.RiderPayout.confirmed_at))
+        .filter(models.RiderPayout.status == "confirmed")
+        .group_by(models.RiderPayout.rider_id)
+        .all()
+    )
+    result = []
+    for rider in riders:
+        profile = rider.rider_profile
+        credits, deliveries = unpaid.get(rider.id, (0, 0))
+        last_paid_at = last_paid.get(rider.id)
+        result.append({
+            "id": rider.id,
+            "name": rider.full_name,
+            "phone": (profile.phone_number if profile else None)
+            or (rider.customer_profile.phone_number if rider.customer_profile else ""),
+            "vehicle": (profile.plate_number if profile else None) or "No vehicle",
+            "hasProfile": profile is not None,
+            "unpaidDeliveries": deliveries,
+            "unpaidCredits": int(credits),
+            "payout": int(credits) * rate,
+            "lastPaidAt": last_paid_at.isoformat() if last_paid_at else None,
+        })
+    return {"rate": rate, "riders": result}
+
+@router.post("/payouts/{rider_id}/initiate", status_code=status.HTTP_201_CREATED)
+def initiate_payout(rider_id: str, request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    _get_payout_rider(db, rider_id)
+    amount = _unpaid_credits(db, rider_id) * models.get_payout_rate(db)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="This rider has no unpaid earnings.")
+
+    db.query(models.RiderPayout).filter(
+        models.RiderPayout.rider_id == rider_id,
+        models.RiderPayout.status == "pending",
+    ).delete(synchronize_session=False)
+    payout = models.RiderPayout(
+        rider_id=rider_id,
+        amount=amount,
+        status="pending",
+        pin=_generate_payout_pin(db),
+    )
+    db.add(payout)
+    db.commit()
+    db.refresh(payout)
+    return {"payoutId": payout.id, "pin": payout.pin, "amount": payout.amount}
+
+@router.post("/payouts/{rider_id}/confirm", status_code=status.HTTP_200_OK)
+def confirm_payout(
+    rider_id: str,
+    payload: PayoutConfirm,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    _get_payout_rider(db, rider_id)
+    payout = _pending_payout(db, rider_id)
+    if not payout:
+        raise HTTPException(status_code=404, detail="No pending payout for this rider.")
+    if not secrets.compare_digest(payload.pin.strip(), payout.pin):
+        raise HTTPException(status_code=400, detail="PIN does not match.")
+
+    now = datetime.now()
+    deliveries = _unpaid_deliveries_query(db, rider_id).all()
+    rate = models.get_payout_rate(db)
+    for delivery in deliveries:
+        delivery.paid_out_at = now
+    payout.amount = sum(delivery.order.total_credits for delivery in deliveries) * rate
+    payout.status = "confirmed"
+    payout.confirmed_at = now
+    db.commit()
+    return {
+        "payoutId": payout.id,
+        "amount": payout.amount,
+        "deliveries": len(deliveries),
+        "confirmedAt": now.isoformat(),
+    }
 
 @router.get("/users", status_code=status.HTTP_200_OK)
 def get_admin_users(request: Request, db: Session = Depends(get_db)):
