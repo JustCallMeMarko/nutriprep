@@ -65,7 +65,9 @@ def _subscription_plan_name(data: dict) -> str | None:
     candidates = [raw_name]
     items = data.get("items") or []
     if isinstance(items, dict):
-        items = [items]
+        # Clerk wraps collections as {"object": "list", "data": [...]}
+        nested = items.get("data")
+        items = nested if isinstance(nested, list) else [items]
     if isinstance(items, list):
         for item in items:
             if not isinstance(item, dict):
@@ -76,6 +78,9 @@ def _subscription_plan_name(data: dict) -> str | None:
             else:
                 candidates.append(item_plan)
             candidates.extend((item.get("plan_name"), item.get("plan_slug")))
+            # Some payloads carry the plan fields on the item itself
+            if isinstance(item, dict) and "plan" not in item:
+                candidates.extend((item.get("name"), item.get("slug")))
 
     for candidate in candidates:
         if not candidate:
@@ -203,7 +208,7 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
         requested_role = unsafe_meta.get("role")
         
         role = requested_role if requested_role in ALLOWED_SIGNUP_ROLES else "user"
-        full_name = user_data.get("first_name", "") + " " + user_data.get("last_name", "")
+        full_name = (user_data.get("first_name") or "") + " " + (user_data.get("last_name") or "")
         email = _primary_email(user_data)
 
         try:
@@ -226,7 +231,7 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
     elif event_type == "user.updated":
         public_meta = user_data.get("public_metadata") or {}
         metadata_role = public_meta.get("role")
-        full_name = user_data.get("first_name", "") + " " + user_data.get("last_name", "")
+        full_name = (user_data.get("first_name") or "") + " " + (user_data.get("last_name") or "")
         email = _primary_email(user_data)
 
         # Sync profile fields for every user.updated event, not only when the
