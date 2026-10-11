@@ -448,15 +448,6 @@ export default function OrderDataTable({
             const order = row.original
             return (
               <div className="flex items-center gap-1 justify-end">
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => onViewOrder(order)}
-                  title="View details"
-                  className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-foreground"
-                >
-                  <Eye className="size-4" />
-                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
@@ -473,13 +464,6 @@ export default function OrderDataTable({
                   <DropdownMenuContent align="end" className="w-52">
                     <DropdownMenuGroup>
                       <DropdownMenuLabel>Order {order.id}</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => onViewOrder(order)}
-                        className="cursor-pointer flex items-center gap-2"
-                      >
-                        <Eye className="h-3.5 w-3.5 text-blue-600" />
-                        View Full Details
-                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
                           navigator.clipboard.writeText(order.id)
