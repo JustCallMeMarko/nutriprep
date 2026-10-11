@@ -98,6 +98,7 @@ export default function RiderActiveDelivery() {
   const [isUpdating, setIsUpdating] = React.useState(false)
   const [deliveryPin, setDeliveryPin] = React.useState("")
   const [deliveryPinError, setDeliveryPinError] = React.useState<string | null>(null)
+  const [justDelivered, setJustDelivered] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [isAvailable, setIsAvailable] = React.useState(false)
   const [riderLocation, setRiderLocation] = React.useState<[number, number] | null>(null)
@@ -180,7 +181,9 @@ export default function RiderActiveDelivery() {
         body: JSON.stringify({ status: "delivered", pin: deliveryPin.trim() }),
       })
       setDeliveryPin("")
+      setJustDelivered(true)
       await loadDeliveries()
+      setTimeout(() => setJustDelivered(false), 1600)
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Unable to update delivery."
       if (/pin/i.test(message)) {
@@ -381,7 +384,21 @@ export default function RiderActiveDelivery() {
         {/* Action Panel & Stops List */}
         <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
           {/* Active Stop Detail Card */}
-          <div className="bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
+          <div className="relative bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-xs flex flex-col gap-4 overflow-hidden">
+            {justDelivered && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-emerald-600/95 rounded-2xl">
+                <style>{`
+                  @keyframes np-pop { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+                  @keyframes np-ring { 0% { transform: scale(0.6); opacity: 0.9; } 100% { transform: scale(2.4); opacity: 0; } }
+                `}</style>
+                <span className="absolute w-24 h-24 rounded-full border-4 border-white/60" style={{ animation: "np-ring 1s ease-out infinite" }} />
+                <span className="absolute w-24 h-24 rounded-full border-4 border-white/40" style={{ animation: "np-ring 1s ease-out 0.4s infinite" }} />
+                <CheckCircle2 size={72} className="text-white" style={{ animation: "np-pop 0.6s ease-out both" }} />
+                <span className="text-white text-xl font-extrabold tracking-wide" style={{ animation: "np-pop 0.6s ease-out 0.15s both" }}>
+                  Delivered!
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <Badge className="bg-blue-600 text-white font-mono font-bold text-xs px-2.5 py-0.5 rounded-md">

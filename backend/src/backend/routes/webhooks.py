@@ -134,6 +134,7 @@ def _grant_subscription_credits(db, event_id: str, data: dict) -> dict:
         (models.SubscriptionCreditGrant.event_id == event_id)
         | (
             (models.SubscriptionCreditGrant.subscription_id == str(subscription_id))
+            & (models.SubscriptionCreditGrant.plan_name == plan_name)
             & (models.SubscriptionCreditGrant.period_key == period_key)
         )
         | (
