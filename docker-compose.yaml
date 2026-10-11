@@ -40,7 +40,10 @@ services:
       MYSQL_USER: ${MYSQL_USER:-nutriprep}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nutriprep}
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-nutriprep}:${MYSQL_PASSWORD:-nutriprep}@mysql:3306/${MYSQL_DATABASE:-nutriprep}
-      AWS_ENDPOINT: http://localhost:9000
+      # Uploads go over the compose network to the rustfs service; browsers
+      # reach it via the published localhost port for image URLs.
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-http://rustfs:9000}
+      AWS_PUBLIC_ENDPOINT: ${AWS_PUBLIC_ENDPOINT:-http://localhost:9000}
       AWS_BUCKET: ${AWS_BUCKET:-meals}
       AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:-admin}
       AWS_SECRET_KEY: ${AWS_SECRET_KEY:-adminpassword}

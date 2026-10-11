@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 from pathlib import Path
@@ -19,9 +20,14 @@ from ..database.models import get_db
 from clerk_backend_api import Clerk
 
 
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 AWS_ENDPOINT = os.getenv("AWS_ENDPOINT")
+# Public base URL for image links served to browsers; the upload endpoint is
+# the container-internal one (e.g. http://rustfs:9000 in docker-compose).
+AWS_PUBLIC_ENDPOINT = os.getenv("AWS_PUBLIC_ENDPOINT") or AWS_ENDPOINT
 AWS_BUCKET = os.getenv("AWS_BUCKET")
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
@@ -40,6 +46,23 @@ s3_client = boto3.client(
     region_name="us-east-1",
 )
 clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
+
+def _upload_meal_image(fileobj, key: str, content_type: str):
+    """Uploads a meal image, creating the bucket if it doesn't exist yet."""
+    try:
+        s3_client.upload_fileobj(
+            fileobj, AWS_BUCKET, key,
+            ExtraArgs={"ContentType": content_type or "application/octet-stream"},
+        )
+    except s3_client.exceptions.NoSuchBucket:
+        s3_client.create_bucket(Bucket=AWS_BUCKET)
+        s3_client.upload_fileobj(
+            fileobj, AWS_BUCKET, key,
+            ExtraArgs={"ContentType": content_type or "application/octet-stream"},
+        )
+
+def _meal_image_url(key: str) -> str:
+    return f"{AWS_PUBLIC_ENDPOINT.rstrip('/')}/{AWS_BUCKET}/{key}"
 
 class OrderStatusUpdate(BaseModel):
     status: models.OrderStatus
@@ -849,21 +872,15 @@ async def create_meal(
         image_key = f"{uuid4()}{Path(img.filename).suffix}"
         try:
             img.file.seek(0)
-            s3_client.upload_fileobj(
-                img.file,
-                AWS_BUCKET,
-                image_key,
-                ExtraArgs={
-                    "ContentType": img.content_type or "application/octet-stream"
-                },
-            )
-        except Exception:
+            _upload_meal_image(img.file, image_key, img.content_type)
+        except Exception as upload_err:
+            logger.exception("S3 meal image upload failed (bucket=%s endpoint=%s)", AWS_BUCKET, AWS_ENDPOINT)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Failed to upload meal image.",
-            )
+            ) from upload_err
 
-        image_url = f"{AWS_ENDPOINT.rstrip('/')}/{AWS_BUCKET}/{image_key}"
+        image_url = _meal_image_url(image_key)
 
     meal = models.Meal(
         user_id=user_id,
@@ -942,14 +959,10 @@ async def update_meal(
         new_image_key = f"{uuid4()}{Path(img.filename).suffix}"
         try:
             img.file.seek(0)
-            s3_client.upload_fileobj(
-                img.file,
-                AWS_BUCKET,
-                new_image_key,
-                ExtraArgs={"ContentType": img.content_type or "application/octet-stream"},
-            )
-            meal.image_url = f"{AWS_ENDPOINT.rstrip('/')}/{AWS_BUCKET}/{new_image_key}"
+            _upload_meal_image(img.file, new_image_key, img.content_type)
+            meal.image_url = _meal_image_url(new_image_key)
         except Exception as exc:
+            logger.exception("S3 meal image upload failed (bucket=%s endpoint=%s)", AWS_BUCKET, AWS_ENDPOINT)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Failed to upload meal image.",
