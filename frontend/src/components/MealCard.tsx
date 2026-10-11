@@ -34,6 +34,7 @@ type Meal = {
   stocks?: number;
   credits: number;
   isFavorite?: boolean;
+  status?: "active" | "archived";
 };
 
 export function MealCard({
@@ -62,7 +63,9 @@ export function MealCard({
     stocks = 0,
     credits,
     isFavorite,
+    status,
   } = meal;
+  const isArchived = status === 'archived';
   const [isFav, setIsFav] = useState(isFavorite);
 
   const handleCardClick = () => {
@@ -94,9 +97,9 @@ export function MealCard({
   return (
     <div
       onClick={handleCardClick}
-      className={`relative flex flex-col w-full h-full bg-white border border-[rgba(174,174,178,0.5)] rounded-xl overflow-hidden shadow-xs hover:border-black/30 transition-all ${
-        type === 'user' || onClick ? 'cursor-pointer group' : ''
-      }`}
+      className={`relative flex flex-col w-full h-full bg-white border rounded-xl overflow-hidden shadow-xs hover:border-black/30 transition-all ${
+        isArchived ? 'border-red-400 ring-1 ring-red-400' : 'border-[rgba(174,174,178,0.5)]'
+      } ${type === 'user' || onClick ? 'cursor-pointer group' : ''}`}
     >
       {/* Image Banner */}
       <div className="relative w-full h-36 shrink-0 overflow-hidden bg-slate-100">
@@ -105,6 +108,12 @@ export function MealCard({
           alt={title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
         />
+
+        {isArchived && (
+          <span className="absolute left-3.5 top-3.5 inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-xs">
+            Archived
+          </span>
+        )}
 
         {/* Credits Badge */}
         <div className="absolute right-3.5 top-3.5 w-11.25 h-7.5 rounded-full bg-white flex items-center justify-center gap-0.75 shadow-xs">
