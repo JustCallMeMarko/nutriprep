@@ -81,6 +81,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useApi } from "@/lib/api"
+import { LIMITS } from "@/lib/validation"
 
 function FigmaStar() {
   return (
@@ -382,10 +383,17 @@ export default function AdminUsers() {
   }
 
   // Handle Adjust Credits
+  const creditAmount = Number(creditAmountInput)
+  const creditAmountValid = Number.isInteger(creditAmount) && creditAmount > 0 && creditAmount <= LIMITS.CREDITS_MAX
+  const creditAmountError =
+    creditAmountInput.trim() !== "" && !creditAmountValid
+      ? `Enter a whole number between 1 and ${LIMITS.CREDITS_MAX.toLocaleString()}.`
+      : ""
+
   const handleConfirmAdjustCredits = async (isAdd: boolean) => {
     if (!adjustCreditsUser) return
-    const amount = parseInt(creditAmountInput, 10) || 0
-    if (amount <= 0) return
+    if (!creditAmountValid) return
+    const amount = creditAmount
 
     try {
       const updatedUser = await makeRequest(`users/${adjustCreditsUser.id}/credits`, {
@@ -1522,10 +1530,14 @@ export default function AdminUsers() {
               <Input
                 type="number"
                 min="1"
+                max={LIMITS.CREDITS_MAX}
+                step="1"
                 value={creditAmountInput}
                 onChange={(e) => setCreditAmountInput(e.target.value)}
                 placeholder="Enter credit amount (e.g. 10)"
+                aria-invalid={!!creditAmountError || undefined}
               />
+              {creditAmountError && <p className="mt-1.5 text-xs text-destructive" role="alert">{creditAmountError}</p>}
             </div>
           </div>
 
@@ -1540,12 +1552,14 @@ export default function AdminUsers() {
             <Button
               variant="outline"
               onClick={() => handleConfirmAdjustCredits(false)}
+              disabled={!creditAmountValid}
               className="cursor-pointer text-amber-700 border-amber-300 hover:bg-amber-50"
             >
               Deduct Credits
             </Button>
             <Button
               onClick={() => handleConfirmAdjustCredits(true)}
+              disabled={!creditAmountValid}
               className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold"
             >
               Add Credits

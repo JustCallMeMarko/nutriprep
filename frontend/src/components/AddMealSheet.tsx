@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 import type { Meal } from "@/components/MealDataTable"
 import { useApi } from "@/lib/api"
+import { LIMITS } from "@/lib/validation"
 
 interface AddMealSheetProps {
   onAddMeal?: (meal: Meal) => void
@@ -175,28 +176,38 @@ export function AddMealSheet({ onAddMeal, onUpdateMeal, editingMeal, trigger }: 
       return
     }
 
-    if (calories === "" || isNaN(Number(calories)) || Number(calories) < 0) {
-      setErrorMessage("Please enter valid calories.")
+    if (description.trim().length > LIMITS.DESCRIPTION_MAX) {
+      setErrorMessage(`Description can't exceed ${LIMITS.DESCRIPTION_MAX} characters.`)
       return
     }
 
-    if (protein === "" || isNaN(Number(protein)) || Number(protein) < 0) {
-      setErrorMessage("Please enter valid protein (g).")
+    if (calories === "" || isNaN(Number(calories)) || Number(calories) < 0 || Number(calories) > LIMITS.CALORIES_MAX) {
+      setErrorMessage(`Please enter valid calories (0–${LIMITS.CALORIES_MAX}).`)
       return
     }
 
-    if (carb === "" || isNaN(Number(carb)) || Number(carb) < 0) {
-      setErrorMessage("Please enter valid carb (g).")
+    if (protein === "" || isNaN(Number(protein)) || Number(protein) < 0 || Number(protein) > LIMITS.MACRO_MAX) {
+      setErrorMessage("Please enter valid protein (g, up to {LIMITS.MACRO_MAX}).".replace("{LIMITS.MACRO_MAX}", String(LIMITS.MACRO_MAX)))
       return
     }
 
-    if (fat === "" || isNaN(Number(fat)) || Number(fat) < 0) {
-      setErrorMessage("Please enter valid fat (g).")
+    if (carb === "" || isNaN(Number(carb)) || Number(carb) < 0 || Number(carb) > LIMITS.MACRO_MAX) {
+      setErrorMessage("Please enter valid carb (g, up to {LIMITS.MACRO_MAX}).".replace("{LIMITS.MACRO_MAX}", String(LIMITS.MACRO_MAX)))
       return
     }
 
-    if (credits === "" || isNaN(Number(credits)) || Number(credits) <= 0) {
-      setErrorMessage("Please enter valid credits (at least 1).")
+    if (fat === "" || isNaN(Number(fat)) || Number(fat) < 0 || Number(fat) > LIMITS.MACRO_MAX) {
+      setErrorMessage("Please enter valid fat (g, up to {LIMITS.MACRO_MAX}).".replace("{LIMITS.MACRO_MAX}", String(LIMITS.MACRO_MAX)))
+      return
+    }
+
+    if (credits === "" || !Number.isInteger(Number(credits)) || Number(credits) <= 0 || Number(credits) > LIMITS.CREDITS_MAX) {
+      setErrorMessage(`Please enter whole-number credits (1–${LIMITS.CREDITS_MAX.toLocaleString()}).`)
+      return
+    }
+
+    if (stocks !== "" && (!Number.isInteger(Number(stocks)) || Number(stocks) < 0 || Number(stocks) > LIMITS.STOCKS_MAX)) {
+      setErrorMessage(`Stocks must be a whole number between 0 and ${LIMITS.STOCKS_MAX.toLocaleString()}.`)
       return
     }
 

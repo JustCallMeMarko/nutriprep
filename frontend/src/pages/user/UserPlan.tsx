@@ -623,6 +623,7 @@ export default function UserPlan() {
                     <div className="flex items-center gap-2 pt-2 border-t">
                         <Input
                             placeholder="Or type a custom meal…"
+                            maxLength={100}
                             value={customName}
                             onChange={(e) => setCustomName(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && addCustomMeal()}

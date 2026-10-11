@@ -503,7 +503,8 @@ export default function RiderActiveDelivery() {
                   <input
                     id="delivery-pin"
                     value={deliveryPin}
-                    onChange={(event) => setDeliveryPin(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                    onChange={(event) => setDeliveryPin(event.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                    maxLength={4}
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     placeholder="Ask customer for their 4-digit PIN"
@@ -514,7 +515,7 @@ export default function RiderActiveDelivery() {
                   )}
                   <Button
                     onClick={() => void handleMarkDelivered(activeStop.id)}
-                    disabled={isUpdating || deliveryPin.trim().length < 4}
+                    disabled={isUpdating || deliveryPin.length !== 4}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-sm py-3 flex items-center justify-center gap-2 cursor-pointer rounded-xl shadow-xs transition-all"
                   >
                     {!isUpdating && <CheckCircle2 size={18} />}

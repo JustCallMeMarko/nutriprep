@@ -9,28 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ROUTES } from "@/constants/routes"
 import { useApi } from "@/lib/api"
+import { LIMITS, PH_MOBILE_ERROR, isValidPhMobile, normalizePhMobile, sanitizePhoneInput } from "@/lib/validation"
 
 interface RiderProfileResponse {
   plateNumber: string | null
   phoneNumber: string | null
   available: boolean
-}
-
-const PH_MOBILE_DIGITS = /^9\d{9}$/
-const PHONE_CHARACTERS = /[^\d\s\-()+]/g
-
-// Keeps the field forgiving while typing; the number is normalised to +63 on submit.
-function sanitizePhoneInput(value: string) {
-  return value.replace(PHONE_CHARACTERS, "").slice(0, 25)
-}
-
-// Reduces any accepted PH format (0917..., 917..., 63917..., +63 917...) to the
-// 10-digit mobile number that is sent as +63.
-function toLocalDigits(value: string) {
-  let digits = value.replace(/\D/g, "")
-  if (digits.startsWith("63")) digits = digits.slice(2)
-  else if (digits.startsWith("0")) digits = digits.slice(1)
-  return digits.slice(0, 10)
 }
 
 export default function RiderOnboarding() {
@@ -68,13 +52,19 @@ export default function RiderOnboarding() {
     }
   }, [isLoaded, isSignedIn, makeRequest])
 
+  const trimmedPlate = plateNumber.trim()
+  const fieldErrors = {
+    plate_number:
+      trimmedPlate && trimmedPlate.length < LIMITS.PLATE_MIN
+        ? `Plate / vehicle number must be at least ${LIMITS.PLATE_MIN} characters.`
+        : "",
+    phone_number: phoneNumber.trim() && !isValidPhMobile(phoneNumber) ? PH_MOBILE_ERROR : "",
+  }
+  const isFormValid = trimmedPlate !== "" && phoneNumber.trim() !== "" && !Object.values(fieldErrors).some(Boolean)
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    const localDigits = toLocalDigits(phoneNumber)
-    if (!PH_MOBILE_DIGITS.test(localDigits)) {
-      setError("Enter a valid PH mobile number, e.g. +63 917 123 4567.")
-      return
-    }
+    if (!isFormValid) return
 
     setIsSaving(true)
     setError(null)
@@ -82,8 +72,8 @@ export default function RiderOnboarding() {
       await makeRequest("profile", {
         method: "PUT",
         body: JSON.stringify({
-          plate_number: plateNumber.trim(),
-          phone_number: `+63${localDigits}`,
+          plate_number: trimmedPlate,
+          phone_number: normalizePhMobile(phoneNumber),
         }),
       })
       await user?.reload()
@@ -160,10 +150,12 @@ export default function RiderOnboarding() {
                   setError(null)
                 }}
                 placeholder="E-Bike #04"
-                maxLength={50}
+                maxLength={LIMITS.PLATE_MAX}
                 required
+                aria-invalid={!!fieldErrors.plate_number || undefined}
                 disabled={isLoading || isSaving}
               />
+              {fieldErrors.plate_number && <p className="text-xs text-destructive" role="alert">{fieldErrors.plate_number}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -178,8 +170,10 @@ export default function RiderOnboarding() {
                 }}
                 placeholder="+63 912 345 6789"
                 required
+                aria-invalid={!!fieldErrors.phone_number || undefined}
                 disabled={isLoading || isSaving}
               />
+              {fieldErrors.phone_number && <p className="text-xs text-destructive" role="alert">{fieldErrors.phone_number}</p>}
             </div>
           </CardContent>
         </Card>
@@ -195,7 +189,7 @@ export default function RiderOnboarding() {
         )}
 
         <div className="mt-6 flex items-center justify-end">
-          <Button type="submit" disabled={isSaving || isLoading} className="min-w-40">
+          <Button type="submit" disabled={isSaving || isLoading || !isFormValid} className="min-w-40">
             {isSaving
               ? "Saving..."
               : alreadyOnboarded

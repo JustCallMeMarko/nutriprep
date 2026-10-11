@@ -27,6 +27,7 @@ import {
     Check
 } from "lucide-react"
 import { useApi } from "@/lib/api"
+import { LIMITS } from "@/lib/validation"
 
 export function BroadcastDialog() {
     const [open, setOpen] = React.useState(false)
@@ -38,15 +39,19 @@ export function BroadcastDialog() {
     const [error, setError] = React.useState<string | null>(null)
     const { makeRequest } = useApi()
 
+    const titleTooLong = title.trim().length > LIMITS.NAME_MAX
+    const messageTooLong = message.trim().length > LIMITS.MESSAGE_MAX
+    const isFormValid = title.trim() !== "" && message.trim() !== "" && !titleTooLong && !messageTooLong
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!title.trim() || !message.trim()) return
+        if (!isFormValid) return
 
         setError(null)
         try {
             await makeRequest("broadcasts", {
                 method: "POST",
-                body: JSON.stringify({ title, message, audience, priority }),
+                body: JSON.stringify({ title: title.trim(), message: message.trim(), audience, priority }),
             })
             window.dispatchEvent(new Event("broadcast-created"))
             setIsSent(true)
@@ -119,8 +124,11 @@ export function BroadcastDialog() {
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
                                     className="bg-white text-xs h-9"
+                                    maxLength={LIMITS.NAME_MAX}
+                                    aria-invalid={titleTooLong || undefined}
                                     required
                                 />
+                                <p className="text-[11px] text-muted-foreground text-right">{title.trim().length}/{LIMITS.NAME_MAX}</p>
                             </Field>
 
                             {/* Target Audience */}
@@ -240,8 +248,11 @@ export function BroadcastDialog() {
                                     className="min-h-24 resize-none text-xs bg-white"
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
+                                    maxLength={LIMITS.MESSAGE_MAX}
+                                    aria-invalid={messageTooLong || undefined}
                                     required
                                 />
+                                <p className="text-[11px] text-muted-foreground text-right">{message.trim().length}/{LIMITS.MESSAGE_MAX}</p>
                             </Field>
                         </FieldGroup>
                         </>
@@ -252,6 +263,7 @@ export function BroadcastDialog() {
                             <DialogClose render={<Button variant="outline" className="cursor-pointer text-xs">Cancel</Button>} />
                             <Button
                                 type="submit"
+                                disabled={!isFormValid}
                                 className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs gap-1.5"
                             >
                                 <Send size={13} />

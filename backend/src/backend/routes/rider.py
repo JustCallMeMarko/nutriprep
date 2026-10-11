@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session, joinedload
 from backend.utils import authenticate_and_get_user_details
 from ..database import models
+from ..schemas.user import normalize_ph_mobile
 from ..database.models import get_db
 from clerk_backend_api import Clerk
 import os
@@ -224,6 +225,12 @@ def upsert_rider_profile(
     phone_number = (payload.get("phone_number") or "").strip()
     if not plate_number or not phone_number:
         raise HTTPException(status_code=422, detail="plate_number and phone_number are required.")
+    if not 2 <= len(plate_number) <= 50:
+        raise HTTPException(status_code=422, detail="plate_number must be 2–50 characters.")
+    try:
+        phone_number = normalize_ph_mobile(phone_number)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     profile = db.query(models.RiderProfile).filter(
         models.RiderProfile.user_id == rider_id
