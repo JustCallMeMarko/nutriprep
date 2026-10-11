@@ -270,6 +270,8 @@ export default function UserPlan() {
                 return next
             })
             setOrders((prev) => [order, ...prev])
+            setCreditBalance((prev) => (prev == null ? prev : prev - orderCreditsTotal))
+            window.dispatchEvent(new Event("credits:refresh"))
             setError(null)
         } catch (err) {
             setError(err instanceof Error ? err.message : "Unable to place your order. Please try again.")
@@ -295,6 +297,7 @@ export default function UserPlan() {
             void makeRequest("profile")
                 .then((profile: { credits?: number }) => setCreditBalance(profile?.credits ?? null))
                 .catch(() => undefined)
+            window.dispatchEvent(new Event("credits:refresh"))
         } catch (err) {
             setCancelError(err instanceof Error ? err.message : "Unable to cancel your order. Please try again.")
         } finally {

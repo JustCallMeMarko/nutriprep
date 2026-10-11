@@ -52,9 +52,14 @@ export default function UserLayout() {
 
     useEffect(() => {
         if (!isLoaded || role !== 'user' || !onboarded) return
-        makeRequest('profile')
-            .then((profile: { credits?: number }) => setCredits(profile?.credits ?? 0))
-            .catch(() => setCredits(null))
+        const refreshCredits = () => {
+            makeRequest('profile')
+                .then((profile: { credits?: number }) => setCredits(profile?.credits ?? 0))
+                .catch(() => setCredits(null))
+        }
+        refreshCredits()
+        window.addEventListener('credits:refresh', refreshCredits)
+        return () => window.removeEventListener('credits:refresh', refreshCredits)
     }, [isLoaded, role, onboarded, makeRequest, location.pathname])
 
     if (!isLoaded) {
