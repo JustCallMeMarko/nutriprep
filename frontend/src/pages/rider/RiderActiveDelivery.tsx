@@ -105,6 +105,8 @@ export default function RiderActiveDelivery() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdating, setIsUpdating] = React.useState(false)
   const [confirmDelivered, setConfirmDelivered] = React.useState(false)
+  const [deliveryPin, setDeliveryPin] = React.useState("")
+  const [deliveryPinError, setDeliveryPinError] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [isAvailable, setIsAvailable] = React.useState(false)
   const [riderLocation, setRiderLocation] = React.useState<[number, number] | null>(null)
@@ -177,17 +179,25 @@ export default function RiderActiveDelivery() {
   const totalCount = stops.length
 
   const handleMarkDelivered = async (id: string) => {
-    setConfirmDelivered(false)
     setIsUpdating(true)
     setError(null)
+    setDeliveryPinError(null)
     try {
       await makeRequest(`deliveries/${id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status: "delivered" }),
+        body: JSON.stringify({ status: "delivered", pin: deliveryPin.trim() }),
       })
+      setConfirmDelivered(false)
+      setDeliveryPin("")
       await loadDeliveries()
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to update delivery.")
+      const message = requestError instanceof Error ? requestError.message : "Unable to update delivery."
+      if (/pin/i.test(message)) {
+        setDeliveryPinError(message)
+      } else {
+        setError(message)
+        setConfirmDelivered(false)
+      }
     } finally {
       setIsUpdating(false)
     }
@@ -471,7 +481,7 @@ export default function RiderActiveDelivery() {
 
               {activeStop.status !== "delivered" ? (
                 <Button
-                  onClick={() => setConfirmDelivered(true)}
+                  onClick={() => { setDeliveryPin(""); setDeliveryPinError(null); setConfirmDelivered(true) }}
                   disabled={isUpdating}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 flex items-center justify-center gap-2 cursor-pointer rounded-xl shadow-xs transition-all"
                 >
@@ -544,16 +554,33 @@ export default function RiderActiveDelivery() {
         </div>
       </div>
 
-      <Dialog open={confirmDelivered} onOpenChange={setConfirmDelivered}>
+      <Dialog open={confirmDelivered} onOpenChange={(open) => { if (!open) { setDeliveryPin(""); setDeliveryPinError(null) } setConfirmDelivered(open) }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm delivery complete</DialogTitle>
             <DialogDescription>
               Mark {activeStop.orderId} for {activeStop.customerName} as delivered?
-              The customer will see this order as delivered on their orders list.
+              Ask the customer for the delivery PIN shown on their orders list.
               This cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="delivery-pin" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+              Customer delivery PIN
+            </label>
+            <input
+              id="delivery-pin"
+              value={deliveryPin}
+              onChange={(event) => setDeliveryPin(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="4-digit PIN"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] focus:border-emerald-500 focus:outline-none"
+            />
+            {deliveryPinError && (
+              <p className="text-xs font-semibold text-rose-600">{deliveryPinError}</p>
+            )}
+          </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"

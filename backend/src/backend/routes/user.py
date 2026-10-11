@@ -1,5 +1,6 @@
 import os
 import logging
+import secrets
 from datetime import date, datetime, timedelta
 from backend.utils import authenticate_and_get_user_details
 from fastapi import APIRouter, Request, HTTPException, Depends, status
@@ -199,6 +200,7 @@ def _serialize_user_order(order: models.Order) -> dict:
         "totalAmount": order.total_credits,
         "address": profile.delivery_address if profile else "No delivery address",
         "status": order.status.value,
+        "deliveryPin": order.delivery_pin,
         "rider": (
             {
                 "name": order.delivery.rider.user.full_name,
@@ -274,7 +276,11 @@ def place_order(
             detail=f"Not enough credits: this order costs {total_credits} but you have {profile.credits}",
         )
 
-    order = models.Order(user_id=user_id, total_credits=total_credits)
+    order = models.Order(
+        user_id=user_id,
+        total_credits=total_credits,
+        delivery_pin=f"{secrets.randbelow(10000):04d}",
+    )
     db.add(order)
     db.flush()
 
