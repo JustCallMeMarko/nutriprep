@@ -19,7 +19,7 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Input } from "@/components/ui/input"
-import { Lock, LockOpen, Plus, ShoppingBag, X } from "lucide-react"
+import { Lock, Plus, ShoppingBag, X } from "lucide-react"
 import { useApi } from "@/lib/api"
 
 // ---------- Types ----------
@@ -115,7 +115,6 @@ export default function UserPlan() {
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [view, setView] = useState<ViewMode>("weeks")
     const [plan, setPlan] = useState<PlannerState>({})
-    const [locked, setLocked] = useState(false)
     const [pickerFor, setPickerFor] = useState<{ dateKey: string; slot: SlotKey } | null>(null)
     const [customName, setCustomName] = useState("")
     const [favoriteMeals, setFavoriteMeals] = useState<Meal[]>([])
@@ -199,7 +198,7 @@ export default function UserPlan() {
 
     function openPicker(key: string, slot: SlotKey) {
         const day = days.find((d) => dateKeyOf(d) === key)
-        if (locked || (day && isBlocked(day, unlockDate))) return
+        if (day && isBlocked(day, unlockDate)) return
         if (plan[key]?.[slot]?.ordered) return
         setCustomName("")
         setPickerFor({ dateKey: key, slot })
@@ -269,7 +268,7 @@ export default function UserPlan() {
     }
 
     async function removeMeal(key: string, slot: SlotKey) {
-        if (locked || isBlocked(new Date(`${key}T00:00:00`), unlockDate)) return
+        if (isBlocked(new Date(`${key}T00:00:00`), unlockDate)) return
         if (plan[key]?.[slot]?.ordered) return
         try {
             await makeRequest(`plan/${key}/${slot}`, { method: "DELETE" })
@@ -380,7 +379,6 @@ export default function UserPlan() {
                                     slot={slot}
                                     days={days}
                                     plan={plan}
-                                    locked={locked}
                                     unlockDate={unlockDate}
                                     onOpenPicker={openPicker}
                                     onRemove={removeMeal}
@@ -440,17 +438,6 @@ export default function UserPlan() {
                     modifiers={{ locked: (day) => isBlocked(day, unlockDate) }}
                     modifiersClassNames={{ locked: "opacity-40" }}
                 />
-                {hasEditableDays && (
-                    <Button
-                        size="sm"
-                        variant={locked ? "secondary" : "default"}
-                        onClick={() => setLocked((v) => !v)}
-                        className="gap-2 py-4.5 cursor-pointer"
-                    >
-                        {locked ? <LockOpen className="size-4" /> : <Lock className="size-4" />}
-                        {locked ? "Unlock" : "Lock meals"}
-                    </Button>
-                )}
                 {orderableMealCount > 0 && (
                     <Button
                         size="sm"
@@ -658,7 +645,6 @@ function SlotRow({
     slot,
     days,
     plan,
-    locked,
     unlockDate,
     onOpenPicker,
     onRemove,
@@ -666,7 +652,6 @@ function SlotRow({
     slot: { key: SlotKey; label: string; window: string }
     days: Date[]
     plan: PlannerState
-    locked: boolean
     unlockDate: Date
     onOpenPicker: (dateKey: string, slot: SlotKey) => void
     onRemove: (dateKey: string, slot: SlotKey) => void
@@ -681,7 +666,7 @@ function SlotRow({
                 const key = dateKeyOf(d)
                 const blocked = isBlocked(d, unlockDate)
                 const meal = plan[key]?.[slot.key]
-                const disabled = locked || blocked || meal?.ordered
+                const disabled = blocked || meal?.ordered
 
                 return (
                     <div
