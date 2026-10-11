@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useAuth, useUser } from "@clerk/react"
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
@@ -8,11 +8,18 @@ export const useApi = () => {
   const { user } = useUser()
   const role = user?.publicMetadata?.role
 
+  // getToken isn't referentially stable across renders; routing it through a
+  // ref keeps makeRequest stable so effects depending on it don't refire in a loop.
+  const getTokenRef = useRef(getToken)
+  useEffect(() => {
+    getTokenRef.current = getToken
+  })
+
   const makeRequest = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!role) {
       throw new Error("Your account is still loading. Please try again.")
     }
-    const token = await getToken()
+    const token = await getTokenRef.current()
     const { headers: customHeaders, body, ...restOptions } = options
     const isFormData = body instanceof FormData
     const headers: Record<string, string> = {
@@ -40,7 +47,7 @@ export const useApi = () => {
     }
 
     return response.json()
-  }, [getToken, role])
+  }, [role])
 
   return { makeRequest }
 }
