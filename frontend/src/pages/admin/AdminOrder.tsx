@@ -811,154 +811,156 @@ export default function AdminOrder() {
         </div>
       )}
 
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {/* Total Orders */}
-        <div
-          onClick={() => {
-            if (viewMode === "table") setSelectedStatus("all")
-          }}
-          className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
-            viewMode === "table" && selectedStatus === "all"
-              ? "border-blue-600 bg-blue-50/30 ring-1 ring-blue-600/30"
-              : "border-[#E2E2E2] bg-white hover:border-zinc-300"
-          } ${viewMode === "table" ? "cursor-pointer" : ""}`}
-        >
-          <div className="flex justify-between items-start pb-2">
-            <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
-              Total Today
-            </span>
-            <div className="p-1.5 rounded-lg bg-zinc-100 text-zinc-700">
-              <Package size={15} />
+      {/* KPI Cards Row (table mode only) */}
+      {viewMode === "table" && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {/* Total Orders */}
+          <div
+            onClick={() => {
+              if (viewMode === "table") setSelectedStatus("all")
+            }}
+            className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
+              viewMode === "table" && selectedStatus === "all"
+                ? "border-blue-600 bg-blue-50/30 ring-1 ring-blue-600/30"
+                : "border-[#E2E2E2] bg-white hover:border-zinc-300"
+            } ${viewMode === "table" ? "cursor-pointer" : ""}`}
+          >
+            <div className="flex justify-between items-start pb-2">
+              <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
+                Total Today
+              </span>
+              <div className="p-1.5 rounded-lg bg-zinc-100 text-zinc-700">
+                <Package size={15} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
+                {totalCount} Orders
+              </p>
+              <p className="text-[11px] font-medium text-muted-foreground mt-0.5 flex items-center gap-1">
+                <FigmaStar />
+                <span>{totalCredits} credits volume</span>
+              </p>
             </div>
           </div>
-          <div>
-            <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
-              {totalCount} Orders
-            </p>
-            <p className="text-[11px] font-medium text-muted-foreground mt-0.5 flex items-center gap-1">
-              <FigmaStar />
-              <span>{totalCredits} credits volume</span>
-            </p>
-          </div>
-        </div>
 
-        {/* Upcoming */}
-        <div
-          onClick={() => {
-            if (viewMode === "table") setSelectedStatus("Upcoming")
-          }}
-          className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
-            viewMode === "table" && selectedStatus === "Upcoming"
-              ? "border-blue-600 bg-blue-50/40 ring-1 ring-blue-600/30"
-              : "border-[#E2E2E2] bg-white hover:border-zinc-300"
-          } ${viewMode === "table" ? "cursor-pointer" : ""}`}
-        >
-          <div className="flex justify-between items-start pb-2">
-            <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
-              Upcoming
-            </span>
-            <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
-              <Clock size={15} />
+          {/* Upcoming */}
+          <div
+            onClick={() => {
+              if (viewMode === "table") setSelectedStatus("Upcoming")
+            }}
+            className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
+              viewMode === "table" && selectedStatus === "Upcoming"
+                ? "border-blue-600 bg-blue-50/40 ring-1 ring-blue-600/30"
+                : "border-[#E2E2E2] bg-white hover:border-zinc-300"
+            } ${viewMode === "table" ? "cursor-pointer" : ""}`}
+          >
+            <div className="flex justify-between items-start pb-2">
+              <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
+                Upcoming
+              </span>
+              <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                <Clock size={15} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
+                {upcomingCount} Orders
+              </p>
+              <p className="text-[11px] font-medium text-blue-600 mt-0.5">
+                Next batch queue
+              </p>
             </div>
           </div>
-          <div>
-            <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
-              {upcomingCount} Orders
-            </p>
-            <p className="text-[11px] font-medium text-blue-600 mt-0.5">
-              Next batch queue
-            </p>
-          </div>
-        </div>
 
-        {/* Preparing */}
-        <div
-          onClick={() => {
-            if (viewMode === "table") setSelectedStatus("Preparing")
-          }}
-          className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
-            viewMode === "table" && selectedStatus === "Preparing"
-              ? "border-amber-500 bg-amber-50/40 ring-1 ring-amber-500/30"
-              : "border-[#E2E2E2] bg-white hover:border-zinc-300"
-          } ${viewMode === "table" ? "cursor-pointer" : ""}`}
-        >
-          <div className="flex justify-between items-start pb-2">
-            <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
-              In Kitchen
-            </span>
-            <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
-              <Utensils size={15} />
+          {/* Preparing */}
+          <div
+            onClick={() => {
+              if (viewMode === "table") setSelectedStatus("Preparing")
+            }}
+            className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
+              viewMode === "table" && selectedStatus === "Preparing"
+                ? "border-amber-500 bg-amber-50/40 ring-1 ring-amber-500/30"
+                : "border-[#E2E2E2] bg-white hover:border-zinc-300"
+            } ${viewMode === "table" ? "cursor-pointer" : ""}`}
+          >
+            <div className="flex justify-between items-start pb-2">
+              <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
+                In Kitchen
+              </span>
+              <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                <Utensils size={15} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
+                {preparingCount} Orders
+              </p>
+              <p className="text-[11px] font-medium text-amber-600 mt-0.5">
+                Active meal prep
+              </p>
             </div>
           </div>
-          <div>
-            <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
-              {preparingCount} Orders
-            </p>
-            <p className="text-[11px] font-medium text-amber-600 mt-0.5">
-              Active meal prep
-            </p>
-          </div>
-        </div>
 
-        {/* Out for Delivery */}
-        <div
-          onClick={() => {
-            if (viewMode === "table") setSelectedStatus("Out for Delivery")
-          }}
-          className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
-            viewMode === "table" && selectedStatus === "Out for Delivery"
-              ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600/30"
-              : "border-[#E2E2E2] bg-white hover:border-zinc-300"
-          } ${viewMode === "table" ? "cursor-pointer" : ""}`}
-        >
-          <div className="flex justify-between items-start pb-2">
-            <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
-              Out for Delivery
-            </span>
-            <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
-              <Truck size={15} />
+          {/* Out for Delivery */}
+          <div
+            onClick={() => {
+              if (viewMode === "table") setSelectedStatus("Out for Delivery")
+            }}
+            className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
+              viewMode === "table" && selectedStatus === "Out for Delivery"
+                ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600/30"
+                : "border-[#E2E2E2] bg-white hover:border-zinc-300"
+            } ${viewMode === "table" ? "cursor-pointer" : ""}`}
+          >
+            <div className="flex justify-between items-start pb-2">
+              <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
+                Out for Delivery
+              </span>
+              <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                <Truck size={15} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
+                {outForDeliveryCount} Orders
+              </p>
+              <p className="text-[11px] font-medium text-indigo-600 mt-0.5">
+                En route with rider
+              </p>
             </div>
           </div>
-          <div>
-            <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
-              {outForDeliveryCount} Orders
-            </p>
-            <p className="text-[11px] font-medium text-indigo-600 mt-0.5">
-              En route with rider
-            </p>
-          </div>
-        </div>
 
-        {/* Delivered */}
-        <div
-          onClick={() => {
-            if (viewMode === "table") setSelectedStatus("Delivered")
-          }}
-          className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
-            viewMode === "table" && selectedStatus === "Delivered"
-              ? "border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600/30"
-              : "border-[#E2E2E2] bg-white hover:border-zinc-300"
-          } ${viewMode === "table" ? "cursor-pointer" : ""}`}
-        >
-          <div className="flex justify-between items-start pb-2">
-            <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
-              Delivered
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
-              <CheckCircle2 size={15} />
+          {/* Delivered */}
+          <div
+            onClick={() => {
+              if (viewMode === "table") setSelectedStatus("Delivered")
+            }}
+            className={`flex flex-col justify-between p-4 rounded-xl border transition-all ${
+              viewMode === "table" && selectedStatus === "Delivered"
+                ? "border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600/30"
+                : "border-[#E2E2E2] bg-white hover:border-zinc-300"
+            } ${viewMode === "table" ? "cursor-pointer" : ""}`}
+          >
+            <div className="flex justify-between items-start pb-2">
+              <span className="text-[11px] font-bold tracking-wider text-[#4C4546] uppercase">
+                Delivered
+              </span>
+              <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                <CheckCircle2 size={15} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
+                {deliveredCount} Orders
+              </p>
+              <p className="text-[11px] font-medium text-emerald-600 mt-0.5">
+                Completed on time
+              </p>
             </div>
           </div>
-          <div>
-            <p className="text-xl font-bold tracking-tight text-[#1B1B1B]">
-              {deliveredCount} Orders
-            </p>
-            <p className="text-[11px] font-medium text-emerald-600 mt-0.5">
-              Completed on time
-            </p>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Filter Toolbar */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
