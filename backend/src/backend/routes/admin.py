@@ -821,7 +821,7 @@ async def create_meal(
     request: Request,
     title: str = Form(...),
     description: str = Form(...),
-    img: UploadFile = File(...),
+    img: UploadFile | None = File(None),
     meal_status: str = Form(...),
     calories: int = Form(...),
     protein: float = Form(...),
@@ -845,24 +845,27 @@ async def create_meal(
     if meal_status not in {status.value for status in models.MealStatus}:
         raise HTTPException(status_code=422, detail="Invalid meal status.")
 
-    image_key = f"{uuid4()}{Path(img.filename or '').suffix}"
-    try:
-        img.file.seek(0)
-        s3_client.upload_fileobj(
-            img.file,
-            AWS_BUCKET,
-            image_key,
-            ExtraArgs={
-                "ContentType": img.content_type or "application/octet-stream"
-            },
-        )
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to upload meal image.",
-        )
+    image_key = None
+    image_url = ""
+    if img and img.filename:
+        image_key = f"{uuid4()}{Path(img.filename).suffix}"
+        try:
+            img.file.seek(0)
+            s3_client.upload_fileobj(
+                img.file,
+                AWS_BUCKET,
+                image_key,
+                ExtraArgs={
+                    "ContentType": img.content_type or "application/octet-stream"
+                },
+            )
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to upload meal image.",
+            )
 
-    image_url = f"{AWS_ENDPOINT.rstrip('/')}/{AWS_BUCKET}/{image_key}"
+        image_url = f"{AWS_ENDPOINT.rstrip('/')}/{AWS_BUCKET}/{image_key}"
 
     meal = models.Meal(
         user_id=user_id,
@@ -886,7 +889,8 @@ async def create_meal(
     except Exception as db_err:
         db.rollback()
         try:
-            s3_client.delete_object(Bucket=AWS_BUCKET, Key=image_key)
+            if image_key:
+                s3_client.delete_object(Bucket=AWS_BUCKET, Key=image_key)
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
