@@ -132,14 +132,9 @@ def upsert_plan_entry(
     if payload.meal_id is not None:
         meal = db.query(models.Meal).filter(
             models.Meal.id == payload.meal_id,
+            models.Meal.status == models.MealStatus.ACTIVE,
         ).first()
-        # Catalog meals are ACTIVE; a user's own meals (created via Add Meal)
-        # are USER_OWNED and only plannable by their owner.
-        plannable = meal and (
-            meal.status == models.MealStatus.ACTIVE
-            or (meal.status == models.MealStatus.USER_OWNED and meal.user_id == user_id)
-        )
-        if not plannable:
+        if not meal:
             raise HTTPException(status_code=404, detail="Meal does not exist")
 
     entry = db.query(models.PlanEntry).filter(
@@ -537,7 +532,11 @@ async def get_meals(
     db: Session = Depends(get_db),
 ):
     """Retrieves all meals from the database."""
-    return db.query(models.Meal).all()
+    return (
+        db.query(models.Meal)
+        .filter(models.Meal.status != models.MealStatus.ARCHIVED)
+        .all()
+    )
 
 @router.post("/meal-logs", status_code=status.HTTP_201_CREATED)
 def create_meal_log(
