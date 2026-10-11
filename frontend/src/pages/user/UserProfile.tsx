@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
-import { Check, Loader2, MapPin, Search, UserRound } from "lucide-react"
+import { Check, MapPin, Search, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -173,9 +174,30 @@ export default function UserProfile() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-primary" aria-label="Loading profile" />
-      </div>
+      <section className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-12" aria-label="Loading profile" aria-busy="true">
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-12 rounded-full" />
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-7 w-64" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+        </div>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-xl border bg-card p-6 flex flex-col gap-4">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-72" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </div>
+        ))}
+        <div className="flex justify-end">
+          <Skeleton className="h-10 w-32" />
+        </div>
+      </section>
     )
   }
 
@@ -274,7 +296,7 @@ export default function UserProfile() {
                       onClick={() => void searchAddress()}
                       className="h-10 px-3"
                     >
-                      {isSearching ? <Loader2 className="size-4 animate-spin" /> : "Search"}
+                      {isSearching ? "Searching..." : "Search"}
                     </Button>
                   </div>
                   <p id="address-search-help" className="px-2 pt-1 text-xs text-muted-foreground">
@@ -334,7 +356,6 @@ export default function UserProfile() {
         <div className="flex items-center justify-end gap-3">
           {isSaved && <span className="flex items-center gap-1 text-sm text-emerald-600"><Check className="size-4" />Saved</span>}
           <Button type="submit" disabled={isSaving}>
-            {isSaving && <Loader2 className="size-4 animate-spin" />}
             {isSaving ? "Saving..." : isSaved ? "Update profile" : "Save profile"}
           </Button>
         </div>
