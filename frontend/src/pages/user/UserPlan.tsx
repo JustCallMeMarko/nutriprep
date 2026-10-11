@@ -401,7 +401,12 @@ export default function UserPlan() {
                                 >
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm font-semibold">{order.id}</span>
-                                        <Badge variant="outline" className="capitalize">
+                                        <Badge
+                                            variant="outline"
+                                            className={order.status === "delivered"
+                                                ? "border-emerald-300 bg-emerald-50 text-emerald-800 capitalize"
+                                                : "capitalize"}
+                                        >
                                             {order.status.replace(/_/g, " ")}
                                         </Badge>
                                     </div>
