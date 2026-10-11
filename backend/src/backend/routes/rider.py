@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 router = APIRouter()
-RIDER_EARNINGS_PER_CREDIT = 30
 
 def _rider_id(request: Request) -> str:
     user_id = authenticate_and_get_user_details(request).get("user_id")
@@ -30,7 +29,7 @@ def _rider_profile(db: Session, rider_id: str) -> models.RiderProfile:
         raise HTTPException(status_code=404, detail="Rider profile not found.")
     return profile
 
-def _serialize_delivery(delivery: models.Delivery) -> dict:
+def _serialize_delivery(delivery: models.Delivery, rate: int) -> dict:
     order = delivery.order
     profile = order.user.customer_profile
     items = order.items
@@ -56,7 +55,7 @@ def _serialize_delivery(delivery: models.Delivery) -> dict:
         "credits": order.total_credits,
         "mealSummary": meal_summary,
         "slot": "Scheduled",
-        "payout": order.total_credits * RIDER_EARNINGS_PER_CREDIT,
+        "payout": order.total_credits * rate,
         "notes": None,
         "lat": profile.delivery_lat if profile else None,
         "lng": profile.delivery_long if profile else None,
@@ -104,6 +103,7 @@ def get_analytics(
         .filter(
             models.Delivery.rider_id == rider_id,
             models.Delivery.delivered_at >= previous_start,
+            models.Delivery.paid_out_at.is_(None),
             models.Order.status == models.OrderStatus.DELIVERED,
         )
         .join(models.Delivery.order)
@@ -114,8 +114,10 @@ def get_analytics(
     current = [delivery for delivery in deliveries if delivery.delivered_at >= start]
     previous = [delivery for delivery in deliveries if delivery.delivered_at < start]
 
+    rate = models.get_payout_rate(db)
+
     def payout(delivery: models.Delivery) -> int:
-        return delivery.order.total_credits * RIDER_EARNINGS_PER_CREDIT
+        return delivery.order.total_credits * rate
 
     def period_change(current_value: int, previous_value: int) -> float:
         if previous_value == 0:
@@ -197,7 +199,8 @@ def get_deliveries(request: Request, db: Session = Depends(get_db)):
         .order_by(models.Delivery.id.asc())
         .all()
     )
-    return [_serialize_delivery(delivery) for delivery in deliveries]
+    rate = models.get_payout_rate(db)
+    return [_serialize_delivery(delivery, rate) for delivery in deliveries]
 
 @router.get("/profile", status_code=status.HTTP_200_OK)
 def get_rider_profile(request: Request, db: Session = Depends(get_db)):

@@ -19,6 +19,7 @@ import AdminUser from './pages/admin/AdminUser'
 import AdminOrder from './pages/admin/AdminOrder'
 import AdminMeal from './pages/admin/AdminMeal'
 import AdminNotification from './pages/admin/AdminNotification'
+import AdminPayout from './pages/admin/AdminPayout'
 
 import RiderLayout from './layouts/RiderLayout'
 import RiderDashboard from './pages/rider/RiderDashboard'
@@ -52,6 +53,7 @@ function App() {
           <Route path={ROUTES.ADMIN_ORDER.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminOrder />} />
           <Route path={ROUTES.ADMIN_USER.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminUser />} />
           <Route path={ROUTES.ADMIN_NOTIFICATION.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminNotification />} />
+          <Route path={ROUTES.ADMIN_PAYOUT.replace(`/${ROLES.ADMIN}/`, '')} element={<AdminPayout />} />
         </Route>
 
         <Route path={ROLES.RIDER} element={<RiderLayout />}>

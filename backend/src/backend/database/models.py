@@ -217,6 +217,7 @@ class Delivery(Base):
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
     rider_id: Mapped[str | None] = mapped_column(String(255), ForeignKey("rider_profiles.user_id", ondelete="SET NULL"), nullable=True)
     delivered_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    paid_out_at: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
 
     order: Mapped["Order"] = relationship(back_populates="delivery")
     rider: Mapped["RiderProfile"] = relationship(back_populates="deliveries")
@@ -236,6 +237,46 @@ class Broadcast(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="broadcasts")
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now(), nullable=False)
+
+class RiderPayout(Base):
+    __tablename__ = "rider_payouts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    rider_id: Mapped[str] = mapped_column(String(255), ForeignKey("rider_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    amount: Mapped[int] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    pin: Mapped[str] = mapped_column(String(6), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    confirmed_at: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
+
+PAYOUT_RATE_KEY = "credits_to_peso"
+DEFAULT_PAYOUT_RATE = 30
+
+def get_payout_rate(db) -> int:
+    setting = db.get(AppSetting, PAYOUT_RATE_KEY)
+    if setting is None:
+        return DEFAULT_PAYOUT_RATE
+    try:
+        return int(setting.value)
+    except ValueError:
+        return DEFAULT_PAYOUT_RATE
+
+def set_payout_rate(db, rate: int) -> AppSetting:
+    setting = db.get(AppSetting, PAYOUT_RATE_KEY)
+    if setting is None:
+        setting = AppSetting(key=PAYOUT_RATE_KEY, value=str(rate))
+        db.add(setting)
+    else:
+        setting.value = str(rate)
+        setting.updated_at = datetime.now()
+    return setting
 
 Base.metadata.create_all(engine)
 
@@ -348,6 +389,12 @@ _plan_columns = {column["name"] for column in inspect(engine).get_columns("plan_
 if "order_id" not in _plan_columns:
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE plan_entries ADD COLUMN order_id INTEGER"))
+
+# Deliveries that predate rider payouts are treated as unpaid.
+_delivery_columns = {column["name"] for column in inspect(engine).get_columns("deliveries")}
+if "paid_out_at" not in _delivery_columns:
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE deliveries ADD COLUMN paid_out_at DATETIME"))
 
 # Email is nullable so Clerk accounts without an email address don't collide
 # on a shared '' placeholder (the column is unique). MySQL-only ALTER; fresh

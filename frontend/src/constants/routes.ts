@@ -13,6 +13,7 @@ export const ROUTES = {
     ADMIN_ORDER: '/admin/order',
     ADMIN_USER: '/admin/user',
     ADMIN_NOTIFICATION: '/admin/notification',
+    ADMIN_PAYOUT: '/admin/payout',
     RIDER_DASHBOARD: '/rider',
     RIDER_ACTIVE_DELIVERY: '/rider/active',
     RIDER_ANALYTICS: '/rider/analytics',

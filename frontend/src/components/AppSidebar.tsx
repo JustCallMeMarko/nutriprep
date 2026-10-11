@@ -10,7 +10,7 @@ import {
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useRef, type KeyboardEvent, type MouseEvent } from "react"
-import { Bell, LayoutDashboard, ShoppingCart, User, Utensils } from "lucide-react"
+import { Bell, LayoutDashboard, ShoppingCart, User, Utensils, Wallet } from "lucide-react"
 import { UserButton, useUser } from "@clerk/react"
 import { Link } from "react-router-dom"
 import logo from "@/assets/icons/logo.svg"
@@ -21,6 +21,7 @@ const navItems = [
     { title: "Meal", url: ROUTES.ADMIN_MEAL, icon: Utensils },
     { title: "Order", url: ROUTES.ADMIN_ORDER, icon: ShoppingCart },
     { title: "User", url: ROUTES.ADMIN_USER, icon: User },
+    { title: "Payout", url: ROUTES.ADMIN_PAYOUT, icon: Wallet },
 ]
 
 export function AppSidebar() {
