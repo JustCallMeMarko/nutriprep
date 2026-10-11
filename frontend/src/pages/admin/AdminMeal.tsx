@@ -52,7 +52,7 @@ export default function AdminMeals() {
       if (!matchesSearch) return false
 
       if (selected === 'low') {
-        return meal.stocks <= 5
+        return meal.status !== 'archived' && meal.stocks <= 5
       }
       if (selected === 'archived') {
         return meal.status === 'archived'
