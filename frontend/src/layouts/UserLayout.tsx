@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Menu, X, Home, Pizza, CircleDollarSign, NotebookPen, Heart, Flame } from 'lucide-react'
 import logo from '../assets/icons/logo.svg'
 import { Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
@@ -10,6 +10,35 @@ import { useSubscription } from '@clerk/react/experimental'
 import { SUBSCRIPTION_PLANS } from '@/constants/subscriptions'
 import ChatBot from '@/components/ChatBot'
 import { UserNotificationBell } from '@/components/UserNotificationBell'
+import { useApi } from '@/lib/api'
+
+function StarIcon() {
+    return (
+        <svg width="11" height="11" viewBox="0 0 11 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+                d="M5.5 0L6.9855 4.37946L11 6L6.9855 7.62054L5.5 12L4.0145 7.62054L0 6L4.0145 4.37946L5.5 0Z"
+                fill="white"
+            />
+        </svg>
+    )
+}
+
+function CreditsPill({ credits }: { credits: number | null }) {
+    return (
+        <Link
+            to={ROUTES.USER_SUBSCRIPTION}
+            className="flex h-10 items-center gap-2.5 rounded-full border border-slate-300 bg-white px-3.5 shadow-xs shrink-0"
+        >
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black">
+                <StarIcon />
+            </span>
+            <p className="text-xs font-medium text-slate-900">
+                Balance: <span className="font-bold">{credits ?? '—'} credits</span>
+            </p>
+            <span className="pl-1 text-xs font-extrabold text-[#306FE6]">Top up</span>
+        </Link>
+    )
+}
 
 export default function UserLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -20,6 +49,15 @@ export default function UserLayout() {
     const navigate = useNavigate()
     const location = useLocation()
     const { data } = useSubscription()
+    const { makeRequest } = useApi()
+    const [credits, setCredits] = useState<number | null>(null)
+
+    useEffect(() => {
+        if (!isLoaded || role !== 'user' || !onboarded) return
+        makeRequest('profile')
+            .then((profile: { credits?: number }) => setCredits(profile?.credits ?? 0))
+            .catch(() => setCredits(null))
+    }, [isLoaded, role, onboarded, makeRequest])
 
     if (!isLoaded) {
         return null
@@ -85,6 +123,7 @@ export default function UserLayout() {
                     {isMenuOpen ? <X className="size-4.5" /> : <Menu className="size-5" />}
                 </button>
                 <div className="hidden md:flex items-center justify-center gap-3">
+                    {onboarded === true && <CreditsPill credits={credits} />}
                     <UserNotificationBell />
                     <UserButton>
                         <UserButton.MenuItems>
@@ -110,6 +149,7 @@ export default function UserLayout() {
                             <div className="px-3 py-2 flex items-center justify-between border-t border-slate-100 mt-2 pt-3">
                                 <span className="text-xs font-semibold text-slate-600">Account & Alerts</span>
                                 <div className="flex items-center gap-2">
+                                    {onboarded === true && <CreditsPill credits={credits} />}
                                     <UserNotificationBell />
                                     <UserButton />
                                 </div>
