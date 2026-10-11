@@ -205,11 +205,7 @@ def _serialize_user_order(order: models.Order) -> dict:
             {
                 "name": order.delivery.rider.user.full_name,
                 "vehicle": order.delivery.rider.plate_number or "No vehicle",
-                "phone": (
-                    order.delivery.rider.user.customer_profile.phone_number
-                    if order.delivery.rider.user.customer_profile
-                    else ""
-                ),
+                "phone": order.delivery.rider.phone_number or "",
             }
             if order.delivery and order.delivery.rider
             else None
@@ -228,8 +224,7 @@ def get_orders(request: Request, db: Session = Depends(get_db)):
             joinedload(models.Order.items).joinedload(models.OrderItem.meal),
             joinedload(models.Order.delivery)
             .joinedload(models.Delivery.rider)
-            .joinedload(models.RiderProfile.user)
-            .joinedload(models.User.customer_profile),
+            .joinedload(models.RiderProfile.user),
         )
         .filter(models.Order.user_id == user_id)
         .order_by(models.Order.created_at.desc())

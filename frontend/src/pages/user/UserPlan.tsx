@@ -567,10 +567,20 @@ export default function UserPlan() {
                                     <span>{new Date(selectedOrder.placedAt).toLocaleString()}</span>
                                 </div>
                                 {selectedOrder.rider && (
-                                    <div className="flex justify-between">
-                                        <span>Rider</span>
-                                        <span>{selectedOrder.rider.name} · {selectedOrder.rider.vehicle}</span>
-                                    </div>
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span>Rider</span>
+                                            <span>{selectedOrder.rider.name} · {selectedOrder.rider.vehicle}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Rider phone</span>
+                                            {selectedOrder.rider.phone ? (
+                                                <a href={`tel:${selectedOrder.rider.phone}`} className="font-medium text-foreground underline-offset-2 hover:underline">{selectedOrder.rider.phone}</a>
+                                            ) : (
+                                                <span>Not provided</span>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
                             </div>
                             {selectedOrder.deliveryPin && selectedOrder.status !== "delivered" && selectedOrder.status !== "cancelled" && (
