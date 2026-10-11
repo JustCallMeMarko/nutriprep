@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/message-scroller"
 import { useApi } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface ChatMessage {
     id: string
@@ -253,7 +255,15 @@ export default function ChatBot() {
                                                             }`}
                                                         >
                                                             <BubbleContent className="text-xs px-3 py-2 leading-relaxed">
-                                                                <p className="whitespace-pre-wrap">{msg.text}</p>
+                                                                {isBot ? (
+                                                                    <div className="chat-markdown">
+                                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                            {msg.text}
+                                                                        </ReactMarkdown>
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                                                                )}
                                                             </BubbleContent>
                                                         </Bubble>
 
