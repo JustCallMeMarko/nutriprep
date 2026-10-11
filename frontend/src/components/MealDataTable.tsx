@@ -24,7 +24,6 @@ import {
   ArrowUpDown,
   ChevronDown,
   Copy,
-  ExternalLink,
   MoreHorizontal,
   Pencil,
   SlidersHorizontal,
@@ -349,10 +348,6 @@ const defaultColumns = columnHelper.columns([
               >
                 <Copy className="h-3.5 w-3.5" />
                 Copy Meal ID
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
-                <ExternalLink className="h-3.5 w-3.5" />
-                View Details
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
                 <Pencil className="h-3.5 w-3.5" />

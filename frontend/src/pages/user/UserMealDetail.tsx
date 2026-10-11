@@ -89,9 +89,25 @@ export default function UserMealDetail() {
     }
   }
 
-  const handleAddToCart = () => {
-    setAddedToast(true)
-    setTimeout(() => setAddedToast(false), 3000)
+  const handleAddToCart = async () => {
+    if (!meal?.id || isFavoriteUpdating) return
+
+    setIsFavoriteUpdating(true)
+    try {
+      // Adding to favorites is what makes a meal selectable in the plan picker.
+      if (!isFavorite) {
+        await makeRequest(`fav-meal?meal_id=${encodeURIComponent(meal.id)}`, {
+          method: "POST",
+        })
+        setIsFavorite(true)
+      }
+      setAddedToast(true)
+      setTimeout(() => setAddedToast(false), 3000)
+    } catch (error) {
+      console.error("Failed to add meal to plan queue:", error)
+    } finally {
+      setIsFavoriteUpdating(false)
+    }
   }
 
   return (
@@ -279,6 +295,7 @@ export default function UserMealDetail() {
               <Button
                 size="lg"
                 onClick={handleAddToCart}
+                disabled={isFavoriteUpdating}
                 className="cursor-pointer bg-[#306FE6] hover:bg-[#2559c4] text-white font-bold gap-2 text-xs px-6"
               >
                 <ShoppingBag size={16} />
