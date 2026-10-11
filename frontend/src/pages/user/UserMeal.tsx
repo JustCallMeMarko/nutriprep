@@ -51,11 +51,7 @@ export default function UserMeal() {
             Chef-cooked meals planned around your macros and calorie target.
           </p>
         </div>
-      </div>
-
-      {/* Search */}
-      <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="relative w-full md:w-100">
+        <div className="relative w-full sm:w-100">
           <input
             type="text"
             value={search}

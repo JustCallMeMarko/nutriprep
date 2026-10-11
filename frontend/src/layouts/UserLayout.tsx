@@ -27,15 +27,13 @@ function CreditsPill({ credits }: { credits: number | null }) {
     return (
         <Link
             to={ROUTES.USER_SUBSCRIPTION}
-            className="flex h-10 items-center gap-2.5 rounded-full border border-slate-300 bg-white px-3.5 shadow-xs shrink-0"
+            title="Credit balance — tap to top up"
+            className="flex h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 shadow-xs shrink-0"
         >
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black">
                 <StarIcon />
             </span>
-            <p className="text-xs font-medium text-slate-900">
-                Balance: <span className="font-bold">{credits ?? '—'} credits</span>
-            </p>
-            <span className="pl-1 text-xs font-extrabold text-[#306FE6]">Top up</span>
+            <span className="text-xs font-bold text-slate-900">{credits ?? '—'}</span>
         </Link>
     )
 }
