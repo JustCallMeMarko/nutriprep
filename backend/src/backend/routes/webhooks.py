@@ -41,20 +41,27 @@ SUBSCRIPTION_EVENT_TYPES = {
 }
 
 def _subscription_user_id(data: dict) -> str | None:
+    # Clerk Billing's payer/customer objects carry their own ids (cpayer_*,
+    # cus_*) alongside the real Clerk user id — only accept user_* values so
+    # we never look up profiles by a payer id.
     payer = data.get("payer") or {}
     customer = data.get("customer") or {}
     user = data.get("user") or {}
-    return (
-        data.get("user_id")
-        or data.get("subscriber_id")
-        or user.get("user_id")
-        or user.get("id")
-        or data.get("payer_id")
-        or payer.get("user_id")
-        or payer.get("id")
-        or customer.get("user_id")
-        or customer.get("id")
-    )
+    candidates = [
+        data.get("user_id"),
+        data.get("subscriber_id"),
+        user.get("user_id"),
+        user.get("id"),
+        payer.get("user_id"),
+        customer.get("user_id"),
+        data.get("payer_id") if str(data.get("payer_id") or "").startswith("user_") else None,
+        payer.get("id") if str(payer.get("id") or "").startswith("user_") else None,
+        customer.get("id") if str(customer.get("id") or "").startswith("user_") else None,
+    ]
+    for candidate in candidates:
+        if candidate:
+            return candidate
+    return None
 
 def _subscription_plan_name(data: dict) -> str | None:
     plan = data.get("plan") or {}
