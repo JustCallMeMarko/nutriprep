@@ -9,6 +9,16 @@ def create_user(db: Session, user_id: str, full_name: str, email: str | None, ro
     if existing:
         return existing
 
+    # A row with the same email under a different id is an orphan from a
+    # previously deleted Clerk account — remove it so the unique email
+    # constraint doesn't reject this signup.
+    if email:
+        stale = db.query(models.User).filter(
+            models.User.email == email, models.User.id != user_id
+        ).first()
+        if stale:
+            delete_user(db, stale.id)
+
     assigned_role = models.Roles.RIDER if role == "rider" else models.Roles.USER
 
     db_user = models.User(id=user_id, full_name=full_name, email=email, role=assigned_role)
