@@ -729,7 +729,6 @@ export default function AdminOrder() {
   const getNextStatus = (current: OrderStatus): OrderStatus | null => {
     if (current === "Upcoming") return "Preparing"
     if (current === "Preparing") return "Out for Delivery"
-    if (current === "Out for Delivery") return "Delivered"
     return null
   }
 
@@ -1033,7 +1032,7 @@ export default function AdminOrder() {
       {/* VIEW: KANBAN BOARD */}
       {viewMode === "kanban" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
-          {KANBAN_COLUMNS.map((column) => {
+          {KANBAN_COLUMNS.filter((column) => column.id !== "Delivered").map((column) => {
             const columnOrders = filteredOrders.filter(
               (o) => o.status === column.id
             )
@@ -1346,18 +1345,6 @@ export default function AdminOrder() {
                   >
                     <Truck size={14} />
                     Dispatch Courier
-                  </Button>
-                )}
-                {inspectingOrder.status === "Out for Delivery" && (
-                  <Button
-                    size="sm"
-                    className="cursor-pointer text-xs bg-emerald-600 hover:bg-emerald-700"
-                    onClick={() =>
-                      handleUpdateStatus(inspectingOrder, "Delivered")
-                    }
-                  >
-                    <CheckCircle2 size={14} />
-                    Confirm Drop-off
                   </Button>
                 )}
               </div>

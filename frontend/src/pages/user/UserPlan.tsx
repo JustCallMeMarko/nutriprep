@@ -665,12 +665,8 @@ function SlotRow({
                                     />
                                 )}
                                 <div className="flex items-start justify-between gap-1">
-                                    <span className="min-w-0 wrap-break-word font-medium leading-snug">{meal.name}</span>
-                                    {meal.ordered ? (
-                                        <Badge variant="outline" className="shrink-0 border-emerald-300 px-1 py-0 text-[10px] text-emerald-700">
-                                            Ordered
-                                        </Badge>
-                                    ) : !disabled && (
+                                    <span className="min-w-0 truncate font-medium leading-snug" title={meal.name}>{meal.name}</span>
+                                    {!meal.ordered && !disabled && (
                                         <button
                                             onClick={() => onRemove(key, slot.key)}
                                             className="text-muted-foreground hover:text-foreground shrink-0"
@@ -680,6 +676,11 @@ function SlotRow({
                                         </button>
                                     )}
                                 </div>
+                                {meal.ordered && (
+                                    <Badge variant="outline" className="w-fit shrink-0 border-emerald-300 px-1 py-0 text-[10px] text-emerald-700">
+                                        Ordered
+                                    </Badge>
+                                )}
                                 {meal.kcal > 0 && (
                                     <span className="text-muted-foreground">{meal.kcal} kcal</span>
                                 )}
