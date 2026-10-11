@@ -1,21 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
 import { MealCard } from "@/components/MealCard"
 import { Search } from "lucide-react"
-import { ROUTES } from "@/constants/routes"
 import { useApi } from "@/lib/api"
 import type { Meal } from "@/components/MealDataTable"
-
-function StarIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 11 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M5.5 0L6.9855 4.37946L11 6L6.9855 7.62054L5.5 12L4.0145 7.62054L0 6L4.0145 4.37946L5.5 0Z"
-        fill="white"
-      />
-    </svg>
-  )
-}
 
 export default function UserMeal() {
   const {makeRequest} = useApi()
@@ -80,20 +67,6 @@ export default function UserMeal() {
             size={16}
             className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
           />
-        </div>
-         <div className="flex h-10 items-center gap-2.5 rounded-full border border-slate-300 bg-white px-3.5 shadow-xs shrink-0">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black">
-            <StarIcon />
-          </span>
-          <p className="text-xs font-medium text-slate-900">
-            Balance: <span className="font-bold">67 credits</span>
-          </p>
-          <Link
-            to={ROUTES.USER_SUBSCRIPTION}
-            className="pl-1 text-xs font-extrabold text-[#306FE6] hover:underline"
-          >
-            Top up
-          </Link>
         </div>
       </div>
 
