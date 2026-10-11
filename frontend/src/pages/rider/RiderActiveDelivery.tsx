@@ -26,6 +26,14 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { cn } from "cn"
 import { useApi } from "@/lib/api"
 
@@ -96,6 +104,7 @@ export default function RiderActiveDelivery() {
   const [selectedStopId, setSelectedStopId] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdating, setIsUpdating] = React.useState(false)
+  const [confirmDelivered, setConfirmDelivered] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [isAvailable, setIsAvailable] = React.useState(false)
   const [riderLocation, setRiderLocation] = React.useState<[number, number] | null>(null)
@@ -168,6 +177,7 @@ export default function RiderActiveDelivery() {
   const totalCount = stops.length
 
   const handleMarkDelivered = async (id: string) => {
+    setConfirmDelivered(false)
     setIsUpdating(true)
     setError(null)
     try {
@@ -461,7 +471,7 @@ export default function RiderActiveDelivery() {
 
               {activeStop.status !== "delivered" ? (
                 <Button
-                  onClick={() => handleMarkDelivered(activeStop.id)}
+                  onClick={() => setConfirmDelivered(true)}
                   disabled={isUpdating}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 flex items-center justify-center gap-2 cursor-pointer rounded-xl shadow-xs transition-all"
                 >
@@ -533,6 +543,36 @@ export default function RiderActiveDelivery() {
           </div>
         </div>
       </div>
+
+      <Dialog open={confirmDelivered} onOpenChange={setConfirmDelivered}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm delivery complete</DialogTitle>
+            <DialogDescription>
+              Mark {activeStop.orderId} for {activeStop.customerName} as delivered?
+              The customer will see this order as delivered on their orders list.
+              This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDelivered(false)}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleMarkDelivered(activeStop.id)}
+              disabled={isUpdating}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isUpdating ? <RefreshCw size={16} className="animate-spin mr-2" /> : <CheckCircle2 size={16} className="mr-2" />}
+              {isUpdating ? "Updating..." : "Confirm Delivered"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }
