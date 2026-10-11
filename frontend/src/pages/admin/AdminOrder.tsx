@@ -1031,7 +1031,7 @@ export default function AdminOrder() {
 
       {/* VIEW: KANBAN BOARD */}
       {viewMode === "kanban" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
           {KANBAN_COLUMNS.filter((column) => column.id !== "Delivered").map((column) => {
             const columnOrders = filteredOrders.filter(
               (o) => o.status === column.id
