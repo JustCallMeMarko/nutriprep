@@ -30,6 +30,7 @@ type Meal = {
     kcal: number
     tag: "Custom" | "Favorite"
     ordered?: boolean
+    credits?: number
     image_url?: string
 }
 
@@ -120,6 +121,8 @@ export default function UserPlan() {
     const [orders, setOrders] = useState<UserOrder[]>([])
     const [selectedOrder, setSelectedOrder] = useState<UserOrder | null>(null)
     const [placingOrder, setPlacingOrder] = useState(false)
+    const [orderConfirmOpen, setOrderConfirmOpen] = useState(false)
+    const [creditBalance, setCreditBalance] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -143,12 +146,17 @@ export default function UserPlan() {
                 return meal && !meal.ordered && meal.tag === "Favorite"
             })
         )
-    const orderableMealCount = orderableDateKeys.reduce(
-        (count, key) =>
-            count + SLOTS.filter((s) => {
-                const meal = plan[key]?.[s.key]
-                return meal && !meal.ordered && meal.tag === "Favorite"
-            }).length,
+    const orderableItems = orderableDateKeys.flatMap((key) =>
+        SLOTS.flatMap((s) => {
+            const meal = plan[key]?.[s.key]
+            return meal && !meal.ordered && meal.tag === "Favorite"
+                ? [{ dateKey: key, slot: s.label, meal }]
+                : []
+        })
+    )
+    const orderableMealCount = orderableItems.length
+    const orderCreditsTotal = orderableItems.reduce(
+        (sum, item) => sum + (item.meal.credits ?? 0),
         0
     )
     const formattedUnlockDate = unlockDate.toLocaleDateString(undefined, {
@@ -171,16 +179,20 @@ export default function UserPlan() {
                 })
                 setPlan(nextPlan)
                 setOrders(savedOrders)
-                setFavoriteMeals(favorites.map((meal: { id: string | number; title: string; calories: number; image_url?: string }) => ({
+                setFavoriteMeals(favorites.map((meal: { id: string | number; title: string; calories: number; credits?: number; image_url?: string }) => ({
                     id: String(meal.id),
                     name: meal.title,
                     kcal: meal.calories,
+                    credits: meal.credits,
                     image_url: meal.image_url,
                     tag: "Favorite",
                 })))
             })
             .catch(() => active && setError("Unable to load your meal plan. Please try again."))
             .finally(() => active && setLoading(false))
+        makeRequest("profile")
+            .then((profile: { credits?: number }) => active && setCreditBalance(profile?.credits ?? null))
+            .catch(() => active && setCreditBalance(null))
         return () => { active = false }
     }, [makeRequest])
 
@@ -225,6 +237,7 @@ export default function UserPlan() {
     async function placeOrder() {
         if (orderableDateKeys.length === 0 || placingOrder) return
         setPlacingOrder(true)
+        setOrderConfirmOpen(false)
         try {
             const order = await makeRequest("orders", {
                 method: "POST",
@@ -430,7 +443,7 @@ export default function UserPlan() {
                 {orderableMealCount > 0 && (
                     <Button
                         size="sm"
-                        onClick={placeOrder}
+                        onClick={() => setOrderConfirmOpen(true)}
                         disabled={placingOrder}
                         className="gap-2 py-4.5 cursor-pointer"
                     >
@@ -441,6 +454,63 @@ export default function UserPlan() {
                     </Button>
                 )}
             </div>
+
+            <Dialog open={orderConfirmOpen} onOpenChange={setOrderConfirmOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Order overview</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4 text-sm">
+                        <div className="flex flex-col gap-2">
+                            {orderableItems.map((item, i) => (
+                                <div key={i} className="flex items-center justify-between rounded-md border px-3 py-2">
+                                    <div>
+                                        <div className="font-medium">{item.meal.name}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {item.dateKey} · {item.slot} · {item.meal.kcal} kcal
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {item.meal.credits ?? 0} credits
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex flex-col gap-1 border-t pt-3 text-xs text-muted-foreground">
+                            <div className="flex justify-between">
+                                <span>Total</span>
+                                <span className="font-medium text-foreground">{orderCreditsTotal} credits</span>
+                            </div>
+                            {creditBalance !== null && (
+                                <div className="flex justify-between">
+                                    <span>Your balance</span>
+                                    <span className={creditBalance < orderCreditsTotal ? "font-medium text-red-600" : "font-medium text-foreground"}>
+                                        {creditBalance} credits
+                                    </span>
+                                </div>
+                            )}
+                            {creditBalance !== null && creditBalance < orderCreditsTotal && (
+                                <p role="alert" className="mt-1 rounded-md bg-red-50 px-2 py-1.5 text-red-700">
+                                    Not enough credits — this order costs {orderCreditsTotal} but you have {creditBalance}. Top up on the subscription page.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setOrderConfirmOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={placeOrder}
+                            disabled={placingOrder || (creditBalance !== null && creditBalance < orderCreditsTotal)}
+                            className="gap-2"
+                        >
+                            <ShoppingBag className="size-4" />
+                            {placingOrder ? "Placing order…" : `Confirm order · ${orderCreditsTotal} credits`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
                 <DialogContent className="sm:max-w-lg">

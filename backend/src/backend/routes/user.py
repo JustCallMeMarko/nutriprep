@@ -102,6 +102,7 @@ def get_plan(request: Request, db: Session = Depends(get_db)):
                 "id": str(entry.meal.id),
                 "name": entry.meal.title,
                 "kcal": entry.meal.calories,
+                "credits": entry.meal.credits,
                 "image_url": entry.meal.image_url,
                 "tag": "Favorite",
             } if entry.meal else {
