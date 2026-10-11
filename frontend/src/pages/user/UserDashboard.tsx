@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { History, Plus } from "lucide-react";
+import { History, PencilLine, Plus, Utensils } from "lucide-react";
 import { ChartRadialShape } from "@/components/radial-chart";
 import { WeeklyIntakeChart, type WeeklyIntakePoint } from "@/components/weekly-intake-chart";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useApi } from "@/lib/api";
 import type { Meal } from "@/components/MealDataTable";
 
@@ -40,6 +49,13 @@ export default function UserDashboard() {
   const [selectedMeal, setSelectedMeal] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isLogging, setIsLogging] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [logMode, setLogMode] = useState<"nutriprep" | "custom">("nutriprep");
+  const [customName, setCustomName] = useState("");
+  const [customCalories, setCustomCalories] = useState("");
+  const [customProtein, setCustomProtein] = useState("");
+  const [customCarb, setCustomCarb] = useState("");
+  const [customFat, setCustomFat] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const loadDashboard = async () => {
@@ -70,15 +86,38 @@ export default function UserDashboard() {
     ? Math.min(100, Math.round((dashboard.totals.calories / dashboard.targets.calories) * 100))
     : 0;
 
+  const resetSheet = () => {
+    setSelectedMeal("");
+    setCustomName("");
+    setCustomCalories("");
+    setCustomProtein("");
+    setCustomCarb("");
+    setCustomFat("");
+    setLogMode("nutriprep");
+  };
+
   const handleLogMeal = async () => {
-    if (!selectedMeal) return;
+    const isCustom = logMode === "custom";
+    if (isCustom && !customName.trim()) return;
+    if (!isCustom && !selectedMeal) return;
     try {
       setIsLogging(true);
       await makeRequest("meal-logs", {
         method: "POST",
-        body: JSON.stringify({ meal_id: Number(selectedMeal) }),
+        body: JSON.stringify(
+          isCustom
+            ? {
+                custom_name: customName.trim(),
+                calories: Number(customCalories) || 0,
+                protein: Number(customProtein) || 0,
+                carb: Number(customCarb) || 0,
+                fat: Number(customFat) || 0,
+              }
+            : { meal_id: Number(selectedMeal) }
+        ),
       });
-      setSelectedMeal("");
+      resetSheet();
+      setSheetOpen(false);
       await loadDashboard();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to log this meal.");
@@ -86,6 +125,8 @@ export default function UserDashboard() {
       setIsLogging(false);
     }
   };
+
+  const logDisabled = isLogging || isLoading || (logMode === "custom" ? !customName.trim() : !selectedMeal);
 
   return (
     <section className="flex flex-col gap-8 pb-8">
@@ -97,20 +138,92 @@ export default function UserDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={selectedMeal}
-            onChange={(event) => setSelectedMeal(event.target.value)}
-            disabled={isLoading || isLogging}
-            className="h-10 max-w-52 rounded-md border border-border bg-background px-3 text-sm"
-            aria-label="Meal to log"
-          >
-            <option value="">Choose a meal</option>
-            {meals.map((meal) => <option key={meal.id} value={meal.id}>{meal.title}</option>)}
-          </select>
-          <Button onClick={handleLogMeal} disabled={!selectedMeal || isLogging} className="cursor-pointer flex items-center gap-2">
-            <Plus size={16} />
-            {isLogging ? "Logging..." : "Log Meal"}
-          </Button>
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <Button onClick={() => setSheetOpen(true)} className="cursor-pointer flex items-center gap-2">
+              <Plus size={16} />
+              Log Meal
+            </Button>
+            <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle>Log a meal</SheetTitle>
+                <SheetDescription>Pick a NutriPrep meal or enter a custom one.</SheetDescription>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLogMode("nutriprep")}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-semibold cursor-pointer transition-colors ${logMode === "nutriprep" ? "border-blue-600 bg-blue-50 text-blue-700" : "border-border bg-card text-muted-foreground hover:border-blue-400"}`}
+                  >
+                    <Utensils size={18} />
+                    NutriPrep meal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLogMode("custom")}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-semibold cursor-pointer transition-colors ${logMode === "custom" ? "border-blue-600 bg-blue-50 text-blue-700" : "border-border bg-card text-muted-foreground hover:border-blue-400"}`}
+                  >
+                    <PencilLine size={18} />
+                    Custom meal
+                  </button>
+                </div>
+
+                {logMode === "nutriprep" ? (
+                  <div className="flex flex-col gap-2">
+                    {meals.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-6 text-center">No meals available.</p>
+                    ) : meals.map((meal) => (
+                      <button
+                        key={meal.id}
+                        type="button"
+                        onClick={() => setSelectedMeal(String(meal.id))}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-left cursor-pointer transition-colors ${selectedMeal === String(meal.id) ? "border-blue-600 bg-blue-50" : "border-border bg-card hover:border-blue-400"}`}
+                      >
+                        <span className="text-sm font-semibold truncate">{meal.title}</span>
+                        <span className="text-xs text-muted-foreground shrink-0 ml-2">{meal.calories} kcal</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="custom-name" className="text-xs font-semibold">Meal name</Label>
+                      <Input
+                        id="custom-name"
+                        placeholder="e.g., Chicken adobo with rice"
+                        value={customName}
+                        onChange={(event) => setCustomName(event.target.value)}
+                        maxLength={100}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="custom-calories" className="text-xs font-semibold">Calories</Label>
+                        <Input id="custom-calories" type="number" min={0} placeholder="0" value={customCalories} onChange={(event) => setCustomCalories(event.target.value)} />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="custom-protein" className="text-xs font-semibold">Protein (g)</Label>
+                        <Input id="custom-protein" type="number" min={0} step="0.1" placeholder="0" value={customProtein} onChange={(event) => setCustomProtein(event.target.value)} />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="custom-carb" className="text-xs font-semibold">Carb (g)</Label>
+                        <Input id="custom-carb" type="number" min={0} step="0.1" placeholder="0" value={customCarb} onChange={(event) => setCustomCarb(event.target.value)} />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="custom-fat" className="text-xs font-semibold">Fat (g)</Label>
+                        <Input id="custom-fat" type="number" min={0} step="0.1" placeholder="0" value={customFat} onChange={(event) => setCustomFat(event.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="p-4 border-t border-border">
+                <Button onClick={handleLogMeal} disabled={logDisabled} className="w-full cursor-pointer">
+                  {isLogging ? "Logging..." : "Log Meal"}
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
