@@ -4,7 +4,6 @@ import {
   MapContainer,
   TileLayer,
   Marker,
-  CircleMarker,
   Popup,
   Polyline,
   useMap,
@@ -101,8 +100,6 @@ export default function RiderActiveDelivery() {
   const [justDelivered, setJustDelivered] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [isAvailable, setIsAvailable] = React.useState(false)
-  const [riderLocation, setRiderLocation] = React.useState<[number, number] | null>(null)
-  const [locationMessage, setLocationMessage] = React.useState<string | null>(null)
 
   const loadDeliveries = React.useCallback(async () => {
     setIsLoading(true)
@@ -130,31 +127,9 @@ export default function RiderActiveDelivery() {
   }, [loadDeliveries])
 
   React.useEffect(() => {
-    void makeRequest("status").then((status: { available: boolean; location?: { lat: number; lng: number } | null }) => {
+    void makeRequest("status").then((status: { available: boolean }) => {
       setIsAvailable(status.available)
-      if (status.location) setRiderLocation([status.location.lat, status.location.lng])
     }).catch(() => undefined)
-  }, [makeRequest])
-
-  React.useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationMessage("This browser does not support location tracking.")
-      return
-    }
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const location: [number, number] = [position.coords.latitude, position.coords.longitude]
-        setRiderLocation(location)
-        setLocationMessage(null)
-        void makeRequest("location", {
-          method: "PATCH",
-          body: JSON.stringify({ lat: location[0], lng: location[1] }),
-        }).catch(() => setLocationMessage("Location could not be synced with dispatch."))
-      },
-      () => setLocationMessage("Allow location access to share your live position with dispatch."),
-      { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 },
-    )
-    return () => navigator.geolocation.clearWatch(watchId)
   }, [makeRequest])
 
   const toggleAvailability = async () => {
@@ -202,14 +177,14 @@ export default function RiderActiveDelivery() {
       stop.lat !== null && stop.lng !== null
   )
   const routePoints: [number, number][] = mappedStops.map((stop) => [stop.lat, stop.lng])
-  const hasMapLocation = mappedStops.length > 0 || riderLocation !== null
+  const hasMapLocation = mappedStops.length > 0
 
   const activeCenter: [number, number] = activeStop?.lat !== null && activeStop?.lat !== undefined &&
     activeStop?.lng !== null && activeStop?.lng !== undefined
     ? [activeStop.lat, activeStop.lng]
     : mappedStops.length > 0
     ? [mappedStops[0].lat, mappedStops[0].lng]
-    : riderLocation ?? [14.5995, 120.9842]
+    : [14.5995, 120.9842]
 
   if (isLoading) {
     return (
@@ -313,11 +288,6 @@ export default function RiderActiveDelivery() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               <MapFocusHandler center={activeCenter} />
-              {riderLocation && (
-                <CircleMarker center={riderLocation} radius={9} pathOptions={{ color: "#0f766e", fillColor: "#14b8a6", fillOpacity: 1 }}>
-                  <Popup>Your live rider location</Popup>
-                </CircleMarker>
-              )}
 
               {/* Delivery Stop Markers */}
               {mappedStops.map((stop) => {
@@ -365,11 +335,6 @@ export default function RiderActiveDelivery() {
                 />
               )}
             </MapContainer>
-            {locationMessage && (
-              <div className="absolute top-3 left-3 right-3 z-[400] rounded-lg border border-amber-200 bg-amber-50/95 px-3 py-2 text-xs font-semibold text-amber-900">
-                {locationMessage}
-              </div>
-            )}
             {!hasMapLocation && (
               <div className="absolute inset-0 z-[350] flex items-center justify-center bg-slate-900/70 p-6 text-center text-sm font-semibold text-white">
                 Delivery coordinates are not available yet. The address and GPS controls remain available below.
