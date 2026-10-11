@@ -303,15 +303,6 @@ def get_rider_status(request: Request, db: Session = Depends(get_db)):
     return {
         "available": profile.is_available,
         "plateNumber": profile.plate_number,
-        "location": (
-            {"lat": profile.current_lat, "lng": profile.current_long}
-            if profile.current_lat is not None and profile.current_long is not None
-            else None
-        ),
-        "locationUpdatedAt": (
-            profile.location_updated_at.isoformat()
-            if profile.location_updated_at else None
-        ),
     }
 
 
@@ -329,27 +320,6 @@ def update_rider_status(
     db.commit()
     return {"available": profile.is_available}
 
-
-@router.patch("/location", status_code=status.HTTP_200_OK)
-def update_rider_location(
-    payload: dict,
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    rider_id = _rider_id(request)
-    profile = _rider_profile(db, rider_id)
-    try:
-        latitude = float(payload["lat"])
-        longitude = float(payload["lng"])
-    except (KeyError, TypeError, ValueError):
-        raise HTTPException(status_code=422, detail="lat and lng must be numbers.")
-    if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
-        raise HTTPException(status_code=422, detail="Location coordinates are invalid.")
-    profile.current_lat = latitude
-    profile.current_long = longitude
-    profile.location_updated_at = datetime.now()
-    db.commit()
-    return {"lat": latitude, "lng": longitude}
 
 def _notification_payload(broadcast: models.Broadcast, user_id: str) -> dict:
     text = f"{broadcast.title} {broadcast.message}".lower()
