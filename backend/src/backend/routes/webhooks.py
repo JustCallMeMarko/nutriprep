@@ -78,9 +78,9 @@ def _subscription_plan_name(data: dict) -> str | None:
             else:
                 candidates.append(item_plan)
             candidates.extend((item.get("plan_name"), item.get("plan_slug")))
-            # Some payloads carry the plan fields on the item itself
-            if isinstance(item, dict) and "plan" not in item:
-                candidates.extend((item.get("name"), item.get("slug")))
+            # Fall back to plan fields carried on the item itself — a present
+            # but null/empty `plan` still lets the item's own name/slug match.
+            candidates.extend((item.get("name"), item.get("slug")))
 
     for candidate in candidates:
         if not candidate:
