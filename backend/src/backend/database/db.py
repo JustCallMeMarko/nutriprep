@@ -260,6 +260,9 @@ def get_all_favorite_meals(db: Session, user_id: str) -> list[models.Meal]:
     return (
         db.query(models.Meal)
         .join(models.FavoriteMeal, models.FavoriteMeal.meal_id == models.Meal.id)
-        .filter(models.FavoriteMeal.user_id == user_id)
+        .filter(
+            models.FavoriteMeal.user_id == user_id,
+            models.Meal.status != models.MealStatus.ARCHIVED,
+        )
         .all()
     )

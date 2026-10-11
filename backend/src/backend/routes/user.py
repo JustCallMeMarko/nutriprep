@@ -532,7 +532,11 @@ async def get_meals(
     db: Session = Depends(get_db),
 ):
     """Retrieves all meals from the database."""
-    return db.query(models.Meal).all()
+    return (
+        db.query(models.Meal)
+        .filter(models.Meal.status != models.MealStatus.ARCHIVED)
+        .all()
+    )
 
 @router.post("/meal-logs", status_code=status.HTTP_201_CREATED)
 def create_meal_log(
