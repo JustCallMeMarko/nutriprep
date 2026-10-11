@@ -63,7 +63,7 @@ def _subscription_user_id(data: dict) -> str | None:
             return candidate
     return None
 
-def _subscription_plan_name(data: dict) -> str | None:
+def _subscription_plan_candidates(data: dict) -> list[str]:
     plan = data.get("plan") or {}
     if isinstance(plan, dict):
         raw_name = plan.get("name") or plan.get("slug")
@@ -89,11 +89,11 @@ def _subscription_plan_name(data: dict) -> str | None:
             # Fall back to plan fields carried on the item itself — a present
             # but null/empty `plan` still lets the item's own name/slug match.
             candidates.extend((item.get("name"), item.get("slug")))
+    return [str(c).strip() for c in candidates if c]
 
-    for candidate in candidates:
-        if not candidate:
-            continue
-        normalized = str(candidate).strip().lower().replace("_", "-")
+def _subscription_plan_name(data: dict) -> str | None:
+    for candidate in _subscription_plan_candidates(data):
+        normalized = candidate.lower().replace("_", "-")
         for plan_name in SUBSCRIPTION_CREDITS:
             if normalized == plan_name or normalized.startswith(f"{plan_name}-") or normalized.startswith(f"{plan_name} "):
                 return plan_name
@@ -119,6 +119,19 @@ def _grant_subscription_credits(db, event_id: str, data: dict) -> dict:
     subscription_status = str(data.get("status") or "").lower()
     if subscription_status and subscription_status not in {"active", "trialing"}:
         return {"status": "ignored", "credits": 0}
+
+    # Clerk Billing auto-subscribes every new user to the Free plan (and may
+    # emit other uncredited plans). That's a valid event with nothing to
+    # grant — acknowledge it instead of 422ing so svix stops retrying.
+    if not plan_name:
+        uncredited = _subscription_plan_candidates(data)
+        if uncredited:
+            logger.info(
+                "Ignoring subscription webhook %s: plan %r grants no credits",
+                event_id,
+                uncredited[0],
+            )
+            return {"status": "ignored", "credits": 0, "plan": uncredited[0]}
 
     missing = []
     if not user_id:
