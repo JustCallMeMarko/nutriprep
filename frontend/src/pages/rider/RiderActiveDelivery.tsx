@@ -26,14 +26,6 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { cn } from "cn"
 import { useApi } from "@/lib/api"
 
@@ -104,7 +96,6 @@ export default function RiderActiveDelivery() {
   const [selectedStopId, setSelectedStopId] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdating, setIsUpdating] = React.useState(false)
-  const [confirmDelivered, setConfirmDelivered] = React.useState(false)
   const [deliveryPin, setDeliveryPin] = React.useState("")
   const [deliveryPinError, setDeliveryPinError] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
@@ -188,7 +179,6 @@ export default function RiderActiveDelivery() {
         method: "PATCH",
         body: JSON.stringify({ status: "delivered", pin: deliveryPin.trim() }),
       })
-      setConfirmDelivered(false)
       setDeliveryPin("")
       await loadDeliveries()
     } catch (requestError) {
@@ -197,7 +187,6 @@ export default function RiderActiveDelivery() {
         setDeliveryPinError(message)
       } else {
         setError(message)
-        setConfirmDelivered(false)
       }
     } finally {
       setIsUpdating(false)
@@ -481,14 +470,31 @@ export default function RiderActiveDelivery() {
               </div>
 
               {activeStop.status !== "delivered" ? (
-                <Button
-                  onClick={() => { setDeliveryPin(""); setDeliveryPinError(null); setConfirmDelivered(true) }}
-                  disabled={isUpdating}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 flex items-center justify-center gap-2 cursor-pointer rounded-xl shadow-xs transition-all"
-                >
-                  {isUpdating ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                  {isUpdating ? "Updating..." : "Mark as Delivered"}
-                </Button>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="delivery-pin" className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                    Customer delivery PIN
+                  </label>
+                  <input
+                    id="delivery-pin"
+                    value={deliveryPin}
+                    onChange={(event) => setDeliveryPin(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="Ask customer for their 4-digit PIN"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] focus:border-emerald-500 focus:outline-none"
+                  />
+                  {(deliveryPinError || error) && (
+                    <p className="text-xs font-semibold text-rose-600">{deliveryPinError ?? error}</p>
+                  )}
+                  <Button
+                    onClick={() => void handleMarkDelivered(activeStop.id)}
+                    disabled={isUpdating || deliveryPin.trim().length < 4}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-sm py-3 flex items-center justify-center gap-2 cursor-pointer rounded-xl shadow-xs transition-all"
+                  >
+                    {isUpdating ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                    {isUpdating ? "Updating..." : "Mark as Delivered"}
+                  </Button>
+                </div>
               ) : (
                 <div className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-center font-bold text-sm py-2.5 rounded-xl flex items-center justify-center gap-1.5">
                   <CheckCircle2 size={16} /> Order Completed Successfully
@@ -514,7 +520,7 @@ export default function RiderActiveDelivery() {
                   <button
                     key={stop.id}
                     type="button"
-                    onClick={() => setSelectedStopId(stop.id)}
+                    onClick={() => { setSelectedStopId(stop.id); setDeliveryPin(""); setDeliveryPinError(null) }}
                     className={`w-full text-left flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
                       isSelected
                         ? "border-blue-600 bg-blue-50/50 shadow-xs"
@@ -555,52 +561,6 @@ export default function RiderActiveDelivery() {
         </div>
       </div>
 
-      <Dialog open={confirmDelivered} onOpenChange={(open) => { if (!open) { setDeliveryPin(""); setDeliveryPinError(null) } setConfirmDelivered(open) }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm delivery complete</DialogTitle>
-            <DialogDescription>
-              Mark {activeStop.orderId} for {activeStop.customerName} as delivered?
-              Ask the customer for the delivery PIN shown on their orders list.
-              This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="delivery-pin" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-              Customer delivery PIN
-            </label>
-            <input
-              id="delivery-pin"
-              value={deliveryPin}
-              onChange={(event) => setDeliveryPin(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="4-digit PIN"
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] focus:border-emerald-500 focus:outline-none"
-            />
-            {deliveryPinError && (
-              <p className="text-xs font-semibold text-rose-600">{deliveryPinError}</p>
-            )}
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setConfirmDelivered(false)}
-              disabled={isUpdating}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => void handleMarkDelivered(activeStop.id)}
-              disabled={isUpdating}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isUpdating ? <RefreshCw size={16} className="animate-spin mr-2" /> : <CheckCircle2 size={16} className="mr-2" />}
-              {isUpdating ? "Updating..." : "Confirm Delivered"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </section>
   )
 }
