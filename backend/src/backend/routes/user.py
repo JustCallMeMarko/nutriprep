@@ -12,6 +12,7 @@ from ..database.db import (
     favorite_meal,
     get_all_favorite_meals,
     log_meal_consumption,
+    reserve_meal_stock,
     unfavorite_meal,
 )
 from ..schemas import user
@@ -257,6 +258,10 @@ def place_order(
     if not entries:
         raise HTTPException(status_code=422, detail="No planned meals to order")
 
+    ordered_meal_counts: dict[int, int] = {}
+    for entry in entries:
+        ordered_meal_counts[entry.meal_id] = ordered_meal_counts.get(entry.meal_id, 0) + 1
+
     total_credits = sum(entry.meal.credits for entry in entries)
     profile = (
         db.query(models.CustomerProfile)
@@ -271,6 +276,11 @@ def place_order(
             detail=f"Not enough credits: this order costs {total_credits} but you have {profile.credits}",
         )
 
+    try:
+        reserve_meal_stock(db, ordered_meal_counts)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
     order = models.Order(
         user_id=user_id,
         total_credits=total_credits,
@@ -279,9 +289,7 @@ def place_order(
     db.add(order)
     db.flush()
 
-    ordered_meal_counts: dict[int, int] = {}
     for entry in entries:
-        ordered_meal_counts[entry.meal_id] = ordered_meal_counts.get(entry.meal_id, 0) + 1
         entry.order_id = order.id
     for meal_id, quantity in ordered_meal_counts.items():
         db.add(models.OrderItem(order_id=order.id, meal_id=meal_id, quantity=quantity))

@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from dotenv import load_dotenv
 from ..database import models
-from ..database.db import delete_user
+from ..database.db import delete_user, release_meal_stock, reserve_meal_stock
 from ..database.models import get_db
 from clerk_backend_api import Clerk
 
@@ -721,6 +721,19 @@ def update_order_status(
 ):
     _require_admin(request)
     order = _get_order(db, order_id)
+    if payload.status != order.status:
+        meal_counts: dict[int, int] = {}
+        for item in order.items:
+            meal_counts[item.meal_id] = meal_counts.get(item.meal_id, 0) + item.quantity
+
+        if payload.status == models.OrderStatus.CANCELLED:
+            release_meal_stock(db, meal_counts)
+        elif order.status == models.OrderStatus.CANCELLED:
+            try:
+                reserve_meal_stock(db, meal_counts)
+            except ValueError as error:
+                raise HTTPException(status_code=409, detail=str(error)) from error
+
     order.status = payload.status
     db.commit()
     return _serialize_order(_get_order(db, order_id))
