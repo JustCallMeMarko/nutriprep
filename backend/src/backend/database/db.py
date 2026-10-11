@@ -3,6 +3,36 @@ from sqlalchemy.orm import Session
 from . import models
 from .models import Goals
 
+def reserve_meal_stock(db: Session, counts: dict[int, int]) -> None:
+    meals = (
+        db.query(models.Meal)
+        .filter(models.Meal.id.in_(counts))
+        .with_for_update()
+        .all()
+    )
+    insufficient = [
+        f"{meal.title} ({meal.stocks or 0} left, need {counts[meal.id]})"
+        for meal in meals
+        if (meal.stocks or 0) < counts[meal.id]
+    ]
+    if insufficient:
+        raise ValueError("Not enough stock: " + ", ".join(insufficient))
+
+    for meal in meals:
+        meal.stocks = (meal.stocks or 0) - counts[meal.id]
+
+
+def release_meal_stock(db: Session, counts: dict[int, int]) -> None:
+    meals = (
+        db.query(models.Meal)
+        .filter(models.Meal.id.in_(counts))
+        .with_for_update()
+        .all()
+    )
+    for meal in meals:
+        meal.stocks = (meal.stocks or 0) + counts[meal.id]
+
+
 def create_user(db: Session, user_id: str, full_name: str, email: str | None, role: str) -> models.User:
     """Creates only the base user record without provisioning profiles."""
     existing = db.query(models.User).filter(models.User.id == user_id).first()
