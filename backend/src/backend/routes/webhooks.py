@@ -49,6 +49,7 @@ def _subscription_user_id(data: dict) -> str | None:
         or data.get("subscriber_id")
         or user.get("user_id")
         or user.get("id")
+        or data.get("payer_id")
         or payer.get("user_id")
         or payer.get("id")
         or customer.get("user_id")
@@ -105,6 +106,13 @@ def _grant_subscription_credits(db, event_id: str, data: dict) -> dict:
         or (subscription.get("id") if isinstance(subscription, dict) else None)
     )
 
+    # Non-active events carry no credits, so skip them before requiring
+    # fields that early lifecycle events (e.g. subscription.created while
+    # incomplete) legitimately omit.
+    subscription_status = str(data.get("status") or "").lower()
+    if subscription_status and subscription_status not in {"active", "trialing"}:
+        return {"status": "ignored", "credits": 0}
+
     missing = []
     if not user_id:
         missing.append("user")
@@ -123,10 +131,6 @@ def _grant_subscription_credits(db, event_id: str, data: dict) -> dict:
             status_code=422,
             detail=f"Subscription event is missing {', '.join(missing)}",
         )
-
-    subscription_status = str(data.get("status") or "").lower()
-    if subscription_status and subscription_status not in {"active", "trialing"}:
-        return {"status": "ignored", "credits": 0}
 
     profile = db.query(models.CustomerProfile).filter(
         models.CustomerProfile.user_id == user_id
@@ -224,6 +228,13 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
                 public_metadata={"role": role}
             )
         except Exception as clerk_err:
+            if "resource_not_found" in str(clerk_err) or "not found" in str(clerk_err).lower():
+                # The Clerk user was deleted before this webhook ran — don't
+                # keep the DB row we just created (it would orphan and block
+                # re-signup on the unique email constraint).
+                logger.info("Clerk user %s already deleted; removing DB row", user_id)
+                delete_user(db, user_id)
+                return {"status": "deleted_concurrently"}
             logger.error(f"Failed to set Clerk public_metadata: {clerk_err}")
 
         return {"status": "created", "role": role}
