@@ -28,6 +28,18 @@ SUBSCRIPTION_CREDITS = {
     "gold": 100,
 }
 
+# Clerk Billing fires subscription.created before payment completes (status
+# incomplete/upcoming), then subscription.active once billing activates, plus
+# subscriptionItem.active per item. Credits must be granted on the active
+# events too or paid subscriptions never get credited.
+SUBSCRIPTION_EVENT_TYPES = {
+    "subscription.created",
+    "subscription.updated",
+    "subscription.active",
+    "subscriptionItem.active",
+    "subscriptionItem.updated",
+}
+
 def _subscription_user_id(data: dict) -> str | None:
     payer = data.get("payer") or {}
     customer = data.get("customer") or {}
@@ -124,6 +136,11 @@ def _grant_subscription_credits(db, event_id: str, data: dict) -> dict:
             (models.SubscriptionCreditGrant.subscription_id == str(subscription_id))
             & (models.SubscriptionCreditGrant.period_key == period_key)
         )
+        | (
+            (models.SubscriptionCreditGrant.user_id == user_id)
+            & (models.SubscriptionCreditGrant.plan_name == plan_name)
+            & (models.SubscriptionCreditGrant.period_key == period_key)
+        )
     ).first()
     if existing:
         return {"status": "already_granted", "credits": existing.credits}
@@ -177,7 +194,7 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
     user_id = user_data.get("id")
     event_id = event.get("id") or request.headers.get("svix-id")
 
-    if not user_id and event_type not in {"subscription.created", "subscription.updated"}:
+    if not user_id and event_type not in SUBSCRIPTION_EVENT_TYPES:
         return {"status": "ignored", "reason": "No user ID"}
 
     if event_type == "user.created":
@@ -226,7 +243,7 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
 
         return {"status": "no_role_change"}
 
-    elif event_type in {"subscription.created", "subscription.updated"}:
+    elif event_type in SUBSCRIPTION_EVENT_TYPES:
         if not event_id:
             logger.warning(
                 "Rejected subscription webhook without an event ID; event keys=%s",

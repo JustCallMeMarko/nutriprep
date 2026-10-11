@@ -55,7 +55,7 @@ export default function UserLayout() {
         makeRequest('profile')
             .then((profile: { credits?: number }) => setCredits(profile?.credits ?? 0))
             .catch(() => setCredits(null))
-    }, [isLoaded, role, onboarded, makeRequest])
+    }, [isLoaded, role, onboarded, makeRequest, location.pathname])
 
     if (!isLoaded) {
         return null
