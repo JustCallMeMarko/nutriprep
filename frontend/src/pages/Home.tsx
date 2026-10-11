@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 
 import { FileCheckCorner, Info, Menu, MoveUpRight, RobotArm, X } from 'lucide-react'
@@ -25,7 +25,6 @@ import balance_macro from '../assets/landing/balance_macro.png'
 import low_carb from '../assets/landing/low_carb.png'
 import high_protein from '../assets/landing/high_protein.png'
 import { Show, useAuth, useUser } from '@clerk/react'
-import { ROUTES } from '@/constants/routes'
 
 
 const Header = () => {
@@ -372,6 +371,46 @@ const Footer = () => {
   )
 }
 
+function AccountProvisioning() {
+  const { user } = useUser()
+  const [timedOut, setTimedOut] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const timer = setTimeout(() => { if (!cancelled) setTimedOut(true) }, 30000)
+    const interval = setInterval(() => {
+      void user?.reload().catch(() => undefined)
+    }, 2000)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+      clearInterval(interval)
+    }
+  }, [user])
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+      {!timedOut ? (
+        <>
+          <div className="size-8 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" />
+          <p className="text-sm font-semibold text-slate-700">Setting up your account…</p>
+        </>
+      ) : (
+        <>
+          <p className="text-sm font-semibold text-slate-700">Account setup is taking longer than usual.</p>
+          <p className="text-xs text-slate-500">Refresh the page, or sign out and sign back in to retry.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+          >
+            Refresh
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function Home() {
   const { isLoaded: userLoaded, user } = useUser()
   const { isLoaded: authLoaded, isSignedIn } = useAuth()
@@ -381,8 +420,13 @@ export default function Home() {
     return null
   }
 
-  if (isSignedIn && (role == 'user' || role == 'admin' || role == 'rider')) {
-    return <Navigate to={role ? `/${role}` : ROUTES.USER_DASHBOARD} replace />
+  if (isSignedIn) {
+    if (role == 'user' || role == 'admin' || role == 'rider') {
+      return <Navigate to={`/${role}`} replace />
+    }
+    // Signed in but publicMetadata.role isn't set yet — the user.created
+    // webhook provisions it asynchronously, so wait for it to land.
+    return <AccountProvisioning />
   }
 
   return (
