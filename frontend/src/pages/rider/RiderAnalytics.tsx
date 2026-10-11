@@ -41,6 +41,7 @@ interface AnalyticsResponse {
     earnings: number
     orders: number
     deliveredCredits: number
+    payoutRate: number
     tips: number
     averagePayout: number
     earningsChange: number
@@ -210,7 +211,7 @@ export default function RiderAnalytics() {
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
-            <span>₱30 per order credit</span>
+            <span>₱{(analytics?.summary.payoutRate ?? 0).toLocaleString()} per order credit</span>
             <span className="font-semibold text-blue-600">Database total</span>
           </div>
         </div>

@@ -40,6 +40,7 @@ interface DeliveryStop {
   credits: number
   mealSummary: string
   slot: string
+  payoutRate: number
   payout: number
   notes?: string
   lat: number | null
@@ -421,7 +422,7 @@ export default function RiderActiveDelivery() {
                 <span className="font-medium text-xs sm:text-sm">{activeStop.mealSummary}</span>
               </div>
               <div className="text-xs font-semibold text-slate-600">
-                {activeStop.credits.toLocaleString()} order credits · ₱30 per credit
+                {activeStop.credits.toLocaleString()} order credits · ₱{activeStop.payoutRate.toLocaleString()} per credit
               </div>
 
               {activeStop.notes && (
@@ -472,8 +473,8 @@ export default function RiderActiveDelivery() {
                     maxLength={4}
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    placeholder="Ask customer for their 4-digit PIN"
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] focus:border-emerald-500 focus:outline-none"
+                    placeholder="Delivery PIN"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] placeholder:font-sans placeholder:text-sm placeholder:tracking-normal focus:border-emerald-500 focus:outline-none"
                   />
                   {(deliveryPinError || error) && (
                     <p className="text-xs font-semibold text-rose-600">{deliveryPinError ?? error}</p>
