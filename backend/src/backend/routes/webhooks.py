@@ -95,7 +95,7 @@ def _subscription_plan_candidates(data: dict) -> list[str]:
             candidates.extend((item.get("name"), item.get("slug")))
     return [str(c).strip() for c in candidates if c]
 
-def _match_plan(candidates: list[str], known: "set[str] | dict") -> str | None:
+def _match_plan(candidates: list[str], known: set[str] | dict) -> str | None:
     for candidate in candidates:
         normalized = candidate.lower().replace("_", "-")
         for plan_name in known:
