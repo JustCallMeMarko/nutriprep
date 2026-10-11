@@ -47,6 +47,9 @@ type OrderItem = {
 
 type UserOrder = {
     id: string
+    orderId: number
+    deliveryDate: string | null
+    cancellable: boolean
     items: OrderItem[]
     totalAmount: number
     address: string
@@ -110,6 +113,19 @@ function formatRange(start: Date, end: Date) {
 
 type PlannerState = Record<string, Partial<Record<SlotKey, Meal>>> // keyed by ISO date
 
+function mapSavedPlan(
+    savedPlan: { date: string; slot: SlotKey; meal: Meal; ordered: boolean }[],
+): PlannerState {
+    const nextPlan: PlannerState = {}
+    savedPlan.forEach((entry) => {
+        nextPlan[entry.date] = {
+            ...nextPlan[entry.date],
+            [entry.slot]: { ...entry.meal, ordered: entry.ordered },
+        }
+    })
+    return nextPlan
+}
+
 export default function UserPlan() {
     const { makeRequest } = useApi()
     const [date, setDate] = useState<Date | undefined>(new Date())
@@ -120,6 +136,8 @@ export default function UserPlan() {
     const [favoriteMeals, setFavoriteMeals] = useState<Meal[]>([])
     const [orders, setOrders] = useState<UserOrder[]>([])
     const [selectedOrder, setSelectedOrder] = useState<UserOrder | null>(null)
+    const [cancellingOrder, setCancellingOrder] = useState(false)
+    const [cancelError, setCancelError] = useState<string | null>(null)
     const [placingOrder, setPlacingOrder] = useState(false)
     const [orderConfirmOpen, setOrderConfirmOpen] = useState(false)
     const [creditBalance, setCreditBalance] = useState<number | null>(null)
@@ -170,14 +188,7 @@ export default function UserPlan() {
         Promise.all([makeRequest("plan"), makeRequest("fav-meal"), makeRequest("orders")])
             .then(([savedPlan, favorites, savedOrders]) => {
                 if (!active) return
-                const nextPlan: PlannerState = {}
-                savedPlan.forEach((entry: { date: string; slot: SlotKey; meal: Meal; ordered: boolean }) => {
-                    nextPlan[entry.date] = {
-                        ...nextPlan[entry.date],
-                        [entry.slot]: { ...entry.meal, ordered: entry.ordered },
-                    }
-                })
-                setPlan(nextPlan)
+                setPlan(mapSavedPlan(savedPlan))
                 setOrders(savedOrders)
                 setFavoriteMeals(favorites.map((meal: { id: string | number; title: string; calories: number; credits?: number; image_url?: string }) => ({
                     id: String(meal.id),
@@ -264,6 +275,30 @@ export default function UserPlan() {
             setError(err instanceof Error ? err.message : "Unable to place your order. Please try again.")
         } finally {
             setPlacingOrder(false)
+        }
+    }
+
+    async function cancelSelectedOrder() {
+        if (!selectedOrder?.cancellable || cancellingOrder) return
+        setCancellingOrder(true)
+        setCancelError(null)
+        try {
+            const cancelledOrder = await makeRequest(`orders/${selectedOrder.orderId}/cancel`, {
+                method: "POST",
+            }) as UserOrder
+            setOrders((prev) => prev.map((order) =>
+                order.orderId === cancelledOrder.orderId ? cancelledOrder : order
+            ))
+            setSelectedOrder(cancelledOrder)
+            const savedPlan = await makeRequest("plan")
+            setPlan(mapSavedPlan(savedPlan))
+            void makeRequest("profile")
+                .then((profile: { credits?: number }) => setCreditBalance(profile?.credits ?? null))
+                .catch(() => undefined)
+        } catch (err) {
+            setCancelError(err instanceof Error ? err.message : "Unable to cancel your order. Please try again.")
+        } finally {
+            setCancellingOrder(false)
         }
     }
 
@@ -395,7 +430,10 @@ export default function UserPlan() {
                             {orders.map((order) => (
                                 <button
                                     key={order.id}
-                                    onClick={() => setSelectedOrder(order)}
+                                    onClick={() => {
+                                        setSelectedOrder(order)
+                                        setCancelError(null)
+                                    }}
                                     className="flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
                                 >
                                     <div className="flex items-center justify-between">
@@ -510,7 +548,15 @@ export default function UserPlan() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+            <Dialog
+                open={!!selectedOrder}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setSelectedOrder(null)
+                        setCancelError(null)
+                    }
+                }}
+            >
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -581,9 +627,21 @@ export default function UserPlan() {
                                     </div>
                                 </div>
                             )}
+                            {cancelError && (
+                                <p role="alert" className="text-xs text-destructive">{cancelError}</p>
+                            )}
                         </div>
                     )}
                     <DialogFooter>
+                        {selectedOrder?.cancellable && (
+                            <Button
+                                variant="destructive"
+                                onClick={cancelSelectedOrder}
+                                disabled={cancellingOrder}
+                            >
+                                {cancellingOrder ? "Cancelling..." : "Cancel order"}
+                            </Button>
+                        )}
                         <Button variant="ghost" onClick={() => setSelectedOrder(null)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
