@@ -307,30 +307,53 @@ def create_profile(
             detail="User does not exist"
         )
 
-    profile = models.CustomerProfile(
-        user_id=user_id,
-        phone_number=payload.phone_number,
-        height=payload.height,
-        weight=payload.weight,
-        target_weight=payload.target_weight,
-        goal=payload.goal,
-        delivery_address=payload.delivery_address,
-        delivery_lat=payload.delivery_lat,
-        delivery_long=payload.delivery_long,
-        credits=0,
+    profile = (
+        db.query(models.CustomerProfile)
+        .filter(models.CustomerProfile.user_id == user_id)
+        .first()
     )
-
-    db.add(profile)
-
-    try:
+    if profile:
+        profile.phone_number = payload.phone_number
+        profile.height = payload.height
+        profile.weight = payload.weight
+        profile.target_weight = payload.target_weight
+        profile.goal = payload.goal
+        profile.delivery_address = payload.delivery_address
+        profile.delivery_lat = payload.delivery_lat
+        profile.delivery_long = payload.delivery_long
         db.commit()
         db.refresh(profile)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Profile already exists for this user",
+    else:
+        profile = models.CustomerProfile(
+            user_id=user_id,
+            phone_number=payload.phone_number,
+            height=payload.height,
+            weight=payload.weight,
+            target_weight=payload.target_weight,
+            goal=payload.goal,
+            delivery_address=payload.delivery_address,
+            delivery_lat=payload.delivery_lat,
+            delivery_long=payload.delivery_long,
+            credits=0,
         )
+
+        db.add(profile)
+
+        try:
+            db.commit()
+            db.refresh(profile)
+        except IntegrityError:
+            db.rollback()
+            profile = (
+                db.query(models.CustomerProfile)
+                .filter(models.CustomerProfile.user_id == user_id)
+                .first()
+            )
+            if profile is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Profile already exists for this user",
+                )
 
     try:
         clerk.users.update_metadata(
