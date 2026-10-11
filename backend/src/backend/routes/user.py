@@ -132,9 +132,14 @@ def upsert_plan_entry(
     if payload.meal_id is not None:
         meal = db.query(models.Meal).filter(
             models.Meal.id == payload.meal_id,
-            models.Meal.status == models.MealStatus.ACTIVE,
         ).first()
-        if not meal:
+        # Catalog meals are ACTIVE; a user's own meals (created via Add Meal)
+        # are USER_OWNED and only plannable by their owner.
+        plannable = meal and (
+            meal.status == models.MealStatus.ACTIVE
+            or (meal.status == models.MealStatus.USER_OWNED and meal.user_id == user_id)
+        )
+        if not plannable:
             raise HTTPException(status_code=404, detail="Meal does not exist")
 
     entry = db.query(models.PlanEntry).filter(

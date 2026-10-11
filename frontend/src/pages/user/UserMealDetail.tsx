@@ -259,6 +259,9 @@ export default function UserMealDetail() {
                 <p className="text-sm font-semibold text-slate-900 mt-0.5">
                   Select quantity to schedule
                 </p>
+                <p className="text-xs font-medium text-slate-500 mt-0.5">
+                  {meal.stocks ?? 0} in stock
+                </p>
               </div>
 
               {/* Quantity Stepper */}
