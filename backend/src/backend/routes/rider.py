@@ -275,6 +275,13 @@ def update_delivery_status(
     if delivery.order.status == models.OrderStatus.CANCELLED:
         raise HTTPException(status_code=409, detail="Cancelled orders cannot be delivered.")
 
+    # Orders created after delivery PINs ship carry a 4-digit PIN the customer
+    # shows the rider; orders without a PIN (legacy) complete without one.
+    if delivery.order.delivery_pin is not None:
+        provided_pin = str(payload.get("pin") or "").strip()
+        if provided_pin != delivery.order.delivery_pin:
+            raise HTTPException(status_code=403, detail="Invalid delivery PIN.")
+
     delivery.order.status = models.OrderStatus.DELIVERED
     delivery.delivered_at = datetime.now()
     db.commit()

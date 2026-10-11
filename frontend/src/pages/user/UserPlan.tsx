@@ -52,6 +52,7 @@ type UserOrder = {
     address: string
     status: string
     rider: { name: string; vehicle: string; phone: string } | null
+    deliveryPin: string | null
     placedAt: string
 }
 
@@ -416,6 +417,11 @@ export default function UserPlan() {
                                     <span className="text-xs text-muted-foreground">
                                         Placed {new Date(order.placedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                                     </span>
+                                    {order.deliveryPin && order.status !== "delivered" && order.status !== "cancelled" && (
+                                        <span className="mt-1 flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">
+                                            Delivery PIN: <span className="font-mono tracking-widest">{order.deliveryPin}</span>
+                                        </span>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -567,6 +573,17 @@ export default function UserPlan() {
                                     </div>
                                 )}
                             </div>
+                            {selectedOrder.deliveryPin && (
+                                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
+                                    <div className="text-xs font-medium text-blue-900">Delivery PIN — give this to your rider</div>
+                                    <div className="font-mono text-2xl font-bold tracking-[0.3em] text-blue-900">
+                                        {selectedOrder.deliveryPin}
+                                    </div>
+                                    <div className="text-[11px] text-blue-700">
+                                        The rider needs this PIN to mark your order as delivered.
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                     <DialogFooter>

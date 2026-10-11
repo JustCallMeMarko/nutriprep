@@ -193,6 +193,7 @@ class Order(Base):
     user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     total_credits: Mapped[int] = mapped_column(nullable=False)
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus, native_enum=False), nullable=False, default=OrderStatus.PENDING)
+    delivery_pin: Mapped[str | None] = mapped_column(String(6), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="orders")
@@ -395,6 +396,12 @@ _delivery_columns = {column["name"] for column in inspect(engine).get_columns("d
 if "paid_out_at" not in _delivery_columns:
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE deliveries ADD COLUMN paid_out_at DATETIME"))
+
+# Orders that predate delivery PINs get no PIN (deliverable without one).
+_order_columns = {column["name"] for column in inspect(engine).get_columns("orders")}
+if "delivery_pin" not in _order_columns:
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE orders ADD COLUMN delivery_pin VARCHAR(6)"))
 
 # Email is nullable so Clerk accounts without an email address don't collide
 # on a shared '' placeholder (the column is unique). MySQL-only ALTER; fresh
