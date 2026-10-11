@@ -219,6 +219,8 @@ class Delivery(Base):
     rider_id: Mapped[str | None] = mapped_column(String(255), ForeignKey("rider_profiles.user_id", ondelete="SET NULL"), nullable=True)
     delivered_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     paid_out_at: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
+    pin_attempts: Mapped[int] = mapped_column(nullable=False, default=0, server_default="0")
+    pin_locked_until: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
 
     order: Mapped["Order"] = relationship(back_populates="delivery")
     rider: Mapped["RiderProfile"] = relationship(back_populates="deliveries")
@@ -402,6 +404,12 @@ _order_columns = {column["name"] for column in inspect(engine).get_columns("orde
 if "delivery_pin" not in _order_columns:
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE orders ADD COLUMN delivery_pin VARCHAR(6)"))
+
+# Failed PIN attempts are rate-limited on the delivery row.
+for _col, _col_type in (("pin_attempts", "INTEGER"), ("pin_locked_until", "DATETIME")):
+    if _col not in _delivery_columns:
+        with engine.begin() as connection:
+            connection.execute(text(f"ALTER TABLE deliveries ADD COLUMN {_col} {_col_type}"))
 
 # Email is nullable so Clerk accounts without an email address don't collide
 # on a shared '' placeholder (the column is unique). MySQL-only ALTER; fresh

@@ -278,8 +278,18 @@ def update_delivery_status(
     # Orders created after delivery PINs ship carry a 4-digit PIN the customer
     # shows the rider; orders without a PIN (legacy) complete without one.
     if delivery.order.delivery_pin is not None:
+        now = datetime.now()
+        if delivery.pin_locked_until and delivery.pin_locked_until > now:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many incorrect PIN attempts. Try again later.",
+            )
         provided_pin = str(payload.get("pin") or "").strip()
         if provided_pin != delivery.order.delivery_pin:
+            delivery.pin_attempts += 1
+            if delivery.pin_attempts >= 5:
+                delivery.pin_locked_until = now + timedelta(minutes=30)
+            db.commit()
             raise HTTPException(status_code=403, detail="Invalid delivery PIN.")
 
     delivery.order.status = models.OrderStatus.DELIVERED
