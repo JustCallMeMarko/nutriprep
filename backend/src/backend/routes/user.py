@@ -1,9 +1,11 @@
 import os
 import logging
 import secrets
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
+from typing import Annotated
 from backend.utils import authenticate_and_get_user_details
 from fastapi import APIRouter, Request, HTTPException, Depends, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
@@ -12,6 +14,7 @@ from ..database.db import (
     favorite_meal,
     get_all_favorite_meals,
     log_meal_consumption,
+    release_meal_stock,
     reserve_meal_stock,
     unfavorite_meal,
 )
@@ -181,10 +184,36 @@ def delete_plan_entry(
         db.commit()
 
 
-def _serialize_user_order(order: models.Order) -> dict:
+def _order_delivery_dates(db: Session, order_ids: list[int]) -> dict[int, date]:
+    if not order_ids:
+        return {}
+    dates = (
+        db.query(models.PlanEntry.order_id, func.min(models.PlanEntry.plan_date))
+        .filter(models.PlanEntry.order_id.in_(order_ids))
+        .group_by(models.PlanEntry.order_id)
+        .all()
+    )
+    return {order_id: delivery_date for order_id, delivery_date in dates}
+
+
+def _can_cancel(order: models.Order, delivery_date: date | None) -> bool:
+    return (
+        order.status == models.OrderStatus.PENDING
+        and delivery_date is not None
+        and datetime.now() < datetime.combine(delivery_date, time.min) - timedelta(hours=24)
+    )
+
+
+def _serialize_user_order(
+    order: models.Order,
+    delivery_date: date | None = None,
+) -> dict:
     profile = order.user.customer_profile
     return {
         "id": f"#ORD-{order.id:04d}",
+        "orderId": order.id,
+        "deliveryDate": delivery_date.isoformat() if delivery_date else None,
+        "cancellable": _can_cancel(order, delivery_date),
         "items": [
             {
                 "title": item.meal.title,
@@ -231,7 +260,72 @@ def get_orders(request: Request, db: Session = Depends(get_db)):
         .order_by(models.Order.created_at.desc())
         .all()
     )
-    return [_serialize_user_order(order) for order in orders]
+    delivery_dates = _order_delivery_dates(db, [order.id for order in orders])
+    return [
+        _serialize_user_order(order, delivery_dates.get(order.id))
+        for order in orders
+    ]
+
+
+@router.post("/orders/{order_id}/cancel", status_code=status.HTTP_200_OK)
+def cancel_order(
+    order_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+):
+    user_id = authenticate_and_get_user_details(request).get("user_id")
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id, models.Order.user_id == user_id)
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    delivery_date = _order_delivery_dates(db, [order.id]).get(order.id)
+    if not _can_cancel(order, delivery_date):
+        raise HTTPException(
+            status_code=409,
+            detail="Only pending orders more than 24 hours before delivery can be cancelled",
+        )
+
+    profile = (
+        db.query(models.CustomerProfile)
+        .filter(models.CustomerProfile.user_id == user_id)
+        .with_for_update()
+        .first()
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    meal_counts: dict[int, int] = {}
+    for item in order.items:
+        meal_counts[item.meal_id] = meal_counts.get(item.meal_id, 0) + item.quantity
+
+    order.status = models.OrderStatus.CANCELLED
+    release_meal_stock(db, meal_counts)
+    profile.credits += order.total_credits
+    plan_entries = db.query(models.PlanEntry).filter(
+        models.PlanEntry.order_id == order.id,
+    ).all()
+    for entry in plan_entries:
+        entry.order_id = None
+    db.commit()
+
+    cancelled_order = (
+        db.query(models.Order)
+        .options(
+            joinedload(models.Order.user).joinedload(models.User.customer_profile),
+            joinedload(models.Order.items).joinedload(models.OrderItem.meal),
+            joinedload(models.Order.delivery)
+            .joinedload(models.Delivery.rider)
+            .joinedload(models.RiderProfile.user),
+        )
+        .filter(models.Order.id == order.id, models.Order.user_id == user_id)
+        .first()
+    )
+    return _serialize_user_order(cancelled_order)
 
 
 @router.post("/orders", status_code=status.HTTP_201_CREATED)
@@ -297,7 +391,7 @@ def place_order(
     profile.credits -= total_credits
     db.commit()
     db.refresh(order)
-    return _serialize_user_order(order)
+    return _serialize_user_order(order, min(entry.plan_date for entry in entries))
 
 @router.post("/profile", status_code=status.HTTP_201_CREATED)
 def create_profile(
