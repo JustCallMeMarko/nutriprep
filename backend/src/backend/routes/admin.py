@@ -4,6 +4,8 @@ import secrets
 from pathlib import Path
 from uuid import uuid4
 from datetime import date, datetime, timedelta
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from backend.database.db import get_total_admins, get_total_riders, get_total_user_credits, get_total_users
 from backend.utils import authenticate_and_get_user_details
@@ -68,17 +70,17 @@ class OrderStatusUpdate(BaseModel):
     status: models.OrderStatus
 
 class OrderRiderUpdate(BaseModel):
-    rider_id: str
+    rider_id: str = Field(min_length=1, max_length=255)
 
 class UserRoleUpdate(BaseModel):
     role: models.Roles
 
 class UserCreditsUpdate(BaseModel):
-    amount: int
-    operation: str
+    amount: int = Field(gt=0, le=100_000)
+    operation: Literal["add", "deduct"]
 
 class UserSubscriptionUpdate(BaseModel):
-    plan: str
+    plan: str = Field(min_length=1, max_length=50)
 
 class PayoutRateUpdate(BaseModel):
     rate: int = Field(gt=0, le=100_000)
@@ -88,9 +90,9 @@ class PayoutConfirm(BaseModel):
 
 class BroadcastCreate(BaseModel):
     title: str = Field(min_length=1, max_length=100)
-    message: str = Field(min_length=1)
-    audience: str
-    priority: str = "normal"
+    message: str = Field(min_length=1, max_length=2_000)
+    audience: Literal["users", "riders", "admins", "all"]
+    priority: Literal["normal", "urgent"] = "normal"
 
 def _serialize_broadcast(broadcast: models.Broadcast) -> dict:
     recipient_ids = broadcast.recipient_ids or []
@@ -840,16 +842,16 @@ def get_dashboard_metrics(
 @router.post("/meals")
 async def create_meal(
     request: Request,
-    title: str = Form(...),
-    description: str = Form(...),
+    title: str = Form(..., min_length=1, max_length=100),
+    description: str = Form(..., min_length=1, max_length=2_000),
     img: UploadFile | None = File(None),
     meal_status: str = Form(...),
-    calories: int = Form(...),
-    protein: float = Form(...),
-    carb: float = Form(...),
-    fat: float = Form(...),
-    credits: int = Form(...),
-    stocks: int = Form(...),
+    calories: int = Form(..., ge=0, le=10_000),
+    protein: float = Form(..., ge=0, le=5_000),
+    carb: float = Form(..., ge=0, le=5_000),
+    fat: float = Form(..., ge=0, le=5_000),
+    credits: int = Form(..., ge=1, le=100_000),
+    stocks: int = Form(..., ge=0, le=1_000_000),
     db: Session = Depends(get_db),
 ):
     """Create a meal from multipart form data; user_id is passed separately."""
@@ -931,16 +933,16 @@ async def create_meal(
 async def update_meal(
     meal_id: int,
     request: Request,
-    title: str = Form(...),
-    description: str = Form(...),
+    title: str = Form(..., min_length=1, max_length=100),
+    description: str = Form(..., min_length=1, max_length=2_000),
     img: UploadFile | None = File(None),
     meal_status: str = Form(...),
-    calories: int = Form(...),
-    protein: float = Form(...),
-    carb: float = Form(...),
-    fat: float = Form(...),
-    credits: int = Form(...),
-    stocks: int = Form(...),
+    calories: int = Form(..., ge=0, le=10_000),
+    protein: float = Form(..., ge=0, le=5_000),
+    carb: float = Form(..., ge=0, le=5_000),
+    fat: float = Form(..., ge=0, le=5_000),
+    credits: int = Form(..., ge=1, le=100_000),
+    stocks: int = Form(..., ge=0, le=1_000_000),
     db: Session = Depends(get_db),
 ):
     user_details = authenticate_and_get_user_details(request)

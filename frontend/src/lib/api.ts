@@ -3,6 +3,24 @@ import { useAuth, useUser } from "@clerk/react"
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
+// FastAPI returns a plain string for HTTPException but a list of
+// {loc, msg} objects for Pydantic validation errors — flatten both.
+function formatApiError(detail: unknown): string {
+  if (typeof detail === "string" && detail) return detail
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (!item || typeof item !== "object") return ""
+        const { loc, msg } = item as { loc?: unknown[]; msg?: string }
+        const field = Array.isArray(loc) ? loc.filter((part) => part !== "body").join(".") : ""
+        return field ? `${field}: ${msg ?? "invalid value"}` : msg ?? ""
+      })
+      .filter(Boolean)
+    if (messages.length) return messages.join("; ")
+  }
+  return "An error occurred while making the API request."
+}
+
 export const useApi = () => {
   const { getToken } = useAuth()
   const { user } = useUser()
@@ -39,7 +57,7 @@ export const useApi = () => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null)
-      throw new Error(errorData?.detail || "An error occurred while making the API request.")
+      throw new Error(formatApiError(errorData?.detail))
     }
 
     if (response.status === 204) {

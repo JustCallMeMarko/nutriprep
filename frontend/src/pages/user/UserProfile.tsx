@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { useApi } from "@/lib/api"
+import { LIMITS, PH_MOBILE_ERROR, isNumberInRange, isValidPhMobile, normalizePhMobile, sanitizePhoneInput } from "@/lib/validation"
 import { useUser } from "@clerk/react"
 import { CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
@@ -112,15 +113,42 @@ export default function UserProfile() {
     setIsSaved(false)
   }
 
+  const rangeError = (value: number, label: string, range: { min: number; max: number }, unit: string) =>
+    value && !isNumberInRange(value, range.min, range.max) ? `${label} must be between ${range.min} and ${range.max} ${unit}.` : ""
+
+  const trimmedAddress = profile.delivery_address.trim()
+  const fieldErrors = {
+    phone_number: profile.phone_number.trim() && !isValidPhMobile(profile.phone_number) ? PH_MOBILE_ERROR : "",
+    height: rangeError(profile.height, "Height", LIMITS.HEIGHT_CM, "cm"),
+    weight: rangeError(profile.weight, "Weight", LIMITS.WEIGHT_KG, "kg"),
+    target_weight: rangeError(profile.target_weight, "Target weight", LIMITS.WEIGHT_KG, "kg"),
+    delivery_address:
+      trimmedAddress && trimmedAddress.length < LIMITS.ADDRESS_MIN
+        ? `Enter a more complete address (at least ${LIMITS.ADDRESS_MIN} characters).`
+        : "",
+  }
+  const isComplete =
+    profile.phone_number.trim() !== ""
+    && profile.height > 0
+    && profile.weight > 0
+    && profile.target_weight > 0
+    && trimmedAddress !== ""
+  const isFormValid = isComplete && !Object.values(fieldErrors).some(Boolean)
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (!isFormValid) return
     setError("")
     setIsSaving(true)
 
     try {
       await makeRequest("profile", {
         method: isSaved ? "PUT" : "POST",
-        body: JSON.stringify(profile),
+        body: JSON.stringify({
+          ...profile,
+          phone_number: normalizePhMobile(profile.phone_number),
+          delivery_address: trimmedAddress,
+        }),
       })
       setIsSaved(true)
       // The backend flips publicMetadata.onboarded on first save; refresh the
@@ -222,19 +250,23 @@ export default function UserProfile() {
           <CardContent className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="phone_number">Phone number</Label>
-              <Input id="phone_number" required value={profile.phone_number} onChange={(event) => updateField("phone_number", event.target.value)} placeholder="+63 912 345 6789" />
+              <Input id="phone_number" type="tel" required aria-invalid={!!fieldErrors.phone_number || undefined} value={profile.phone_number} onChange={(event) => updateField("phone_number", sanitizePhoneInput(event.target.value))} placeholder="+63 912 345 6789" />
+              {fieldErrors.phone_number && <p className="text-xs text-destructive" role="alert">{fieldErrors.phone_number}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="height">Height (cm)</Label>
-              <Input id="height" required min="1" step="0.1" type="number" value={profile.height || ""} onChange={(event) => updateField("height", Number(event.target.value))} />
+              <Input id="height" required min={LIMITS.HEIGHT_CM.min} max={LIMITS.HEIGHT_CM.max} step="0.1" type="number" aria-invalid={!!fieldErrors.height || undefined} value={profile.height || ""} onChange={(event) => updateField("height", Number(event.target.value))} />
+              {fieldErrors.height && <p className="text-xs text-destructive" role="alert">{fieldErrors.height}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="weight">Current weight (kg)</Label>
-              <Input id="weight" required min="1" step="0.1" type="number" value={profile.weight || ""} onChange={(event) => updateField("weight", Number(event.target.value))} />
+              <Input id="weight" required min={LIMITS.WEIGHT_KG.min} max={LIMITS.WEIGHT_KG.max} step="0.1" type="number" aria-invalid={!!fieldErrors.weight || undefined} value={profile.weight || ""} onChange={(event) => updateField("weight", Number(event.target.value))} />
+              {fieldErrors.weight && <p className="text-xs text-destructive" role="alert">{fieldErrors.weight}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="target_weight">Target weight (kg)</Label>
-              <Input id="target_weight" required min="1" step="0.1" type="number" value={profile.target_weight || ""} onChange={(event) => updateField("target_weight", Number(event.target.value))} />
+              <Input id="target_weight" required min={LIMITS.WEIGHT_KG.min} max={LIMITS.WEIGHT_KG.max} step="0.1" type="number" aria-invalid={!!fieldErrors.target_weight || undefined} value={profile.target_weight || ""} onChange={(event) => updateField("target_weight", Number(event.target.value))} />
+              {fieldErrors.target_weight && <p className="text-xs text-destructive" role="alert">{fieldErrors.target_weight}</p>}
             </div>
           </CardContent>
         </Card>
@@ -267,7 +299,8 @@ export default function UserProfile() {
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="delivery_address">Address details</Label>
-              <Textarea id="delivery_address" required value={profile.delivery_address} onChange={(event) => updateField("delivery_address", event.target.value)} placeholder="House number, street, barangay, city" rows={3} />
+              <Textarea id="delivery_address" required maxLength={LIMITS.ADDRESS_MAX} aria-invalid={!!fieldErrors.delivery_address || undefined} value={profile.delivery_address} onChange={(event) => updateField("delivery_address", event.target.value)} placeholder="House number, street, barangay, city" rows={3} />
+              {fieldErrors.delivery_address && <p className="text-xs text-destructive" role="alert">{fieldErrors.delivery_address}</p>}
             </div>
             <div className="relative z-0 overflow-hidden rounded-xl border bg-muted">
               <div className="absolute top-3 right-3 left-16 z-[1000] sm:top-5 sm:right-5 sm:left-20">
@@ -355,7 +388,7 @@ export default function UserProfile() {
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
         <div className="flex items-center justify-end gap-3">
           {isSaved && <span className="flex items-center gap-1 text-sm text-emerald-600"><Check className="size-4" />Saved</span>}
-          <Button type="submit" disabled={isSaving}>
+          <Button type="submit" disabled={isSaving || !isFormValid}>
             {isSaving ? "Saving..." : isSaved ? "Update profile" : "Save profile"}
           </Button>
         </div>

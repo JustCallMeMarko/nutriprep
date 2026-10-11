@@ -12,7 +12,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useApi } from "@/lib/api";
+import { useApi } from "@/lib/api"
+import { LIMITS, nonNegativeError } from "@/lib/validation";
 import type { Meal } from "@/components/MealDataTable";
 
 type DashboardData = {
@@ -98,7 +99,7 @@ export default function UserDashboard() {
 
   const handleLogMeal = async () => {
     const isCustom = logMode === "custom";
-    if (isCustom && !customName.trim()) return;
+    if (isCustom && !customValid) return;
     if (!isCustom && !selectedMeal) return;
     try {
       setIsLogging(true);
@@ -126,7 +127,15 @@ export default function UserDashboard() {
     }
   };
 
-  const logDisabled = isLogging || isLoading || (logMode === "custom" ? !customName.trim() : !selectedMeal);
+  const customErrors = {
+    name: customName.trim() && customName.trim().length < 2 ? "Meal name must be at least 2 characters." : "",
+    calories: nonNegativeError(customCalories, "Calories", LIMITS.CALORIES_MAX),
+    protein: nonNegativeError(customProtein, "Protein", LIMITS.MACRO_MAX),
+    carb: nonNegativeError(customCarb, "Carb", LIMITS.MACRO_MAX),
+    fat: nonNegativeError(customFat, "Fat", LIMITS.MACRO_MAX),
+  };
+  const customValid = customName.trim() !== "" && !Object.values(customErrors).some(Boolean);
+  const logDisabled = isLogging || isLoading || (logMode === "custom" ? !customValid : !selectedMeal);
 
   return (
     <section className="flex flex-col gap-8 pb-8">
@@ -193,25 +202,31 @@ export default function UserDashboard() {
                         placeholder="e.g., Chicken adobo with rice"
                         value={customName}
                         onChange={(event) => setCustomName(event.target.value)}
-                        maxLength={100}
+                        maxLength={LIMITS.NAME_MAX}
+                        aria-invalid={!!customErrors.name || undefined}
                       />
+                      {customErrors.name && <p className="text-xs text-destructive" role="alert">{customErrors.name}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex flex-col gap-1.5">
                         <Label htmlFor="custom-calories" className="text-xs font-semibold">Calories</Label>
-                        <Input id="custom-calories" type="number" min={0} placeholder="0" value={customCalories} onChange={(event) => setCustomCalories(event.target.value)} />
+                        <Input id="custom-calories" type="number" min={0} max={LIMITS.CALORIES_MAX} aria-invalid={!!customErrors.calories || undefined} placeholder="0" value={customCalories} onChange={(event) => setCustomCalories(event.target.value)} />
+                        {customErrors.calories && <p className="text-xs text-destructive" role="alert">{customErrors.calories}</p>}
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <Label htmlFor="custom-protein" className="text-xs font-semibold">Protein (g)</Label>
-                        <Input id="custom-protein" type="number" min={0} step="0.1" placeholder="0" value={customProtein} onChange={(event) => setCustomProtein(event.target.value)} />
+                        <Input id="custom-protein" type="number" min={0} max={LIMITS.MACRO_MAX} step="0.1" aria-invalid={!!customErrors.protein || undefined} placeholder="0" value={customProtein} onChange={(event) => setCustomProtein(event.target.value)} />
+                        {customErrors.protein && <p className="text-xs text-destructive" role="alert">{customErrors.protein}</p>}
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <Label htmlFor="custom-carb" className="text-xs font-semibold">Carb (g)</Label>
-                        <Input id="custom-carb" type="number" min={0} step="0.1" placeholder="0" value={customCarb} onChange={(event) => setCustomCarb(event.target.value)} />
+                        <Input id="custom-carb" type="number" min={0} max={LIMITS.MACRO_MAX} step="0.1" aria-invalid={!!customErrors.carb || undefined} placeholder="0" value={customCarb} onChange={(event) => setCustomCarb(event.target.value)} />
+                        {customErrors.carb && <p className="text-xs text-destructive" role="alert">{customErrors.carb}</p>}
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <Label htmlFor="custom-fat" className="text-xs font-semibold">Fat (g)</Label>
-                        <Input id="custom-fat" type="number" min={0} step="0.1" placeholder="0" value={customFat} onChange={(event) => setCustomFat(event.target.value)} />
+                        <Input id="custom-fat" type="number" min={0} max={LIMITS.MACRO_MAX} step="0.1" aria-invalid={!!customErrors.fat || undefined} placeholder="0" value={customFat} onChange={(event) => setCustomFat(event.target.value)} />
+                        {customErrors.fat && <p className="text-xs text-destructive" role="alert">{customErrors.fat}</p>}
                       </div>
                     </div>
                   </div>
