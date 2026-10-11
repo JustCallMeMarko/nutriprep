@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { useApi } from "@/lib/api"
+import { useUser } from "@clerk/react"
 import { CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 
@@ -70,6 +71,7 @@ function MapViewController({ latitude, longitude }: { latitude: number; longitud
 
 export default function UserProfile() {
   const { makeRequest } = useApi()
+  const { user } = useUser()
   const [profile, setProfile] = useState<Profile>(emptyProfile)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -120,6 +122,9 @@ export default function UserProfile() {
         body: JSON.stringify(profile),
       })
       setIsSaved(true)
+      // The backend flips publicMetadata.onboarded on first save; refresh the
+      // cached Clerk user so the layout's onboarding gate sees it without a reload.
+      await user?.reload().catch(() => undefined)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to save your profile.")
     } finally {
