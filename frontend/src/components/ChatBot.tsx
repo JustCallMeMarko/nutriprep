@@ -6,7 +6,6 @@ import {
     User,
     RotateCcw,
     X,
-    Sparkle,
     ArrowUpRight
 } from "lucide-react"
 import {
@@ -27,12 +26,8 @@ import {
     MessageScrollerItem,
     MessageScrollerButton,
 } from "@/components/ui/message-scroller"
-import {
-    Marker,
-    MarkerIcon,
-    MarkerContent,
-} from "@/components/ui/marker"
 import { useApi } from "@/lib/api"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface ChatMessage {
     id: string
@@ -290,16 +285,11 @@ export default function ChatBot() {
                                                     <Bot className="size-3.5" />
                                                 </MessageAvatar>
                                                 <MessageContent>
-                                                    <Marker className="py-0">
-                                                        <div className="px-3 py-2 bg-white border border-slate-200/90 rounded-xl rounded-tl-xs flex items-center gap-1.5 text-xs text-slate-500 shadow-2xs w-fit">
-                                                            <MarkerIcon>
-                                                                <Sparkle className="size-3 animate-spin text-blue-600" />
-                                                            </MarkerIcon>
-                                                            <MarkerContent className="text-xs text-slate-500 font-medium">
-                                                                Thinking...
-                                                            </MarkerContent>
-                                                        </div>
-                                                    </Marker>
+                                                    <div className="px-3 py-2.5 bg-white border border-slate-200/90 rounded-xl rounded-tl-xs flex flex-col gap-1.5 shadow-2xs w-48" aria-label="Thinking..." aria-busy="true">
+                                                        <Skeleton className="h-3 w-full" />
+                                                        <Skeleton className="h-3 w-5/6" />
+                                                        <Skeleton className="h-3 w-2/3" />
+                                                    </div>
                                                 </MessageContent>
                                             </Message>
                                         </MessageScrollerItem>

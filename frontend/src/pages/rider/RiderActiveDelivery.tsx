@@ -22,10 +22,10 @@ import {
   ShieldAlert,
   ChevronRight,
   Sparkles,
-  RefreshCw,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "cn"
 import { useApi } from "@/lib/api"
 
@@ -213,10 +213,19 @@ export default function RiderActiveDelivery() {
 
   if (isLoading) {
     return (
-      <section className="flex min-h-[420px] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-          <RefreshCw size={16} className="animate-spin" />
-          Loading your active deliveries...
+      <section className="flex flex-col gap-6 w-full pb-16" aria-label="Loading your active deliveries" aria-busy="true">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-9 w-72" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <Skeleton className="lg:col-span-7 h-[420px] w-full rounded-2xl" />
+          <div className="lg:col-span-5 flex flex-col gap-4">
+            <Skeleton className="h-40 w-full rounded-2xl" />
+            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-28 w-full rounded-2xl" />
+          </div>
         </div>
       </section>
     )
@@ -508,7 +517,7 @@ export default function RiderActiveDelivery() {
                     disabled={isUpdating || deliveryPin.trim().length < 4}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-sm py-3 flex items-center justify-center gap-2 cursor-pointer rounded-xl shadow-xs transition-all"
                   >
-                    {isUpdating ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                    {!isUpdating && <CheckCircle2 size={18} />}
                     {isUpdating ? "Updating..." : "Mark as Delivered"}
                   </Button>
                 </div>

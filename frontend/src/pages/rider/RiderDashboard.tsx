@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useApi } from "@/lib/api"
 
 export interface DeliveryOrder {
@@ -71,10 +72,24 @@ export default function RiderDashboard() {
 
   if (isLoading) {
     return (
-      <section className="flex min-h-[420px] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-          <RefreshCw size={16} className="animate-spin" />
-          Loading your deliveries...
+      <section className="flex w-full flex-col gap-6 pb-16" aria-label="Loading your deliveries" aria-busy="true">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-80 max-w-full" />
+          </div>
+          <Skeleton className="h-10 w-28 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+          ))}
+        </div>
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+          ))}
         </div>
       </section>
     )

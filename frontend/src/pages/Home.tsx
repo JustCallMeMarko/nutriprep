@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
@@ -392,7 +393,9 @@ function AccountProvisioning() {
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
       {!timedOut ? (
         <>
-          <div className="size-8 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" />
+          <Skeleton className="size-14 rounded-full" />
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-3 w-32" />
           <p className="text-sm font-semibold text-slate-700">Setting up your account…</p>
         </>
       ) : (

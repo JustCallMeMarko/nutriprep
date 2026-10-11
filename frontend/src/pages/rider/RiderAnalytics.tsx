@@ -7,7 +7,6 @@ import {
   Download,
   Search,
   CheckCircle2,
-  RefreshCw,
   ShieldAlert,
 } from "lucide-react"
 import {
@@ -21,6 +20,7 @@ import {
 } from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useApi } from "@/lib/api"
 
 interface CompletedOrder {
@@ -123,11 +123,18 @@ export default function RiderAnalytics() {
 
   if (isLoading) {
     return (
-      <section className="flex min-h-[420px] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-          <RefreshCw size={16} className="animate-spin" />
-          Loading your analytics...
+      <section className="flex flex-col gap-6 w-full pb-16" aria-label="Loading your analytics" aria-busy="true">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-4 w-80 max-w-full" />
         </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-2xl" />
       </section>
     )
   }

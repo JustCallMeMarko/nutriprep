@@ -1,8 +1,9 @@
 import * as React from "react"
 import { Navigate, useNavigate } from "react-router-dom"
 import { useUser } from "@clerk/react"
-import { Bike, Loader2, RefreshCw, ShieldAlert } from "lucide-react"
+import { Bike, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -99,10 +100,22 @@ export default function RiderOnboarding() {
 
   if (!isLoaded) {
     return (
-      <section className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-          <RefreshCw size={16} className="animate-spin" />
-          Loading your account...
+      <section className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto px-4 py-12" aria-label="Loading your account" aria-busy="true">
+        <div className="w-full max-w-lg flex flex-col gap-6">
+          <div className="flex flex-col items-center gap-3">
+            <Skeleton className="size-14 rounded-2xl" />
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-80 max-w-full" />
+          </div>
+          <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <div className="flex justify-end">
+              <Skeleton className="h-10 w-40" />
+            </div>
+          </div>
         </div>
       </section>
     )
@@ -183,7 +196,6 @@ export default function RiderOnboarding() {
 
         <div className="mt-6 flex items-center justify-end">
           <Button type="submit" disabled={isSaving || isLoading} className="min-w-40">
-            {isSaving && <Loader2 className="size-4 animate-spin" />}
             {isSaving
               ? "Saving..."
               : alreadyOnboarded
