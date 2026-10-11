@@ -28,6 +28,10 @@ SUBSCRIPTION_CREDITS = {
     "gold": 100,
 }
 
+# Clerk Billing's default plan every new user is auto-subscribed to. It
+# grants no credits and must be acknowledged rather than rejected.
+FREE_PLAN_NAMES = {"free"}
+
 # Clerk Billing fires subscription.created before payment completes (status
 # incomplete/upcoming), then subscription.active once billing activates, plus
 # subscriptionItem.active per item. Credits must be granted on the active
@@ -91,13 +95,19 @@ def _subscription_plan_candidates(data: dict) -> list[str]:
             candidates.extend((item.get("name"), item.get("slug")))
     return [str(c).strip() for c in candidates if c]
 
-def _subscription_plan_name(data: dict) -> str | None:
-    for candidate in _subscription_plan_candidates(data):
+def _match_plan(candidates: list[str], known: "set[str] | dict") -> str | None:
+    for candidate in candidates:
         normalized = candidate.lower().replace("_", "-")
-        for plan_name in SUBSCRIPTION_CREDITS:
+        for plan_name in known:
             if normalized == plan_name or normalized.startswith(f"{plan_name}-") or normalized.startswith(f"{plan_name} "):
                 return plan_name
     return None
+
+def _subscription_plan_name(data: dict) -> str | None:
+    return _match_plan(_subscription_plan_candidates(data), SUBSCRIPTION_CREDITS)
+
+def _subscription_is_free_plan(data: dict) -> bool:
+    return _match_plan(_subscription_plan_candidates(data), FREE_PLAN_NAMES) is not None
 
 def _subscription_period_key(data: dict) -> str:
     period_start = data.get("period_start") or data.get("active_at") or data.get("created_at")
@@ -120,18 +130,13 @@ def _grant_subscription_credits(db, event_id: str, data: dict) -> dict:
     if subscription_status and subscription_status not in {"active", "trialing"}:
         return {"status": "ignored", "credits": 0}
 
-    # Clerk Billing auto-subscribes every new user to the Free plan (and may
-    # emit other uncredited plans). That's a valid event with nothing to
-    # grant — acknowledge it instead of 422ing so svix stops retrying.
-    if not plan_name:
-        uncredited = _subscription_plan_candidates(data)
-        if uncredited:
-            logger.info(
-                "Ignoring subscription webhook %s: plan %r grants no credits",
-                event_id,
-                uncredited[0],
-            )
-            return {"status": "ignored", "credits": 0, "plan": uncredited[0]}
+    # Clerk Billing auto-subscribes every new user to the Free plan. That's
+    # a valid event with nothing to grant — acknowledge it instead of 422ing
+    # so svix stops retrying. Any other unrecognised plan still falls through
+    # to the 422 below so an uncredited paid purchase is never silently lost.
+    if not plan_name and _subscription_is_free_plan(data):
+        logger.info("Ignoring subscription webhook %s: Free plan grants no credits", event_id)
+        return {"status": "ignored", "credits": 0, "plan": "free"}
 
     missing = []
     if not user_id:
