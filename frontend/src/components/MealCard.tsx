@@ -151,12 +151,17 @@ export function MealCard({
             {calories}kcal
           </span>
           {type === 'user' ? (
-            <img
-              src={isFav ? active_favorite : favorite}
-              alt="Favorite"
-              className="size-6 cursor-pointer hover:scale-110 transition-transform"
-              onClick={handleFavoriteClick}
-            />
+            <span className="flex items-center gap-2">
+              <span className="text-xs font-semibold leading-3 opacity-50">
+                {stocks} in stock
+              </span>
+              <img
+                src={isFav ? active_favorite : favorite}
+                alt="Favorite"
+                className="size-6 cursor-pointer hover:scale-110 transition-transform"
+                onClick={handleFavoriteClick}
+              />
+            </span>
           ) : (
             <span className="text-sm font-semibold">
               {stocks} Qty
