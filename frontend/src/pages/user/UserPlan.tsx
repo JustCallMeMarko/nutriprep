@@ -573,7 +573,7 @@ export default function UserPlan() {
                                     </div>
                                 )}
                             </div>
-                            {selectedOrder.deliveryPin && (
+                            {selectedOrder.deliveryPin && selectedOrder.status !== "delivered" && selectedOrder.status !== "cancelled" && (
                                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
                                     <div className="text-xs font-medium text-blue-900">Delivery PIN — give this to your rider</div>
                                     <div className="font-mono text-2xl font-bold tracking-[0.3em] text-blue-900">
