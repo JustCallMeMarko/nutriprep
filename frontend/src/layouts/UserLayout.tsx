@@ -88,9 +88,12 @@ export default function UserLayout() {
     ]
 
     const firstItem = data?.subscriptionItems?.[0]
-    const planName = firstItem?.plan?.name || "Free"
+    const planName = (firstItem?.plan?.name || "Free").trim().toLowerCase()
 
-    const isAIEnabled = !isProfilePage && (planName === SUBSCRIPTION_PLANS.SILVER || planName === SUBSCRIPTION_PLANS.GOLD)
+    const isAIEnabled = !isProfilePage && (
+        planName === SUBSCRIPTION_PLANS.SILVER.toLowerCase()
+        || planName === SUBSCRIPTION_PLANS.GOLD.toLowerCase()
+    )
 
 
     return (
