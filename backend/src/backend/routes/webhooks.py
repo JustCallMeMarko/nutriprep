@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from svix.webhooks import Webhook
 from clerk_backend_api import Clerk
 
-from ..database.db import create_user, sync_role_from_metadata
+from ..database.db import create_user, delete_user, sync_role_from_metadata
 from ..database import models
 from ..database.models import get_db
 
@@ -248,6 +248,14 @@ async def handle_clerk_webhook(request: Request, db=Depends(get_db)):
             return {"status": "updated", "role": updated_user.role.value}
 
         return {"status": "no_role_change"}
+
+    elif event_type == "user.deleted":
+        # Fires for both self-deletes and deletes from the Clerk dashboard.
+        deleted = delete_user(db, user_id)
+        if not deleted:
+            logger.info("user.deleted for unknown user %s; nothing to remove", user_id)
+            return {"status": "no_user"}
+        return {"status": "deleted"}
 
     elif event_type in SUBSCRIPTION_EVENT_TYPES:
         if not event_id:

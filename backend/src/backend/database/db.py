@@ -29,6 +29,51 @@ def get_total_riders(db: Session) -> int:
 def get_total_user_credits(db: Session) -> int:
     return db.query(models.CustomerProfile).with_entities(func.sum(models.CustomerProfile.credits)).scalar() or 0
 
+def delete_user(db: Session, user_id: str) -> bool:
+    """Deletes a user and every row they own, in FK-safe order.
+
+    Used for Clerk user.deleted webhooks (self-delete and dashboard delete)
+    and the admin delete-user endpoint, so dependents are removed explicitly
+    rather than relying on DB-level ON DELETE behavior existing on old tables.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return False
+
+    user_order_ids = db.query(models.Order.id).filter(models.Order.user_id == user_id)
+    user_meal_ids = db.query(models.Meal.id).filter(models.Meal.user_id == user_id)
+
+    # Deliveries stay as order history: unassign the rider but keep the row
+    # unless it belongs to the deleted user's own order.
+    db.query(models.Delivery).filter(models.Delivery.rider_id == user_id).update(
+        {models.Delivery.rider_id: None}, synchronize_session=False
+    )
+    db.query(models.Delivery).filter(models.Delivery.order_id.in_(user_order_ids)).delete(synchronize_session=False)
+    db.query(models.PlanEntry).filter(models.PlanEntry.user_id == user_id).delete(synchronize_session=False)
+    db.query(models.PlanEntry).filter(models.PlanEntry.meal_id.in_(user_meal_ids)).update(
+        {models.PlanEntry.meal_id: None}, synchronize_session=False
+    )
+    db.query(models.OrderItem).filter(
+        (models.OrderItem.order_id.in_(user_order_ids)) | (models.OrderItem.meal_id.in_(user_meal_ids))
+    ).delete(synchronize_session=False)
+    db.query(models.Order).filter(models.Order.user_id == user_id).delete(synchronize_session=False)
+    db.query(models.MealLog).filter(
+        (models.MealLog.user_id == user_id) | (models.MealLog.meal_id.in_(user_meal_ids))
+    ).delete(synchronize_session=False)
+    db.query(models.FavoriteMeal).filter(
+        (models.FavoriteMeal.user_id == user_id) | (models.FavoriteMeal.meal_id.in_(user_meal_ids))
+    ).delete(synchronize_session=False)
+    db.query(models.SubscriptionCreditGrant).filter(models.SubscriptionCreditGrant.user_id == user_id).delete(synchronize_session=False)
+    db.query(models.RiderPayout).filter(models.RiderPayout.rider_id == user_id).delete(synchronize_session=False)
+    db.query(models.Meal).filter(models.Meal.user_id == user_id).delete(synchronize_session=False)
+    db.query(models.Broadcast).filter(models.Broadcast.user_id == user_id).delete(synchronize_session=False)
+    db.query(models.CustomerProfile).filter(models.CustomerProfile.user_id == user_id).delete(synchronize_session=False)
+    db.query(models.RiderProfile).filter(models.RiderProfile.user_id == user_id).delete(synchronize_session=False)
+
+    db.delete(user)
+    db.commit()
+    return True
+
 def create_customer_profile(
         db: Session,
         user_id: str,

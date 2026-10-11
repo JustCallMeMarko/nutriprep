@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from dotenv import load_dotenv
 from ..database import models
+from ..database.db import delete_user
 from ..database.models import get_db
 from clerk_backend_api import Clerk
 
@@ -555,10 +556,7 @@ def delete_admin_user(user_id: str, request: Request, db: Session = Depends(get_
         raise HTTPException(status_code=400, detail="You cannot delete your own admin account.")
     _get_clerk_user(user_id)
     clerk.users.delete(user_id=user_id)
-    db_user = db.query(models.User).filter(models.User.id == user_id).first()
-    if db_user:
-        db.delete(db_user)
-        db.commit()
+    delete_user(db, user_id)
     return None
 
 def _order_status_label(status_value: models.OrderStatus) -> str:
