@@ -625,11 +625,7 @@ def _serialize_order(order: models.Order) -> dict:
                 "id": order.delivery.rider.user_id,
                 "name": order.delivery.rider.user.full_name,
                 "vehicle": order.delivery.rider.plate_number or "No vehicle",
-                "phone": (
-                    order.delivery.rider.user.customer_profile.phone_number
-                    if order.delivery.rider.user.customer_profile
-                    else ""
-                ),
+                "phone": order.delivery.rider.phone_number or "",
                 "rating": "—",
                 "activeLoads": 0,
             }
