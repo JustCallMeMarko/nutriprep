@@ -165,11 +165,6 @@ export function AddMealSheet({ onAddMeal, onUpdateMeal, editingMeal, trigger }: 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (!isEditing && !imageFile) {
-      setErrorMessage("Please upload a meal photo.")
-      return
-    }
-
     if (!title.trim()) {
       setErrorMessage("Please enter a meal title.")
       return
@@ -312,7 +307,7 @@ export function AddMealSheet({ onAddMeal, onUpdateMeal, editingMeal, trigger }: 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <ImageIcon size={14} className="text-blue-600" />
-                    Meal Photo *
+                    Meal Photo <span className="font-normal text-muted-foreground">(optional)</span>
                   </Label>
 
                   <input
