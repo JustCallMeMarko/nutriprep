@@ -405,6 +405,25 @@ if "delivery_pin" not in _order_columns:
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE orders ADD COLUMN delivery_pin VARCHAR(6)"))
 
+# Backfill PINs onto still-active orders that predated the feature so riders
+# always need a code to complete them. Delivered/cancelled orders are skipped.
+import random as _random
+_rng = _random.Random()
+_pin_backfill = inspect(engine).get_columns("orders")
+if any(c["name"] == "delivery_pin" for c in _pin_backfill):
+    with engine.begin() as connection:
+        _rows = connection.execute(
+            text(
+                "SELECT id FROM orders WHERE delivery_pin IS NULL "
+                "AND status NOT IN ('delivered', 'cancelled')"
+            )
+        ).fetchall()
+        for (_order_id,) in _rows:
+            connection.execute(
+                text("UPDATE orders SET delivery_pin = :pin WHERE id = :oid"),
+                {"pin": f"{_rng.randrange(10000):04d}", "oid": _order_id},
+            )
+
 # Failed PIN attempts are rate-limited on the delivery row.
 for _col, _col_type in (("pin_attempts", "INTEGER"), ("pin_locked_until", "DATETIME")):
     if _col not in _delivery_columns:

@@ -174,7 +174,8 @@ export default function RiderActiveDelivery() {
     setIsAvailable(nextValue)
   }
 
-  const activeStop = stops.find((s) => s.id === selectedStopId) ?? stops[0]
+  const visibleStops = stops.filter((s) => s.status !== "delivered")
+  const activeStop = visibleStops.find((s) => s.id === selectedStopId) ?? visibleStops[0]
   const completedCount = stops.filter((s) => s.status === "delivered").length
   const totalCount = stops.length
 
@@ -204,7 +205,7 @@ export default function RiderActiveDelivery() {
   }
 
   // Generate route coordinates for the polyline
-  const mappedStops = stops.filter(
+  const mappedStops = visibleStops.filter(
     (stop): stop is DeliveryStop & { lat: number; lng: number } =>
       stop.lat !== null && stop.lng !== null
   )
@@ -381,8 +382,8 @@ export default function RiderActiveDelivery() {
                 <span>Active Delivery Destination</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded-full bg-emerald-600 inline-block"></span>
-                <span>Delivered Order</span>
+                <span className="w-3.5 h-3.5 rounded-full bg-slate-700 inline-block"></span>
+                <span>Pending Stop</span>
               </div>
             </div>
           </div>
@@ -501,13 +502,13 @@ export default function RiderActiveDelivery() {
             <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 mb-3 flex items-center justify-between">
               <span>Route Sequence</span>
               <span className="text-xs font-semibold text-slate-500 lowercase">
-                {stops.length} stops
+                {visibleStops.length} stops
               </span>
             </h3>
 
             <div className="space-y-2">
               {/* Drops */}
-              {stops.map((stop, idx) => {
+              {visibleStops.map((stop, idx) => {
                 const isSelected = stop.id === activeStop.id
                 return (
                   <button
