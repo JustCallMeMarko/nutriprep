@@ -14,7 +14,12 @@ class ProfileCreate(BaseModel):
     delivery_long: Optional[float] = None
 
 class MealLogCreate(BaseModel):
-    meal_id: int
+    meal_id: int | None = None
+    custom_name: str | None = None
+    calories: int | None = None
+    protein: float | None = None
+    carb: float | None = None
+    fat: float | None = None
 
 class PlanEntryUpsert(BaseModel):
     plan_date: date

@@ -534,7 +534,7 @@ async def get_meals(
     """Retrieves all meals from the database."""
     return (
         db.query(models.Meal)
-        .filter(models.Meal.status != models.MealStatus.ARCHIVED)
+        .filter(models.Meal.status == models.MealStatus.ACTIVE)
         .all()
     )
 
@@ -547,9 +547,28 @@ def create_meal_log(
     """Logs one serving of a meal for the authenticated user."""
     user_details = authenticate_and_get_user_details(request)
     user_id = user_details.get("user_id")
-    meal = db.query(models.Meal).filter(models.Meal.id == payload.meal_id).first()
-    if not meal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal does not exist")
+    if payload.meal_id is not None:
+        meal = db.query(models.Meal).filter(models.Meal.id == payload.meal_id).first()
+        if not meal:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal does not exist")
+    elif payload.custom_name and payload.custom_name.strip():
+        meal = models.Meal(
+            user_id=user_id,
+            title=payload.custom_name.strip()[:100],
+            description="",
+            image_url="",
+            status=models.MealStatus.USER_OWNED,
+            calories=payload.calories or 0,
+            protein=payload.protein or 0,
+            carb=payload.carb or 0,
+            fat=payload.fat or 0,
+            credits=0,
+            stocks=0,
+        )
+        db.add(meal)
+        db.flush()
+    else:
+        raise HTTPException(status_code=422, detail="A meal or custom meal name is required")
 
     log = log_meal_consumption(db, user_id, meal.id)
     return {
