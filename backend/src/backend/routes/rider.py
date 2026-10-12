@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, HTTPException, Depends, status, Query
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 from backend.utils import authenticate_and_get_user_details
 from ..database import models
@@ -103,9 +104,20 @@ def get_analytics(
             .joinedload(models.OrderItem.meal),
         )
         .filter(
-            models.Delivery.rider_id == rider_id,
             models.Delivery.delivered_at >= previous_start,
             models.Order.status == models.OrderStatus.DELIVERED,
+            or_(
+                models.Delivery.payout_rider_id == rider_id,
+                and_(
+                    models.Delivery.rider_id == rider_id,
+                    models.Delivery.paid_out_at.is_(None),
+                ),
+                # Paid before payout attribution existed: fall back to rider_id.
+                and_(
+                    models.Delivery.rider_id == rider_id,
+                    models.Delivery.payout_rider_id.is_(None),
+                ),
+            ),
         )
         .join(models.Delivery.order)
         .order_by(models.Delivery.delivered_at.desc())
@@ -118,6 +130,8 @@ def get_analytics(
     rate = models.get_payout_rate(db)
 
     def payout(delivery: models.Delivery) -> int:
+        if delivery.payout_amount is not None:
+            return delivery.payout_amount
         return delivery.order.total_credits * rate
 
     def period_change(current_value: int, previous_value: int) -> float:

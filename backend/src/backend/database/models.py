@@ -219,6 +219,8 @@ class Delivery(Base):
     rider_id: Mapped[str | None] = mapped_column(String(255), ForeignKey("rider_profiles.user_id", ondelete="SET NULL"), nullable=True)
     delivered_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     paid_out_at: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
+    payout_rider_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payout_amount: Mapped[int | None] = mapped_column(nullable=True)
     pin_attempts: Mapped[int] = mapped_column(nullable=False, default=0, server_default="0")
     pin_locked_until: Mapped[datetime | None] = mapped_column(nullable=True, default=None)
 
@@ -398,6 +400,12 @@ _delivery_columns = {column["name"] for column in inspect(engine).get_columns("d
 if "paid_out_at" not in _delivery_columns:
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE deliveries ADD COLUMN paid_out_at DATETIME"))
+if "payout_rider_id" not in _delivery_columns:
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE deliveries ADD COLUMN payout_rider_id VARCHAR(255)"))
+if "payout_amount" not in _delivery_columns:
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE deliveries ADD COLUMN payout_amount INTEGER"))
 
 # Orders that predate delivery PINs get no PIN (deliverable without one).
 _order_columns = {column["name"] for column in inspect(engine).get_columns("orders")}
