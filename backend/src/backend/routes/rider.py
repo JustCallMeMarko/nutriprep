@@ -105,7 +105,6 @@ def get_analytics(
         .filter(
             models.Delivery.rider_id == rider_id,
             models.Delivery.delivered_at >= previous_start,
-            models.Delivery.paid_out_at.is_(None),
             models.Order.status == models.OrderStatus.DELIVERED,
         )
         .join(models.Delivery.order)
