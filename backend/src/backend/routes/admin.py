@@ -469,6 +469,8 @@ def confirm_payout(
     rate = models.get_payout_rate(db)
     for delivery in deliveries:
         delivery.paid_out_at = now
+        delivery.payout_rider_id = rider_id
+        delivery.payout_amount = delivery.order.total_credits * rate
     payout.amount = sum(delivery.order.total_credits for delivery in deliveries) * rate
     payout.status = "confirmed"
     payout.confirmed_at = now
